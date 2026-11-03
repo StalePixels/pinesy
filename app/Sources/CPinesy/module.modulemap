@@ -1,0 +1,4 @@
+module CPinesy {
+    header "../../../mame/src/osd/pinesy/pinesy.h"
+    export *
+}
