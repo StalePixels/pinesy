@@ -8,23 +8,27 @@ import Carbon.HIToolbox
 final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
     static let shared = MachineRunner()
 
-    /// The machine that is running, or nil.
-    @Published private(set) var running: MAME.Machine?
+    /// The title of the running machine's window, or nil when none runs.
+    @Published private(set) var running: String?
 
     private var window: NSWindow?
     private var quitAfterRun = false
 
-    func start(_ machine: MAME.Machine) {
+    /// Starts a configuration. `arguments` is its command line; the
+    /// settings options are added here.
+    func start(title: String, arguments: [String], debug: Bool) {
         guard running == nil else { return }
-        running = machine
+        running = title
 
-        let view = MachineView(frame: NSRect(x: 0, y: 0, width: 720, height: 576))
+        let size = Self.windowSize()
+        let view = MachineView(frame: NSRect(origin: .zero, size: size))
         let window = NSWindow(contentRect: view.frame,
                               styleMask: [.titled, .closable, .miniaturizable, .resizable],
                               backing: .buffered, defer: false)
-        window.title = machine.description
+        window.title = title
         window.contentView = view
-        window.contentAspectRatio = view.frame.size
+        window.contentAspectRatio = NSSize(width: 720, height: 576)
+        window.collectionBehavior.insert(.fullScreenPrimary)
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.center()
@@ -32,7 +36,8 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
         window.makeFirstResponder(view)
         self.window = window
 
-        let arguments = [machine.name] + piArguments()
+        createDataFolders()
+        let commandLine = arguments + RunOptions.arguments(debug: debug)
 
         // pinesy_run() keeps its own loop and pumps AppKit events. Start it
         // from a run loop block, not from the main dispatch queue: a nested
@@ -40,25 +45,31 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
         // main-queue job (SwiftUI's included) until MAME exits.
         RunLoop.main.perform(inModes: [.default]) {
             MainActor.assumeIsolated {
-                let code = MAME.run(arguments, view: view)
-                self.finish(code: code)
+                let output = OutputReceiver()
+                let code = MAME.run(commandLine, view: view, output: output)
+                self.finish(code: code, errors: output.errors)
             }
         }
     }
 
-    /// MAME options for the Pi port, from the settings.
-    private func piArguments() -> [String] {
-        let defaults = UserDefaults.standard
-        guard defaults.bool(forKey: SettingsKey.piEnabled) else {
-            // an empty slot option unplugs the card
-            return ["-rs232_rpi", ""]
-        }
-        let path = defaults.string(forKey: SettingsKey.piImagePath) ?? ""
-        return path.isEmpty ? [] : ["-pi", path]
+    /// 720x576 (the picture with tall pixels doubled), smaller if the
+    /// screen is smaller.
+    private static func windowSize() -> NSSize {
+        let picture = NSSize(width: 720, height: 576)
+        guard let screen = NSScreen.main?.visibleFrame.size else { return picture }
+        let scale = min(1, (screen.height - 80) / picture.height, (screen.width - 40) / picture.width)
+        return NSSize(width: (picture.width * scale).rounded(), height: (picture.height * scale).rounded())
     }
 
-    private func finish(code: Int32) {
-        let machine = running
+    private func createDataFolders() {
+        let base = AppSettings.current.dataFolder
+        for name in ["cfg", "nvram", "snap"] {
+            try? FileManager.default.createDirectory(at: base.appendingPathComponent(name), withIntermediateDirectories: true)
+        }
+    }
+
+    private func finish(code: Int32, errors: [String]) {
+        let title = running
         running = nil
         window?.delegate = nil
         window?.close()
@@ -68,12 +79,18 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
             NSApp.terminate(nil)
             return
         }
-        if code != 0, let machine {
+        if code != 0, let title {
             let alert = NSAlert()
-            alert.messageText = "\(machine.description) stopped with an error"
-            alert.informativeText = "MAME exited with code \(code)."
+            alert.messageText = "\(title) stopped with an error"
+            let text = errors.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+            alert.informativeText = text.isEmpty ? "The emulator exited with code \(code)." : text
             alert.runModal()
         }
+    }
+
+    /// Asks the running machine to stop. The window closes when it has.
+    func stop() {
+        _ = MAME.requestExit()
     }
 
     /// Asks the running machine to exit and quits when it has.
@@ -92,7 +109,8 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
     }
 }
 
-/// The view MAME draws on. Keys go to MAME.
+/// The view MAME draws on. Keys go to MAME; key combinations the menus
+/// own reach the menus first.
 final class MachineView: NSView {
     override var acceptsFirstResponder: Bool { true }
 
