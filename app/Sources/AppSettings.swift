@@ -87,7 +87,7 @@ private struct GeneralSettings: View {
             } header: {
                 Text("ROM folders")
             } footer: {
-                Text("Pinesy looks for machine ROMs in these folders. With none, it uses the ROM folders in MAME's own settings.")
+                Text("Pinesy looks for machine ROMs in the ROM sets it comes with, then in \(MAMEPaths.userROMs.path), then in these folders.")
                     .foregroundStyle(.secondary)
             }
 
@@ -111,6 +111,8 @@ private struct GeneralSettings: View {
             }
         }
         .formStyle(.grouped)
+        .scrollDisabled(true)
+        .fixedSize(horizontal: false, vertical: true)
         .fileImporter(isPresented: $choosingROMFolder, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result, !romFolders.contains(url.path) {
                 romFolders.append(url.path)
