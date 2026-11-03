@@ -28,24 +28,27 @@ enum MAME {
     /// Runs MAME on the main thread with a command line (no program name)
     /// and returns MAME's exit code. `view` shows the first screen; nil
     /// means MAME draws nowhere and no host is passed, as in headless mode.
-    /// `output` receives each line MAME prints, with its channel.
+    /// `host` receives MAME's error lines and the window shape it asks for.
     @MainActor
-    static func run(_ arguments: [String], view: NSView?, output: OutputReceiver? = nil) -> Int32 {
+    static func run(_ arguments: [String], view: NSView?, host receiver: RunHost? = nil) -> Int32 {
         withCStrings(arguments) { argc, argv in
             guard let view else {
                 return pinesy_run(argc, argv, nil)
             }
             var host = pinesy_host()
             host.view = Unmanaged.passUnretained(view).toOpaque()
-            if let output {
-                host.output = OutputReceiver.callback
-                host.context = output.context
+            if let receiver {
+                host.output = RunHost.outputCallback
+                host.aspect = RunHost.aspectCallback
+                host.size = RunHost.sizeCallback
+                host.context = receiver.context
             }
             return withUnsafePointer(to: &host) { pinesy_run(argc, argv, $0) }
         }
     }
 
-    /// Asks the running machine to exit. Returns true if a machine is running.
+    /// Asks the running machine to exit; a machine still starting exits
+    /// once it has started. Returns true if a machine is running.
     static func requestExit() -> Bool {
         pinesy_request_exit() != 0
     }
@@ -77,20 +80,45 @@ private final class TextReceiver {
     }
 }
 
-/// Collects the lines MAME prints during a run.
-final class OutputReceiver {
+/// What MAME tells the app during a run: the error lines it prints, and
+/// the shape it wants for the machine window. MAME calls on the main thread.
+@MainActor
+final class RunHost {
     /// MAME's osd_output_channel values.
     enum Channel: Int32 {
         case error = 0, warning, info, debug, verbose, log
     }
 
     private(set) var errors: [String] = []
+    /// The ratio to keep when the user resizes; nil for any shape.
+    var onAspect: (NSSize?) -> Void = { _ in }
+    /// The size MAME wants for the picture, in points.
+    var onSize: (NSSize) -> Void = { _ in }
 
-    var context: UnsafeMutableRawPointer { Unmanaged.passUnretained(self).toOpaque() }
+    nonisolated var context: UnsafeMutableRawPointer { Unmanaged.passUnretained(self).toOpaque() }
 
-    static let callback: pinesy_output_fn = { context, channel, text in
+    nonisolated private static func host(_ context: UnsafeMutableRawPointer) -> RunHost {
+        Unmanaged<RunHost>.fromOpaque(context).takeUnretainedValue()
+    }
+
+    nonisolated static let outputCallback: pinesy_output_fn = { context, channel, text in
         guard let context, let text, Channel(rawValue: channel) == .error else { return }
-        let receiver = Unmanaged<OutputReceiver>.fromOpaque(context).takeUnretainedValue()
-        receiver.errors.append(String(cString: text))
+        let line = String(cString: text)
+        let receiver = host(context)
+        MainActor.assumeIsolated { receiver.errors.append(line) }
+    }
+
+    nonisolated static let aspectCallback: pinesy_size_fn = { context, width, height in
+        guard let context else { return }
+        let ratio = (width > 0 && height > 0) ? NSSize(width: Int(width), height: Int(height)) : nil
+        let receiver = host(context)
+        MainActor.assumeIsolated { receiver.onAspect(ratio) }
+    }
+
+    nonisolated static let sizeCallback: pinesy_size_fn = { context, width, height in
+        guard let context, width > 0, height > 0 else { return }
+        let receiver = host(context)
+        let size = NSSize(width: Int(width), height: Int(height))
+        MainActor.assumeIsolated { receiver.onSize(size) }
     }
 }

@@ -24,6 +24,7 @@ struct AppSettings {
     }
 
     static let defaultGDBPort = 23946
+    static let gdbPorts = 1...65535
 
     static var defaultDataFolder: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -42,7 +43,7 @@ struct AppSettings {
         return AppSettings(romFolders: defaults.stringArray(forKey: Key.romFolders) ?? [],
                            dataFolder: folder ?? defaultDataFolder,
                            debugger: Debugger(rawValue: defaults.string(forKey: Key.debugger) ?? "") ?? .windows,
-                           gdbPort: port > 0 ? port : defaultGDBPort)
+                           gdbPort: gdbPorts.contains(port) ? port : defaultGDBPort)
     }
 }
 
@@ -66,6 +67,11 @@ private struct GeneralSettings: View {
     @State private var selection: String?
     @State private var choosingROMFolder = false
     @State private var choosingDataFolder = false
+    @State private var rejectedFolder: String?
+
+    private var dataFolderURL: URL {
+        dataFolder.isEmpty ? AppSettings.defaultDataFolder : URL(fileURLWithPath: dataFolder)
+    }
 
     var body: some View {
         Form {
@@ -87,7 +93,7 @@ private struct GeneralSettings: View {
             } header: {
                 Text("ROM folders")
             } footer: {
-                Text("Pinesy looks for machine ROMs in the ROM sets it comes with, then in \(MAMEPaths.userROMs.path), then in these folders.")
+                Text("Pinesy looks for machine ROMs in the ROM sets it comes with, then in \(MAMEPaths.userROMs(dataFolderURL).path), then in these folders.")
                     .foregroundStyle(.secondary)
             }
 
@@ -115,9 +121,19 @@ private struct GeneralSettings: View {
         .fixedSize(horizontal: false, vertical: true)
         .fileImporter(isPresented: $choosingROMFolder, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result, !romFolders.contains(url.path) {
-                romFolders.append(url.path)
-                save()
+                if MAMEPaths.isUsableROMFolder(url.path) {
+                    romFolders.append(url.path)
+                    save()
+                } else {
+                    rejectedFolder = url.path
+                }
             }
+        }
+        .alert("This folder cannot be a ROM folder", isPresented: Binding(get: { rejectedFolder != nil },
+                                                                          set: { if !$0 { rejectedFolder = nil } })) {
+            Button("OK") { rejectedFolder = nil }
+        } message: {
+            Text("The emulator cannot use a folder with \";\" in its path: \(rejectedFolder ?? "")")
         }
         .fileImporter(isPresented: $choosingDataFolder, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result {
@@ -146,6 +162,10 @@ private struct DebuggerSettings: View {
                 .pickerStyle(.radioGroup)
                 TextField("GDB port", value: $gdbPort, format: .number.grouping(.never))
                     .disabled(debugger != .gdbStub)
+                    .onChange(of: gdbPort) {
+                        let clamped = min(max(gdbPort, AppSettings.gdbPorts.lowerBound), AppSettings.gdbPorts.upperBound)
+                        if clamped != gdbPort { gdbPort = clamped }
+                    }
             } footer: {
                 Text("With the GDB remote stub, the machine waits for a GDB client to connect to this port.")
                     .foregroundStyle(.secondary)

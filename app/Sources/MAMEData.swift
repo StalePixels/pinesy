@@ -17,7 +17,8 @@ struct Slot: Decodable, Hashable, Sendable {
     let tag: String
     /// The slot holding the card this slot belongs to; empty for the machine.
     let parent: String
-    /// "memory", "drive", "sound" or "port".
+    /// "memory", "drive", "sound" or "port", from the slot itself, not
+    /// from the card fitted now.
     let kind: String
     let type: String
     let typedescription: String
@@ -25,6 +26,8 @@ struct Slot: Decodable, Hashable, Sendable {
     let `default`: String
     /// The fitted card; empty for none.
     let current: String
+    /// The fitted card's description.
+    let currentdescription: String?
     let options: [SlotOption]
     /// The fitted card's ROMs, when a card is fitted.
     let biossets: [BiosSet]?
@@ -69,6 +72,8 @@ struct MachineDescription: Decodable, Sendable {
     var slots: [Slot]?
     var media: [Media]?
     var errors: String
+    /// MAME's warnings; they do not stop a run.
+    var warnings: String?
 
     init(errors: String) {
         self.errors = errors

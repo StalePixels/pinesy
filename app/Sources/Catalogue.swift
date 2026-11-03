@@ -140,7 +140,9 @@ struct Catalogue: Sendable {
             let variants = (variantsOf[driver.name] ?? [])
                 .sorted { Self.yearValue($0.year) < Self.yearValue($1.year) }
                 .map { Variant(driver: $0.name, name: $0.description, biossets: $0.biossets) }
-            let search = ([name, driver.manufacturer] + models.map(\.label) + variants.map(\.name))
+            // a maker MAME does not know ("<unknown>") is not shown, so it is not searched
+            let maker = driver.manufacturer.hasPrefix("<") ? [] : [driver.manufacturer]
+            let search = ([name] + maker + models.map(\.label) + variants.map(\.name))
                 .joined(separator: " ")
             machines.append(Machine(id: driver.name, name: name, manufacturer: driver.manufacturer, year: year,
                                     preliminary: shown.status == "preliminary",

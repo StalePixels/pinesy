@@ -26,6 +26,9 @@ struct ConfigurationView: View {
     @State private var choosingMachine = false
     @State private var window: NSWindow?
     @State private var mediaToChoose: Media?
+    /// The configuration changed while a machine ran; MAME is asked about
+    /// it when the run ends.
+    @State private var refreshWaiting = false
 
     private var catalogue: Catalogue { Catalogue.shared }
 
@@ -45,6 +48,9 @@ struct ConfigurationView: View {
             if let summary {
                 form(summary)
                     .disabled(runner.running != nil)
+            } else if refreshWaiting {
+                ContentUnavailableView("A Machine Is Running", systemImage: "play.fill",
+                                       description: Text("This configuration opens when the running machine stops."))
             } else {
                 ContentUnavailableView("No Machine", systemImage: "desktopcomputer",
                                        description: Text("Choose a machine for this configuration."))
@@ -69,6 +75,7 @@ struct ConfigurationView: View {
         .background(WindowReader { window = $0 })
         .sheet(isPresented: $choosingMachine) {
             MachinePicker(catalogue: catalogue,
+                          canChoose: runner.running == nil,
                           onChoose: { machine in
                               document.machine = machine.id
                               document.arguments = ConfigurationEditor.newConfiguration(machine, catalogue: catalogue)
@@ -94,6 +101,11 @@ struct ConfigurationView: View {
         .onChange(of: document.arguments, initial: true) {
             refresh()
         }
+        .onChange(of: runner.running) {
+            if runner.running == nil && refreshWaiting {
+                refresh()
+            }
+        }
     }
 
     private func refresh() {
@@ -101,9 +113,20 @@ struct ConfigurationView: View {
             summary = nil
             return
         }
-        summary = ConfigurationSummary(arguments: document.arguments,
-                                       description: MAME.describe(document.arguments),
-                                       catalogue: catalogue)
+        // pinesy_describe() must not run inside a running MAME
+        guard runner.running == nil else {
+            refreshWaiting = true
+            return
+        }
+        refreshWaiting = false
+        let summary = ConfigurationSummary(arguments: document.arguments,
+                                           description: MAME.describe(document.arguments),
+                                           catalogue: catalogue,
+                                           machineHint: document.machine)
+        self.summary = summary
+        if let machine = summary.machine?.id, document.machine != machine {
+            document.machine = machine
+        }
     }
 
     // MARK: - The form
@@ -125,6 +148,20 @@ struct ConfigurationView: View {
                 }
             }
 
+            if !summary.warnings.isEmpty {
+                Section {
+                    Label {
+                        Text(summary.warnings)
+                            .textSelection(.enabled)
+                    } icon: {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("The emulator warns")
+                }
+            }
+
             machineSection(summary)
 
             if !summary.hardware.isEmpty {
@@ -138,7 +175,7 @@ struct ConfigurationView: View {
             if !summary.media.isEmpty {
                 Section("Media") {
                     ForEach(summary.media) { row in
-                        mediaRow(row)
+                        mediaRow(row, missing: summary.missingFiles.contains(row.media.name))
                     }
                 }
             }
@@ -170,11 +207,11 @@ struct ConfigurationView: View {
                     .font(.title2.weight(.semibold))
                 if let machine = summary.machine {
                     Text([machine.manufacturer.hasPrefix("<") ? nil : machine.manufacturer,
-                          machine.year.contains("?") ? nil : machine.year]
+                          summary.year.isEmpty || summary.year.contains("?") ? nil : summary.year]
                         .compactMap { $0 }.joined(separator: ", "))
                         .foregroundStyle(.secondary)
                 }
-                if summary.machine?.preliminary == true {
+                if summary.preliminary {
                     Text("The emulation of this machine is not complete.")
                         .font(.caption)
                         .foregroundStyle(.orange)
@@ -232,7 +269,7 @@ struct ConfigurationView: View {
                     Text(choice.label).tag(choice.value)
                 }
                 if !row.choices.contains(where: { $0.value == row.slot.current }) {
-                    Text(row.slot.current).tag(row.slot.current)
+                    Text(row.slot.currentdescription ?? row.slot.current).tag(row.slot.current)
                 }
             } label: {
                 VStack(alignment: .leading, spacing: 1) {
@@ -260,7 +297,7 @@ struct ConfigurationView: View {
     }
 
     @ViewBuilder
-    private func mediaRow(_ row: ConfigurationSummary.MediaRow) -> some View {
+    private func mediaRow(_ row: ConfigurationSummary.MediaRow, missing: Bool) -> some View {
         let media = row.media
         LabeledContent {
             HStack(spacing: 6) {
@@ -268,6 +305,11 @@ struct ConfigurationView: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(.yellow)
                         .help("This machine needs a file here before it can run.")
+                }
+                if missing {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.yellow)
+                        .help("This file is not there: \(media.current)")
                 }
                 Text(media.current.isEmpty ? "Empty" : (media.current as NSString).lastPathComponent)
                     .foregroundStyle(media.current.isEmpty ? .secondary : .primary)

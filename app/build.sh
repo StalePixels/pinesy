@@ -7,7 +7,8 @@
 # (default: mame/libmame_pinesy.dylib in this repo).
 #
 # The bundle carries the ROM sets in ../roms in Contents/Resources/roms,
-# and libmame_pinesy.dylib and every library it needs outside /usr/lib
+# MAME's plugins, hash, bgfx, artwork and language folders in
+# Contents/Resources, and libmame_pinesy.dylib and every library it needs outside /usr/lib
 # and /System in Contents/Frameworks. Their install
 # names are rewritten to @rpath, which the executable points at
 # Contents/Frameworks. The bundle is signed ad hoc.
@@ -26,20 +27,53 @@ rm -rf "$app"
 mkdir -p "$contents/MacOS" "$contents/Resources" "$frameworks"
 cp "$here/Info.plist" "$contents/Info.plist"
 
-# The ROM sets ship in the bundle: one zip or folder per set. Disk images
-# (SD cards, hard disks) never ship.
+# The ROM sets ship in the bundle: one zip, 7z or folder of ROM dumps per
+# set. Disk images (SD cards, hard disks, floppies) never ship, loose or
+# inside a zip.
+disk_image='\.(img|ima|chd|hdf|hdd|vhd|iso|cue|dmg|dsk|edsk|trd|scl|mgt|fdi|td0|udi|mfm|hfe|ipf|imd|opd|opu|d40|d80|sad|zip|7z)$'
 roms=$here/../roms
 if [ -d "$roms" ]; then
-	images=$(find "$roms" -type f \( -iname '*.img' -o -iname '*.chd' -o -iname '*.hdf' -o -iname '*.vhd' -o -iname '*.iso' -o -iname '*.dmg' \))
-	if [ -n "$images" ]; then
-		echo "build.sh: disk images do not go in the bundle:" >&2
-		echo "$images" >&2
+	bad=""
+	for entry in "$roms"/*; do
+		[ -e "$entry" ] || continue
+		name=$(basename "$entry")
+		case "$name" in
+			*.zip|*.ZIP)
+				# a zip of a ROM set holds ROM dumps only
+				found=$(unzip -Z1 "$entry" | grep -iE "$disk_image" || true)
+				[ -z "$found" ] || bad="$bad$entry: $found
+"
+				;;
+			*.7z|*.7Z)
+				# a 7z cannot be listed with the tools macOS has, so its
+				# contents are not checked
+				;;
+			*)
+				if [ -d "$entry" ]; then
+					found=$(find "$entry" -type f | grep -iE "$disk_image" || true)
+					[ -z "$found" ] || bad="$bad$found
+"
+				else
+					bad="$bad$entry
+"
+				fi
+				;;
+		esac
+	done
+	if [ -n "$bad" ]; then
+		echo "build.sh: only ROM sets (a zip, 7z or folder of ROM dumps) go in the bundle:" >&2
+		printf '%s' "$bad" >&2
 		exit 1
 	fi
 	cp -R "$roms" "$contents/Resources/roms"
 else
 	mkdir -p "$contents/Resources/roms"
 fi
+
+# MAME's own support files, in the folders MAMEPaths.swift points at
+for folder in plugins hash bgfx artwork language; do
+	cp -R "$here/../mame/$folder" "$contents/Resources/$folder"
+done
 
 swiftc -swift-version 6 -O \
 	-target arm64-apple-macos27.2 \

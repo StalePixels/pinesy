@@ -11,9 +11,9 @@ enum MAMEPaths {
         resources.appendingPathComponent("roms", isDirectory: true)
     }
 
-    /// The user's own ROM folder, searched after the app's.
-    static var userROMs: URL {
-        AppSettings.defaultDataFolder.appendingPathComponent("roms", isDirectory: true)
+    /// The user's own ROM folder, in the data folder, searched after the app's.
+    static func userROMs(_ dataFolder: URL) -> URL {
+        dataFolder.appendingPathComponent("roms", isDirectory: true)
     }
 
     private static var resources: URL {
@@ -38,9 +38,14 @@ enum MAMEPaths {
     ]
 
     /// The ROM folders, in search order: the app's, the user's, then
-    /// the folders added in Settings.
+    /// the folders added in Settings. MAME separates the folders with
+    /// ";", so a folder with ";" in its path is left out.
     static func romFolders(_ settings: AppSettings) -> [String] {
-        [bundledROMs.path, userROMs.path] + settings.romFolders
+        ([bundledROMs.path, userROMs(settings.dataFolder).path] + settings.romFolders).filter(isUsableROMFolder)
+    }
+
+    static func isUsableROMFolder(_ path: String) -> Bool {
+        !path.contains(";")
     }
 
     /// The options that give MAME the app's own paths.
@@ -57,7 +62,7 @@ enum MAMEPaths {
 
     /// Creates the user ROM folder and the folders MAME writes.
     static func createFolders(_ settings: AppSettings = .current) {
-        let folders = [userROMs] + dataFolders.map { settings.dataFolder.appendingPathComponent($0.folder) }
+        let folders = [userROMs(settings.dataFolder)] + dataFolders.map { settings.dataFolder.appendingPathComponent($0.folder) }
         for folder in folders {
             try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         }

@@ -20,14 +20,13 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
         guard running == nil else { return }
         running = title
 
-        let size = Self.windowSize()
-        let view = MachineView(frame: NSRect(origin: .zero, size: size))
+        // MAME sets the window's size and shape once it has the view
+        let view = MachineView(frame: NSRect(x: 0, y: 0, width: 640, height: 480))
         let window = NSWindow(contentRect: view.frame,
                               styleMask: [.titled, .closable, .miniaturizable, .resizable],
                               backing: .buffered, defer: false)
         window.title = title
         window.contentView = view
-        window.contentAspectRatio = NSSize(width: 720, height: 576)
         window.collectionBehavior.insert(.fullScreenPrimary)
         window.isReleasedWhenClosed = false
         window.delegate = self
@@ -45,20 +44,44 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
         // main-queue job (SwiftUI's included) until MAME exits.
         RunLoop.main.perform(inModes: [.default]) {
             MainActor.assumeIsolated {
-                let output = OutputReceiver()
-                let code = MAME.run(commandLine, view: view, output: output)
-                self.finish(code: code, errors: output.errors)
+                let host = RunHost()
+                // the host lives for the run only, so it holds the window strongly
+                host.onAspect = { ratio in
+                    if let ratio {
+                        window.contentAspectRatio = ratio
+                    } else {
+                        // the aspect ratio and resize increments share one setting
+                        window.resizeIncrements = NSSize(width: 1, height: 1)
+                    }
+                }
+                var sized = false
+                host.onSize = { size in
+                    Self.setContentSize(window, size)
+                    // the first size is MAME's window size; the window starts centred at it
+                    if !sized {
+                        sized = true
+                        window.center()
+                    }
+                }
+                let code = MAME.run(commandLine, view: view, host: host)
+                self.finish(code: code, errors: host.errors)
             }
         }
     }
 
-    /// 720x576 (the picture with tall pixels doubled), smaller if the
-    /// screen is smaller.
-    private static func windowSize() -> NSSize {
-        let picture = NSSize(width: 720, height: 576)
-        guard let screen = NSScreen.main?.visibleFrame.size else { return picture }
-        let scale = min(1, (screen.height - 80) / picture.height, (screen.width - 40) / picture.width)
-        return NSSize(width: (picture.width * scale).rounded(), height: (picture.height * scale).rounded())
+    /// Gives the window the content size MAME asks for, scaled down to fit
+    /// the screen, keeping its top-left corner where it is.
+    private static func setContentSize(_ window: NSWindow, _ size: NSSize) {
+        var size = size
+        if let screen = (window.screen ?? NSScreen.main)?.visibleFrame.size {
+            let chrome = window.frame.height - window.contentLayoutRect.height
+            let scale = min(1, (screen.height - chrome) / size.height, screen.width / size.width)
+            size = NSSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
+        }
+        var content = window.contentRect(forFrameRect: window.frame)
+        content.origin.y += content.height - size.height
+        content.size = size
+        window.setFrame(window.frameRect(forContentRect: content), display: true)
     }
 
     private func finish(code: Int32, errors: [String]) {

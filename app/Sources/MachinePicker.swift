@@ -6,6 +6,8 @@ import SwiftUI
 
 struct MachinePicker: View {
     let catalogue: Catalogue
+    /// False while a machine runs: a new configuration waits for it.
+    let canChoose: Bool
     let onChoose: (Catalogue.Machine) -> Void
     let onCancel: () -> Void
 
@@ -65,12 +67,15 @@ struct MachinePicker: View {
                         .tag(machine.id)
                 }
                 .contextMenu(forSelectionType: String.self, menu: { _ in EmptyView() }) { ids in
-                    if let id = ids.first, let machine = shownMachines.first(where: { $0.id == id }) {
+                    if canChoose, let id = ids.first, let machine = shownMachines.first(where: { $0.id == id }) {
                         onChoose(machine)
                     }
                 }
                 .overlay {
-                    if shownMachines.isEmpty && searching {
+                    if catalogue.sections.isEmpty {
+                        ContentUnavailableView("No Machines", systemImage: "exclamationmark.triangle",
+                                               description: Text("The emulator reported no machines."))
+                    } else if shownMachines.isEmpty && searching {
                         ContentUnavailableView.search(text: search)
                     }
                 }
@@ -86,7 +91,8 @@ struct MachinePicker: View {
                     if let chosen { onChoose(chosen) }
                 }
                 .keyboardShortcut(.defaultAction)
-                .disabled(chosen == nil)
+                .disabled(chosen == nil || !canChoose)
+                .help(canChoose ? "" : "A machine is running. Choose when it stops.")
             }
             .padding()
         }

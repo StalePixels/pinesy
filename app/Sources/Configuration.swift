@@ -4,11 +4,15 @@
 
 import Foundation
 
-/// A MAME command line as a driver and "-name value" pairs.
+/// A MAME command line as a driver and its options, in order: "-name
+/// value" pairs, "-name" flags, and other tokens kept as they are.
 struct Arguments: Equatable {
     struct Option: Equatable {
+        /// Empty for a token that is not an option.
         var name: String
         var value: String
+        /// False for a flag, which has no value.
+        var hasValue = true
     }
 
     var driver: String
@@ -26,19 +30,38 @@ struct Arguments: Equatable {
         options = []
         while let token = tokens.first {
             tokens = tokens.dropFirst()
-            guard token.hasPrefix("-") else { continue }
-            let value = tokens.first ?? ""
-            if !tokens.isEmpty { tokens = tokens.dropFirst() }
-            options.append(Option(name: String(token.dropFirst()), value: value))
+            guard token.hasPrefix("-") else {
+                options.append(Option(name: "", value: token))
+                continue
+            }
+            // an option's value never starts with "-": that is the next option
+            if let value = tokens.first, !value.hasPrefix("-") {
+                tokens = tokens.dropFirst()
+                options.append(Option(name: String(token.dropFirst()), value: value))
+            } else {
+                options.append(Option(name: String(token.dropFirst()), value: "", hasValue: false))
+            }
         }
     }
 
     var array: [String] {
-        [driver] + options.flatMap { ["-" + $0.name, $0.value] }
+        [driver] + options.flatMap { option -> [String] in
+            if option.name.isEmpty { return [option.value] }
+            return option.hasValue ? ["-" + option.name, option.value] : ["-" + option.name]
+        }
     }
 
     subscript(name: String) -> String? {
-        options.first { $0.name == name }?.value
+        options.first { !name.isEmpty && $0.name == name && $0.hasValue }?.value
+    }
+
+    /// Adds an option, or replaces the one with its name in its place.
+    mutating func set(_ option: Option) {
+        if !option.name.isEmpty, let index = options.firstIndex(where: { $0.name == option.name }) {
+            options[index] = option
+        } else {
+            options.append(option)
+        }
     }
 
     /// Sets an option, keeping its place; nil removes it.
@@ -46,6 +69,7 @@ struct Arguments: Equatable {
         if let value {
             if let index = options.firstIndex(where: { $0.name == name }) {
                 options[index].value = value
+                options[index].hasValue = true
             } else {
                 options.append(Option(name: name, value: value))
             }
@@ -98,8 +122,8 @@ enum ConfigurationEditor {
         for option in old.options where option.name != "bios" {
             // a port the old model left empty only because it starts empty
             // follows the new model's start instead
-            if option.value.isEmpty, oldStart[option.name] == "", new[option.name] == nil { continue }
-            new.set(option.name, option.value)
+            if option.hasValue, option.value.isEmpty, oldStart[option.name] == "", new[option.name] == nil { continue }
+            new.set(option)
         }
         if let bios = old["bios"], catalogue.driver(driver)?.biossets.contains(where: { $0.name == bios }) == true {
             new.set("bios", bios)
@@ -150,19 +174,22 @@ enum ConfigurationEditor {
 
     /// The command line with every option MAME rejects removed. Options
     /// are added back in their order, so a card's own slots and media
-    /// are kept once the card is fitted.
+    /// are kept once the card is fitted. When MAME rejects the driver
+    /// itself, no option can be checked, so the command line stays as it
+    /// is and the window shows MAME's error.
     static func normalise(_ arguments: [String]) -> [String] {
         let original = Arguments(arguments)
         guard !MAME.describe(original.array).isValid else { return arguments }
 
         var result = Arguments(driver: original.driver)
+        guard MAME.describe(result.array).isValid else { return arguments }
         var pending = original.options
         var progress = true
         while progress && !pending.isEmpty {
             progress = false
             for option in pending {
                 var trial = result
-                trial.set(option.name, option.value)
+                trial.set(option)
                 if MAME.describe(trial.array).isValid {
                     result = trial
                     pending.removeAll { $0 == option }
@@ -212,6 +239,9 @@ struct ConfigurationSummary {
 
     let machine: Catalogue.Machine?
     let driver: String
+    /// The year and status of the driver that runs: the chosen model or ROM.
+    let year: String
+    let preliminary: Bool
     let models: [Catalogue.Model]
     let roms: [ROMChoice]
     let variantROMs: [ROMChoice]
@@ -219,15 +249,24 @@ struct ConfigurationSummary {
     let hardware: [HardwareRow]
     let media: [MediaRow]
     let errors: String
+    let warnings: String
     let missingMedia: [String]
+    /// The media names of files named on the command line that are not there.
+    let missingFiles: Set<String>
 
     var canRun: Bool { errors.isEmpty && missingMedia.isEmpty }
 
-    init(arguments: [String], description: MachineDescription, catalogue: Catalogue) {
+    /// `machineHint` is the document's machine, used when the catalogue
+    /// does not have the driver, so the user can choose another model.
+    init(arguments: [String], description: MachineDescription, catalogue: Catalogue, machineHint: String = "") {
         let args = Arguments(arguments)
         driver = args.driver
-        machine = catalogue.machine(forDriver: args.driver)
+        machine = catalogue.machine(forDriver: args.driver) ?? catalogue.machine(forDriver: machineHint)
+        let running = catalogue.driver(args.driver)
+        year = running?.year ?? machine?.year ?? ""
+        preliminary = running.map { $0.status == "preliminary" } ?? machine?.preliminary ?? false
         errors = description.errors
+        warnings = description.warnings ?? ""
 
         // the models offered, plus the reference model when a document names it
         if let machine {
@@ -264,6 +303,9 @@ struct ConfigurationSummary {
         let labelBySlot = Dictionary(hardware.map { ($0.slot.tag, $0.label) }, uniquingKeysWith: { a, _ in a })
         media = Self.mediaRows(description.media ?? [], slots: slots, labelBySlot: labelBySlot)
         missingMedia = media.filter { $0.media.mandatory && $0.media.current.isEmpty }.map(\.label)
+        missingFiles = Set(media.filter {
+            !$0.media.current.isEmpty && !FileManager.default.fileExists(atPath: $0.media.current)
+        }.map(\.media.name))
     }
 
     private static func hardwareRows(_ slots: [Slot]) -> [HardwareRow] {
@@ -295,16 +337,18 @@ struct ConfigurationSummary {
             if slot.kind != "memory" {
                 choices.insert(Choice(value: "", label: "None"), at: 0)
             }
-            let fittedName = slot.options.first { $0.name == slot.current }?.description ?? slot.current
+            let fittedName = slot.options.first { $0.name == slot.current }?.description
+                ?? slot.currentdescription ?? slot.current
             let fixedText = (slot.fixed || slot.options.isEmpty) ? fittedName : nil
 
             let sets = slot.biossets ?? []
             let roms = sets.count > 1 ? sets.map { Choice(value: $0.name, label: $0.description) } : []
             let currentROM = (slot.bios?.isEmpty == false ? slot.bios : nil) ?? sets.defaultSet?.name ?? ""
 
-            // Ports of one kind are told apart by the card each was made for.
+            // Ports of one kind are told apart by the card each was made for,
+            // whatever is fitted now.
             var meantFor: String?
-            if slot.isPort, siblings.count > 1, slot.current != slot.default,
+            if slot.isPort, siblings.count > 1,
                let made = slot.options.first(where: { $0.name == slot.default }) {
                 meantFor = made.description
             }
