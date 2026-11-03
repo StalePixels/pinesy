@@ -90,7 +90,7 @@ struct Catalogue: Sendable {
         drivers[name]
     }
 
-    /// Machines whose name, maker or driver contains the text.
+    /// Machines whose name, maker, model or ROM name contains the text.
     func search(_ text: String) -> [Machine] {
         let needle = text.trimmingCharacters(in: .whitespaces)
         guard !needle.isEmpty else { return [] }
@@ -140,7 +140,7 @@ struct Catalogue: Sendable {
             let variants = (variantsOf[driver.name] ?? [])
                 .sorted { Self.yearValue($0.year) < Self.yearValue($1.year) }
                 .map { Variant(driver: $0.name, name: $0.description, biossets: $0.biossets) }
-            let search = ([name, driver.manufacturer] + [driver.name] + clones.map(\.name) + variants.map(\.driver) + variants.map(\.name))
+            let search = ([name, driver.manufacturer] + models.map(\.label) + variants.map(\.name))
                 .joined(separator: " ")
             machines.append(Machine(id: driver.name, name: name, manufacturer: driver.manufacturer, year: year,
                                     preliminary: shown.status == "preliminary",

@@ -13,15 +13,25 @@ struct MachinePicker: View {
     @State private var section: String?
     @State private var selection: String?
 
+    private var searching: Bool {
+        !search.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     private var shownMachines: [Catalogue.Machine] {
-        if !search.trimmingCharacters(in: .whitespaces).isEmpty {
+        if searching {
             return catalogue.search(search)
         }
         return catalogue.sections.first { $0.name == section }?.machines ?? []
     }
 
     private var showsMaker: Bool {
-        !search.isEmpty || catalogue.sections.first { $0.name == section }?.showsMaker == true
+        searching || catalogue.sections.first { $0.name == section }?.showsMaker == true
+    }
+
+    // While searching, the results come from every maker, so no maker is selected.
+    private var sidebarSelection: Binding<String?> {
+        Binding(get: { searching ? nil : section },
+                set: { if !searching { section = $0 } })
     }
 
     private var chosen: Catalogue.Machine? {
@@ -40,13 +50,13 @@ struct MachinePicker: View {
             .padding()
 
             HStack(spacing: 0) {
-                List(catalogue.sections, selection: $section) { section in
+                List(catalogue.sections, selection: sidebarSelection) { section in
                     Text(section.name)
                         .tag(section.name)
                 }
                 .listStyle(.sidebar)
                 .frame(width: 210)
-                .disabled(!search.isEmpty)
+                .disabled(searching)
 
                 Divider()
 
@@ -60,7 +70,7 @@ struct MachinePicker: View {
                     }
                 }
                 .overlay {
-                    if shownMachines.isEmpty && !search.isEmpty {
+                    if shownMachines.isEmpty && searching {
                         ContentUnavailableView.search(text: search)
                     }
                 }
