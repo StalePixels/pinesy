@@ -22,7 +22,7 @@ A configuration is a document: a machine, what is fitted to it, its ROM and the 
 - `machine`: the driver that stands for the machine in the machine list.
 - `arguments`: the MAME command line the configuration runs, as an array of strings. The first string is the driver to run, then options in pairs, such as `-exp intf1,bios=v1` or `-pi /path/nextpi.img`. An empty value, as in `-rs232_rpi ""`, leaves a slot empty.
 
-File > New Configuration (⌘N) opens a window and asks for the machine. The configuration window shows the machine, its model and ROM, its hardware and its media, and the command line. Every change is checked with MAME, and an option the machine no longer has is removed. When MAME rejects the command line, the window shows MAME's error text and Run is not available.
+File > New (⌘N) opens a window and asks for the machine. A launch with no document to open does the same. The configuration window shows the machine, its model and ROM, its hardware and its media, and the command line. Every change is checked with MAME, and an option the machine no longer has is removed. When MAME rejects the command line, the window shows MAME's error text and Run is not available.
 
 ## The machine list
 
@@ -44,21 +44,30 @@ The library reports each slot with a kind, so the app can tell these apart: `mem
 
 Machine > Run (⌘R) runs the front configuration in its own window, and Machine > Run with Debugger (⌥⌘R) adds `-debug`. One machine runs at a time; while it runs, configurations cannot be changed. Machine > Stop (⌘.) or closing the window stops the machine. When MAME stops with an error, an alert shows MAME's error lines.
 
-Settings adds options to every run:
+Settings:
 
-- General: ROM folders (`-rompath`), and the folder for MAME's machine settings, memory contents and snapshots (`-cfg_directory`, `-nvram_directory` and `-snapshot_directory`, as `cfg`, `nvram` and `snap` in `~/Library/Application Support/Pinesy` by default).
+- General: extra ROM folders, and the folder where MAME keeps its files (`~/Library/Application Support/Pinesy` by default).
 - Debugger: MAME's debugger windows, or the GDB remote stub (`-debugger gdbstub -debugger_port <port>`, port 23946 by default).
 
-Machine > Copy Command Line copies the headless command for the configuration, with these options, quoted for zsh.
+Machine > Copy Command Line copies the headless command for the configuration, quoted for zsh. Headless mode adds the paths below itself.
 
 ## Headless
 
-Any arguments make the executable run MAME with them and no UI. A leading `--` is dropped. Every option goes to MAME unchanged, and the exit code is MAME's. Headless mode does not read `.pinesy` files; the `arguments` array of one is a command line to pass.
+Any arguments make the executable run MAME with them and no UI. A leading `--` is dropped. The exit code is MAME's. Headless mode does not read `.pinesy` files; the `arguments` array of one is a command line to pass.
 
 ```sh
 Pinesy.app/Contents/MacOS/Pinesy -- tbblue -video none -sound none -seconds_to_run 10
 ```
 
-## ROMs and settings
+## ROMs and MAME's files
 
-MAME looks for `mame.ini` in `~/Library/Application Support/mame`, then `~/.mame`, then the current directory. ROMs come from the ROM folders in Settings; without any, from the `rompath` that `mame.ini` sets, or from `roms` in the current directory. Options on the command line take precedence over `mame.ini`.
+Pinesy is not MAME: it reads no `mame.ini` and uses nothing in `~/.mame`. Every run, headless or not, starts with these options, and the caller's own options come after them, so any of them can be overridden for one run (`-cfg_directory <dir>`, for example):
+
+- `-noreadconfig`: no MAME ini file is read.
+- `-rompath`: the ROM sets in the bundle (`Contents/Resources/roms`), then `~/Library/Application Support/Pinesy/roms`, then the ROM folders in Settings.
+- MAME's other search paths, in `Contents/Resources`: `hash`, `samples`, `artwork`, `ctrlr`, `fonts`, `cheat`, `crosshair`, `plugins`, `language`, `software` and `bgfx`.
+- The folders MAME writes, in the data folder from Settings: `ini` (`inipath`), `home` (`homepath`), `cfg`, `nvram`, `inp`, `sta`, `snap`, `diff`, `comments` and `share`.
+
+`build.sh` copies `../roms` (one zip or folder per ROM set) into the bundle. It copies no disk image, and it stops if `../roms` holds one.
+
+`Pinesy -- -showconfig` prints every path a run uses.

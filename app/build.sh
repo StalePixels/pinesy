@@ -6,8 +6,9 @@
 # MAME_LIB overrides the library to bundle
 # (default: mame/libmame_pinesy.dylib in this repo).
 #
-# The bundle carries libmame_pinesy.dylib and every library it needs
-# outside /usr/lib and /System in Contents/Frameworks. Their install
+# The bundle carries the ROM sets in ../roms in Contents/Resources/roms,
+# and libmame_pinesy.dylib and every library it needs outside /usr/lib
+# and /System in Contents/Frameworks. Their install
 # names are rewritten to @rpath, which the executable points at
 # Contents/Frameworks. The bundle is signed ad hoc.
 
@@ -24,6 +25,21 @@ frameworks=$contents/Frameworks
 rm -rf "$app"
 mkdir -p "$contents/MacOS" "$contents/Resources" "$frameworks"
 cp "$here/Info.plist" "$contents/Info.plist"
+
+# The ROM sets ship in the bundle: one zip or folder per set. Disk images
+# (SD cards, hard disks) never ship.
+roms=$here/../roms
+if [ -d "$roms" ]; then
+	images=$(find "$roms" -type f \( -iname '*.img' -o -iname '*.chd' -o -iname '*.hdf' -o -iname '*.vhd' -o -iname '*.iso' -o -iname '*.dmg' \))
+	if [ -n "$images" ]; then
+		echo "build.sh: disk images do not go in the bundle:" >&2
+		echo "$images" >&2
+		exit 1
+	fi
+	cp -R "$roms" "$contents/Resources/roms"
+else
+	mkdir -p "$contents/Resources/roms"
+fi
 
 swiftc -swift-version 6 -O \
 	-target arm64-apple-macos27.2 \

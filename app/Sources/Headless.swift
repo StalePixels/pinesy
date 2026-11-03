@@ -1,4 +1,5 @@
-// Headless mode: MAME runs with the given command line and no UI.
+// Headless mode: MAME runs with the given command line and no UI. The
+// app's own paths come first, so the caller's options override them.
 
 import AppKit
 
@@ -11,6 +12,7 @@ enum Headless {
         let app = NSApplication.shared
         app.setActivationPolicy(.prohibited)
         app.finishLaunching()
-        return MAME.run(arguments, view: nil)
+        MAMEPaths.createFolders()
+        return MAME.run(MAMEPaths.options() + arguments, view: nil)
     }
 }

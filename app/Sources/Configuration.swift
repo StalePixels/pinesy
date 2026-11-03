@@ -357,33 +357,25 @@ struct ConfigurationSummary {
 
 // MARK: - Running
 
-/// The options the app adds to every run from its settings.
+/// The options the app adds to a run with the debugger, from Settings.
 enum RunOptions {
     @MainActor
-    static func arguments(debug: Bool) -> [String] {
+    static func debugArguments(_ debug: Bool) -> [String] {
+        guard debug else { return [] }
         let settings = AppSettings.current
-        var result: [String] = []
-        if !settings.romFolders.isEmpty {
-            result += ["-rompath", settings.romFolders.joined(separator: ";")]
-        }
-        let base = settings.dataFolder
-        result += ["-cfg_directory", base.appendingPathComponent("cfg").path,
-                   "-nvram_directory", base.appendingPathComponent("nvram").path,
-                   "-snapshot_directory", base.appendingPathComponent("snap").path]
-        if debug {
-            result.append("-debug")
-            if settings.debugger == .gdbStub {
-                result += ["-debugger", "gdbstub", "-debugger_port", String(settings.gdbPort)]
-            }
+        var result = ["-debug"]
+        if settings.debugger == .gdbStub {
+            result += ["-debugger", "gdbstub", "-debugger_port", String(settings.gdbPort)]
         }
         return result
     }
 
-    /// The headless command for a configuration, quoted for zsh.
+    /// The headless command for a configuration, quoted for zsh. Headless
+    /// mode adds the app's paths itself.
     @MainActor
     static func commandLine(_ arguments: [String], debug: Bool = false) -> String {
         let executable = Bundle.main.executablePath ?? "Pinesy"
-        return ([executable, "--"] + arguments + Self.arguments(debug: debug)).map(shellQuoted).joined(separator: " ")
+        return ([executable, "--"] + arguments + debugArguments(debug)).map(shellQuoted).joined(separator: " ")
     }
 
     static func shellQuoted(_ text: String) -> String {

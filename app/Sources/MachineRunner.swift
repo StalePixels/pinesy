@@ -15,7 +15,7 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
     private var quitAfterRun = false
 
     /// Starts a configuration. `arguments` is its command line; the
-    /// settings options are added here.
+    /// app's paths and the debugger options are added here.
     func start(title: String, arguments: [String], debug: Bool) {
         guard running == nil else { return }
         running = title
@@ -36,8 +36,8 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
         window.makeFirstResponder(view)
         self.window = window
 
-        createDataFolders()
-        let commandLine = arguments + RunOptions.arguments(debug: debug)
+        MAMEPaths.createFolders()
+        let commandLine = MAMEPaths.options() + arguments + RunOptions.debugArguments(debug)
 
         // pinesy_run() keeps its own loop and pumps AppKit events. Start it
         // from a run loop block, not from the main dispatch queue: a nested
@@ -59,13 +59,6 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
         guard let screen = NSScreen.main?.visibleFrame.size else { return picture }
         let scale = min(1, (screen.height - 80) / picture.height, (screen.width - 40) / picture.width)
         return NSSize(width: (picture.width * scale).rounded(), height: (picture.height * scale).rounded())
-    }
-
-    private func createDataFolders() {
-        let base = AppSettings.current.dataFolder
-        for name in ["cfg", "nvram", "snap"] {
-            try? FileManager.default.createDirectory(at: base.appendingPathComponent(name), withIntermediateDirectories: true)
-        }
     }
 
     private func finish(code: Int32, errors: [String]) {

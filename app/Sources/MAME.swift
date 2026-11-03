@@ -12,10 +12,11 @@ enum MAME {
     }
 
     /// The machine a command line describes: its slots, ROMs and media,
-    /// or MAME's error text.
+    /// or MAME's error text. MAME reads the command line with the app's
+    /// own paths, as for a run.
     static func describe(_ arguments: [String]) -> MachineDescription {
         let text = TextReceiver()
-        withCStrings(arguments) { argc, argv in
+        withCStrings(MAMEPaths.options() + arguments) { argc, argv in
             _ = pinesy_describe(argc, argv, TextReceiver.callback, text.context)
         }
         if let description = try? JSONDecoder().decode(MachineDescription.self, from: Data(text.value.utf8)) {
