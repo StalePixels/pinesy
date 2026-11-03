@@ -71,7 +71,7 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
 
     /// Gives the window the content size MAME asks for, scaled down to fit
     /// the screen, keeping its top-left corner where it is.
-    private static func setContentSize(_ window: NSWindow, _ size: NSSize) {
+    static func setContentSize(_ window: NSWindow, _ size: NSSize) {
         var size = size
         if let screen = (window.screen ?? NSScreen.main)?.visibleFrame.size {
             let chrome = window.frame.height - window.contentLayoutRect.height
