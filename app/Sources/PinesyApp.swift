@@ -11,39 +11,12 @@ struct PinesyApp: App {
         }
         .defaultSize(width: 620, height: 720)
         .commands {
-            FileCommands()
             MachineCommands(runner: MachineRunner.shared)
             ToolbarCommands()
         }
 
         Settings {
             SettingsView()
-        }
-    }
-}
-
-struct FileCommands: Commands {
-    var body: some Commands {
-        CommandGroup(replacing: .newItem) {
-            Button("New Configuration…") {
-                NSDocumentController.shared.newDocument(nil)
-            }
-            .keyboardShortcut("n")
-            Button("Open…") {
-                NSDocumentController.shared.openDocument(nil)
-            }
-            .keyboardShortcut("o")
-            Menu("Open Recent") {
-                ForEach(NSDocumentController.shared.recentDocumentURLs, id: \.self) { url in
-                    Button(url.deletingPathExtension().lastPathComponent) {
-                        NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, _ in }
-                    }
-                }
-                Divider()
-                Button("Clear Menu") {
-                    NSDocumentController.shared.clearRecentDocuments(nil)
-                }
-            }
         }
     }
 }
