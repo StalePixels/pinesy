@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Pi/Ne-Sy
+GenericName=Emulator
+Comment=Run and configure emulated machines
+Exec=pinesy-kde
+Icon=computer
+Terminal=false
+Categories=Qt;KDE;Game;Emulator;
