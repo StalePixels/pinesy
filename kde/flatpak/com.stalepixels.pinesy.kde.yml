@@ -1,0 +1,99 @@
+# The KDE Plasma front end of Pi/Ne-Sy as a Flatpak. It builds what is
+# checked out in this repository: QEMU and the engine with MAME's Qt
+# debugger (../../build-mame.sh --qt), then the core and the app
+# (../CMakeLists.txt). ../README.md says how to build and install it.
+
+app-id: com.stalepixels.pinesy.kde
+runtime: org.kde.Platform
+runtime-version: '6.11'
+sdk: org.kde.Sdk
+# build-mame.sh compiles with clang, which the SDK does not have
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.llvm22
+command: pinesy-kde
+
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # MAME's PulseAudio module, and its PipeWire module (-sound pipewire)
+  - --socket=pulseaudio
+  - --filesystem=xdg-run/pipewire-0
+  # joysticks and gamepads: MAME's evdev module opens /dev/input/event*
+  - --device=input
+  # a .pinesy file names its media and ROM folders by path, so MAME must
+  # reach those paths, not only the file the file dialog gave
+  - --filesystem=home
+  # the GDB remote stub listens on a TCP port, which a GDB outside the
+  # sandbox can only reach on the host's network
+  - --share=network
+
+modules:
+  # QEMU and the engine with MAME's Qt debugger, and the resources folder
+  # the app gives the core. The SDK has qmake, not qmake6, so MAME finds
+  # Qt through QT_HOME.
+  - name: engine
+    buildsystem: simple
+    # The makefiles GENie writes for MAME add CFLAGS, CXXFLAGS and LDFLAGS
+    # from the environment to their own. The SDK's defaults (-fexceptions,
+    # -g, --as-needed and others) are cleared, so the engine builds with
+    # the flags it gets outside Flatpak.
+    build-options:
+      append-path: /usr/lib/sdk/llvm22/bin
+      prepend-ld-library-path: /usr/lib/sdk/llvm22/lib
+      cflags: ''
+      cflags-override: true
+      cxxflags: ''
+      cxxflags-override: true
+      ldflags: ''
+      ldflags-override: true
+    build-commands:
+      - ./build-mame.sh --qt QT_HOME=/usr
+      - install -Dm755 mame/libmame_pinesy_qt.so /app/lib/libmame_pinesy_qt.so
+      - flatpak/install-resources.sh /app/share/pinesy/resources
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - .git
+          - app
+          - gtk
+          - kde
+          - debuggers
+          - sd-images
+          - mame/.git
+          - mame/build
+          - mame/build-gtk
+          - mame/build-qt
+          - mame/libmame_pinesy.so
+          - mame/libmame_pinesy_gtk.so
+          - mame/libmame_pinesy_qt.so
+          - mame/3rdparty/genie/bin
+          - mame/3rdparty/genie/build/gmake.linux/obj
+          - qemu/.git
+          - qemu/roms
+
+  # the core and the app
+  - name: pinesy-kde
+    buildsystem: simple
+    build-commands:
+      - cmake -S kde -B _build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_INSTALL_PREFIX=/app
+        -DPINESY_ENGINE_LIBRARY=/app/lib/libmame_pinesy_qt.so
+        -DPINESY_RESOURCES_FOLDER=/app/share/pinesy/resources
+      - cmake --build _build
+      - cmake --install _build
+      - install -Dm755 _build/core/libpinesy.so /app/lib/libpinesy.so
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - .git
+          - app
+          - gtk
+          - mame
+          - qemu
+          - roms
+          - sd-images
+          - debuggers

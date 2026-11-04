@@ -48,7 +48,45 @@ The data folder is `$XDG_DATA_HOME/pinesy` (by default `~/.local/share/pinesy`) 
 - `com.stalepixels.Pinesy.mime.xml`: the MIME type for `*.pinesy` files.
 - `com.stalepixels.Pinesy.service`: the D-Bus service file.
 
-The build does not install these files. The desktop entry sets `DBusActivatable=true`: a file manager opens a `.pinesy` file through D-Bus (`org.freedesktop.Application.Open`), not through the command line, because any command-line argument starts headless mode. The one exception is `--gapplication-service` alone, which D-Bus activation uses to start the app.
+The CMake build does not install these files; the Flatpak does. The desktop entry sets `DBusActivatable=true`: a file manager opens a `.pinesy` file through D-Bus (`org.freedesktop.Application.Open`), not through the command line, because any command-line argument starts headless mode. The one exception is `--gapplication-service` alone, which D-Bus activation uses to start the app.
+
+## Flatpak
+
+`flatpak/com.stalepixels.Pinesy.yml` builds the app as a Flatpak on the GNOME 51 runtime (`org.gnome.Platform`). It builds what is checked out in this repository: QEMU and the engine with the GTK debugger (with `../build-mame.sh --gtk`), then the core and the app. The GNOME SDK has no gtkmm, so the manifest also builds gtkmm and the C++ libraries under it from their release archives. The engine is compiled with clang from the SDK extension `org.freedesktop.Sdk.Extension.llvm22`, without the SDK's default compiler flags.
+
+The build needs `flatpak`, `flatpak-builder` and the Flathub remote. From the repository root:
+
+```sh
+flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak-builder --user --install --install-deps-from=flathub --force-clean --ccache \
+    --state-dir=<state-dir> <build-dir> gtk/flatpak/com.stalepixels.Pinesy.yml
+```
+
+Put `<state-dir>` and `<build-dir>` outside the repository, because the manifest copies the repository folder into the build. The copy leaves out git and MAME's build folders and engine libraries.
+
+`build-mame.sh` compiles the engine with `-march=native`, so the Flatpak runs only on processors that have the instruction set of the machine that built it.
+
+Then:
+
+```sh
+flatpak run com.stalepixels.Pinesy
+flatpak run com.stalepixels.Pinesy -- tbblue -video none -sound none -seconds_to_run 10
+```
+
+In the Flatpak:
+
+- The resources folder is `/app/share/pinesy/resources`. `../flatpak/install-resources.sh` fills it with the content that `../app/build.sh` puts in the macOS bundle: the ROM sets from `../roms`, with the same check, and MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders.
+- The data folder is `~/.var/app/com.stalepixels.Pinesy/data/pinesy`.
+- The settings schema, the desktop entry, the MIME type and the D-Bus service file are installed. Flatpak exports the last three to the desktop.
+- Copy Command Line gives `/app/bin/pinesy`, the path inside the Flatpak. Outside it, the command is `flatpak run com.stalepixels.Pinesy`.
+
+The permissions:
+
+- `--socket=wayland`, `--socket=fallback-x11`, `--share=ipc` and `--device=dri`: the windows, on Wayland or else X11.
+- `--socket=pulseaudio`: MAME's PulseAudio sound module, which MAME chooses by default. `--filesystem=xdg-run/pipewire-0`: its PipeWire module, with `-sound pipewire`.
+- `--device=input`: joysticks and gamepads, which MAME reads from `/dev/input/event*`.
+- `--filesystem=home`: a `.pinesy` file names its media files by path, and the ROM folders in Preferences are paths. The file chooser portal gives the app only the file chosen, so MAME could not open the media named in a configuration that was opened later. Media outside the home folder is not reachable.
+- `--share=network`: the GDB remote stub listens on a TCP port. Without this permission, the Flatpak has its own network, and a GDB on the host cannot connect.
 
 ## How it maps to the macOS app
 

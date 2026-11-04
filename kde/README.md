@@ -27,7 +27,44 @@ The executable is `<build-dir>/bin/pinesy-kde`.
 
 The core needs a resources folder. It holds the bundled ROM sets in `roms`, and MAME's search folders (`hash`, `plugins` and the others the core names). The cache variable `PINESY_RESOURCES_FOLDER` sets it. The default is `<build-dir>/resources`, which CMake makes at configure time with symbolic links to `../roms` and to MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders in `../mame`. These are the folders `../app/build.sh` copies into the macOS bundle. The path is compiled into the executable, so a build runs from its build folder.
 
-There is no package yet. `cmake --install` installs the executable, the `.desktop` file and the MIME type, but the executable still reads the resources folder in the build folder.
+`cmake --install` installs the executable, the `.desktop` file and the MIME type, but the executable still reads the resources folder in the build folder. The Flatpak (below) installs its own resources folder.
+
+## Flatpak
+
+`flatpak/com.stalepixels.pinesy.kde.yml` builds the app as a Flatpak on the KDE 6.11 runtime (`org.kde.Platform`). It builds what is checked out in this repository: QEMU and the engine with MAME's Qt debugger (with `../build-mame.sh --qt QT_HOME=/usr`, because the SDK has `qmake` and not `qmake6`), then the core and the app. The engine is compiled with clang from the SDK extension `org.freedesktop.Sdk.Extension.llvm22`, without the SDK's default compiler flags.
+
+The build needs `flatpak`, `flatpak-builder` and the Flathub remote. From the repository root:
+
+```sh
+flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak-builder --user --install --install-deps-from=flathub --force-clean --ccache \
+    --state-dir=<state-dir> <build-dir> kde/flatpak/com.stalepixels.pinesy.kde.yml
+```
+
+Put `<state-dir>` and `<build-dir>` outside the repository, because the manifest copies the repository folder into the build. The copy leaves out git and MAME's build folders and engine libraries.
+
+`build-mame.sh` compiles the engine with `-march=native`, so the Flatpak runs only on processors that have the instruction set of the machine that built it.
+
+Then:
+
+```sh
+flatpak run com.stalepixels.pinesy.kde
+flatpak run com.stalepixels.pinesy.kde -- tbblue -video none -sound none -seconds_to_run 10
+```
+
+In the Flatpak:
+
+- The resources folder is `/app/share/pinesy/resources`. `../flatpak/install-resources.sh` fills it with the content that `../app/build.sh` puts in the macOS bundle: the ROM sets from `../roms`, with the same check, and MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders.
+- The data folder is `~/.var/app/com.stalepixels.pinesy.kde/data/pinesy`.
+- Copy Command Line gives `/app/bin/pinesy-kde`, the path inside the Flatpak. Outside it, the command is `flatpak run com.stalepixels.pinesy.kde`.
+
+The permissions:
+
+- `--socket=wayland`, `--socket=fallback-x11`, `--share=ipc` and `--device=dri`: the windows, on Wayland or else X11.
+- `--socket=pulseaudio`: MAME's PulseAudio sound module, which MAME chooses by default. `--filesystem=xdg-run/pipewire-0`: its PipeWire module, with `-sound pipewire`.
+- `--device=input`: joysticks and gamepads, which MAME reads from `/dev/input/event*`.
+- `--filesystem=home`: a `.pinesy` file names its media files by path, and the ROM folders in Settings are paths. The file dialog portal gives the app only the file chosen, so MAME could not open the media named in a configuration that was opened later. Media outside the home folder is not reachable.
+- `--share=network`: the GDB remote stub listens on a TCP port. Without this permission, the Flatpak has its own network, and a GDB on the host cannot connect.
 
 ## Run
 

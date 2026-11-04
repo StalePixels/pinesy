@@ -1,0 +1,166 @@
+# The GNOME front end of Pi/Ne-Sy as a Flatpak. It builds what is checked
+# out in this repository: QEMU and the engine with the GTK debugger
+# (../../build-mame.sh --gtk), then the core and the app (../CMakeLists.txt).
+# ../README.md says how to build and install it.
+
+app-id: com.stalepixels.Pinesy
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+# build-mame.sh compiles with clang, which the SDK does not have
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.llvm22
+command: pinesy
+
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # MAME's PulseAudio module, and its PipeWire module (-sound pipewire)
+  - --socket=pulseaudio
+  - --filesystem=xdg-run/pipewire-0
+  # joysticks and gamepads: MAME's evdev module opens /dev/input/event*
+  - --device=input
+  # a .pinesy file names its media and ROM folders by path, so MAME must
+  # reach those paths, not only the file the file chooser gave
+  - --filesystem=home
+  # the GDB remote stub listens on a TCP port, which a GDB outside the
+  # sandbox can only reach on the host's network
+  - --share=network
+
+# the headers and code generators of gtkmm and the libraries under it
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /lib/sigc++-3.0
+  - /lib/glibmm-2.68
+  - /lib/giomm-2.68
+  - /lib/cairomm-1.16
+  - /lib/pangomm-2.48
+  - /lib/gtkmm-4.0
+  - /share/doc
+
+modules:
+  # gtkmm and the C++ libraries under it, which the GNOME SDK does not have
+  - name: libsigc++
+    buildsystem: meson
+    config-opts:
+      - -Dbuild-documentation=false
+      - -Dbuild-examples=false
+      - -Dbuild-tests=false
+    sources:
+      - type: archive
+        url: https://download.gnome.org/sources/libsigc++/3.6/libsigc++-3.6.0.tar.xz
+        sha256: c3d23b37dfd6e39f2e09f091b77b1541fbfa17c4f0b6bf5c89baef7229080e17
+
+  - name: glibmm
+    buildsystem: meson
+    config-opts:
+      - -Dbuild-documentation=false
+      - -Dbuild-examples=false
+    sources:
+      - type: archive
+        url: https://download.gnome.org/sources/glibmm/2.90/glibmm-2.90.0.tar.xz
+        sha256: e2efa45643f16b9fea2d6299f2f403d672eaeacddf0ff7f8094e1af9b0f5980b
+
+  - name: cairomm
+    buildsystem: meson
+    config-opts:
+      - -Dbuild-documentation=false
+      - -Dbuild-examples=false
+      - -Dbuild-tests=false
+    sources:
+      - type: archive
+        url: https://www.cairographics.org/releases/cairomm-1.18.1.tar.xz
+        sha256: e0e996a979ee52c840dca3ee74f5d005e3259b94ddce58f255d3b6f47c8cb41d
+
+  - name: pangomm
+    buildsystem: meson
+    config-opts:
+      - -Dbuild-documentation=false
+    sources:
+      - type: archive
+        url: https://download.gnome.org/sources/pangomm/2.58/pangomm-2.58.0.tar.xz
+        sha256: 217514c1a65035c2fce6e69e33b0d92bafa2594cc474e995a4473441b10f3a33
+
+  - name: gtkmm
+    buildsystem: meson
+    config-opts:
+      - -Dbuild-documentation=false
+      - -Dbuild-demos=false
+      - -Dbuild-tests=false
+    sources:
+      - type: archive
+        url: https://download.gnome.org/sources/gtkmm/4.24/gtkmm-4.24.0.tar.xz
+        sha256: 7fd9cea356e7d3b74bf7d2a51d7e0e6763f3f9f1cddc5e77c8b0b5b7fa9d5e5a
+
+  # QEMU and the engine with the GTK debugger, and the resources folder
+  # the app gives the core
+  - name: engine
+    buildsystem: simple
+    # The makefiles GENie writes for MAME add CFLAGS, CXXFLAGS and LDFLAGS
+    # from the environment to their own. The SDK's defaults (-fexceptions,
+    # -g, --as-needed and others) are cleared, so the engine builds with
+    # the flags it gets outside Flatpak.
+    build-options:
+      append-path: /usr/lib/sdk/llvm22/bin
+      prepend-ld-library-path: /usr/lib/sdk/llvm22/lib
+      cflags: ''
+      cflags-override: true
+      cxxflags: ''
+      cxxflags-override: true
+      ldflags: ''
+      ldflags-override: true
+    build-commands:
+      - ./build-mame.sh --gtk
+      - install -Dm755 mame/libmame_pinesy_gtk.so /app/lib/libmame_pinesy_gtk.so
+      - flatpak/install-resources.sh /app/share/pinesy/resources
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - .git
+          - app
+          - gtk
+          - kde
+          - sd-images
+          - mame/.git
+          - mame/build
+          - mame/build-gtk
+          - mame/build-qt
+          - mame/libmame_pinesy.so
+          - mame/libmame_pinesy_gtk.so
+          - mame/libmame_pinesy_qt.so
+          - mame/3rdparty/genie/bin
+          - mame/3rdparty/genie/build/gmake.linux/obj
+          - qemu/.git
+          - qemu/roms
+
+  # the core and the app
+  - name: pinesy
+    buildsystem: simple
+    build-commands:
+      - cmake -S gtk -B _build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        -DPINESY_ENGINE_LIBRARY=/app/lib/libmame_pinesy_gtk.so
+        -DPINESY_RESOURCES_DIR=/app/share/pinesy/resources
+      - cmake --build _build
+      - install -Dm755 _build/pinesy /app/bin/pinesy
+      - install -Dm755 _build/core/libpinesy.so /app/lib/libpinesy.so
+      - install -Dm644 gtk/data/com.stalepixels.Pinesy.gschema.xml /app/share/glib-2.0/schemas/com.stalepixels.Pinesy.gschema.xml
+      - glib-compile-schemas --strict /app/share/glib-2.0/schemas
+      - install -Dm644 gtk/data/com.stalepixels.Pinesy.desktop /app/share/applications/com.stalepixels.Pinesy.desktop
+      - install -Dm644 gtk/data/com.stalepixels.Pinesy.mime.xml /app/share/mime/packages/com.stalepixels.Pinesy.xml
+      - install -Dm644 gtk/data/com.stalepixels.Pinesy.service /app/share/dbus-1/services/com.stalepixels.Pinesy.service
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - .git
+          - app
+          - kde
+          - mame
+          - qemu
+          - roms
+          - sd-images
+          - debuggers
