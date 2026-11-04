@@ -11,7 +11,8 @@
 //  - MONITOR_MAC: one display. The host places its windows, so
 //    MAME only uses the display's size to choose a starting
 //    window size. The monitor provider has no "none" module.
-//  - JOYSTICKINPUT_MACGAME, JOYSTICKINPUT_MACJOY: not supported.
+//  - JOYSTICKINPUT_MACJOY: not supported. input_evdev.cpp
+//    defines JOYSTICKINPUT_MACGAME.
 //
 //============================================================
 
@@ -81,7 +82,6 @@ namespace osd {
 
 namespace {
 
-MODULE_NOT_SUPPORTED(joystick_input_macgame, OSD_JOYSTICKINPUT_PROVIDER, "macgame")
 MODULE_NOT_SUPPORTED(joystick_input_macjoy, OSD_JOYSTICKINPUT_PROVIDER, "macjoy")
 
 } // anonymous namespace
@@ -89,5 +89,4 @@ MODULE_NOT_SUPPORTED(joystick_input_macjoy, OSD_JOYSTICKINPUT_PROVIDER, "macjoy"
 } // namespace osd
 
 MODULE_DEFINITION(MONITOR_MAC, host_monitor_module)
-MODULE_DEFINITION(JOYSTICKINPUT_MACGAME, osd::joystick_input_macgame)
 MODULE_DEFINITION(JOYSTICKINPUT_MACJOY, osd::joystick_input_macjoy)

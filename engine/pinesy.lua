@@ -219,6 +219,7 @@ project ("osd_" .. _OPTIONS["osd"])
 		-- Linux leaves for the Cocoa OSD's platform calls and modules
 		files {
 			MAME_DIR .. "../engine/osd/hostlinux.cpp",
+			MAME_DIR .. "../engine/osd/input_evdev.cpp",
 			MAME_DIR .. "../engine/osd/linuxmain.cpp",
 			MAME_DIR .. "../engine/osd/linuxmodules.cpp",
 		}
