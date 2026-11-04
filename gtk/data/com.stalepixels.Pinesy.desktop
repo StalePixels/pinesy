@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Pi/Ne-Sy
+Comment=Configure and run emulated machines
+Exec=pinesy
+Terminal=false
+Categories=Game;Emulator;
+MimeType=application/x-pinesy;
+DBusActivatable=true

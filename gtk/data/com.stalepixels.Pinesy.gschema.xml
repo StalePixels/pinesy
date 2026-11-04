@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="com.stalepixels.Pinesy" path="/com/stalepixels/Pinesy/">
+    <key name="rom-folders" type="as">
+      <default>[]</default>
+      <summary>ROM folders</summary>
+      <description>Folders searched for machine ROMs after the bundled ROM sets and the data folder's roms folder.</description>
+    </key>
+    <key name="data-folder" type="s">
+      <default>''</default>
+      <summary>Data folder</summary>
+      <description>The folder where MAME keeps its files. Empty for $XDG_DATA_HOME/pinesy.</description>
+    </key>
+    <key name="debugger" type="s">
+      <choices>
+        <choice value="windows"/>
+        <choice value="gdbStub"/>
+      </choices>
+      <default>'windows'</default>
+      <summary>Debugger</summary>
+      <description>What Run with Debugger uses: MAME's debugger ("windows"), or the GDB remote stub ("gdbStub").</description>
+    </key>
+    <key name="gdb-port" type="i">
+      <range min="1" max="65535"/>
+      <default>23946</default>
+      <summary>GDB port</summary>
+      <description>The port the GDB remote stub listens on.</description>
+    </key>
+  </schema>
+</schemalist>
