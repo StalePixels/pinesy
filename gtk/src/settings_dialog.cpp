@@ -83,7 +83,7 @@ SettingsDialog::SettingsDialog(Glib::RefPtr<Gio::Settings> settings) : m_setting
 	m_windows = gtk_check_button_new();
 	m_gdb_stub = gtk_check_button_new();
 	gtk_check_button_set_group(GTK_CHECK_BUTTON(m_gdb_stub), GTK_CHECK_BUTTON(m_windows));
-	choice_row("MAME’s debugger", "MAME’s own debugger for the machine", m_windows);
+	choice_row("MAME’s GTK debugger windows", "MAME’s own debugger for the machine", m_windows);
 	choice_row("GDB remote stub", "For a GDB client on this computer or another", m_gdb_stub);
 	m_connections.add(m_windows, connect_notify(m_windows, "active", [this] {
 		if (gtk_check_button_get_active(GTK_CHECK_BUTTON(m_windows)) && m_settings->get_string(key::debugger) != "windows")

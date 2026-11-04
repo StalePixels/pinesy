@@ -12,7 +12,7 @@ Build the engine first, from the repository root:
 ./build-mame.sh --qt
 ```
 
-This builds `../mame/libmame_pinesy_qt.so` in its own build folder, `../mame/build-qt`. `./build-mame.sh` without `--qt` builds `libmame_pinesy.so`, the engine without Qt that the GNOME front end uses. The two builds do not share objects. Then:
+This builds `../mame/libmame_pinesy_qt.so` in its own build folder, `../mame/build-qt`. `./build-mame.sh` without `--qt` builds `libmame_pinesy.so`, the engine without Qt, and `./build-mame.sh --gtk` builds `libmame_pinesy_gtk.so`, the engine with the GTK debugger that the GNOME front end uses. The builds do not share objects. Then:
 
 ```sh
 cmake -S kde -B <build-dir>

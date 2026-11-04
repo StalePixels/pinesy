@@ -1,12 +1,18 @@
 # pinesy for GNOME
 
-The GNOME app for Pi/Ne-Sy. It is a GTK 4 and libadwaita app, written in C++ with gtkmm. It links `libpinesy`, the core in `../core`, and the MAME library `../mame/libmame_pinesy.so`. The core holds every rule the app follows (the machine list, configurations, `.pinesy` files, MAME's paths, the settings and headless mode). This folder holds only the user interface.
+The GNOME app for Pi/Ne-Sy. It is a GTK 4 and libadwaita app, written in C++ with gtkmm. It links `libpinesy`, the core in `../core`, and the MAME library `../mame/libmame_pinesy_gtk.so`, the engine with the GTK debugger. The core holds every rule the app follows (the machine list, configurations, `.pinesy` files, MAME's paths, the settings and headless mode). This folder holds only the user interface.
 
 What the app does is described in `../app/README.md`, the README of the macOS app. This README describes how the GNOME app differs.
 
 ## Build
 
-The build needs CMake 3.20 or later, a C++20 compiler, gtkmm 4.10 or later (`gtkmm-4.0`), libadwaita 1.6 or later and `glib-compile-schemas`. Build the engine first with `../build-mame.sh`. Then, from the repository root:
+The build needs CMake 3.20 or later, a C++20 compiler, gtkmm 4.10 or later (`gtkmm-4.0`), libadwaita 1.6 or later and `glib-compile-schemas`. Build the engine first, from the repository root:
+
+```sh
+./build-mame.sh --gtk
+```
+
+This builds `../mame/libmame_pinesy_gtk.so` in its own build folder, `../mame/build-gtk`. It is the MAME engine with the GTK debugger from `../debuggers/gtk`, a port of MAME's Qt debugger to GTK 4. Then:
 
 ```sh
 cmake -S gtk -B <build-dir>
@@ -19,7 +25,7 @@ The build also builds the core from `../core`, without its tests. It makes these
 - `schemas/gschemas.compiled`: the compiled settings schema.
 - `resources`: the resources folder the app gives the core. It holds links to `../roms` (as `roms`) and to MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders in `../mame`.
 
-The cache variable `PINESY_RESOURCES_DIR` sets a different resources folder. The core's cache variables, such as `PINESY_ENGINE_LIBRARY`, also apply.
+The cache variable `PINESY_RESOURCES_DIR` sets a different resources folder. The core's cache variables, such as `PINESY_ENGINE_LIBRARY`, also apply. Here `PINESY_ENGINE_LIBRARY` defaults to `../mame/libmame_pinesy_gtk.so`.
 
 ## Run
 
@@ -58,7 +64,7 @@ The build does not install these files. The desktop entry sets `DBusActivatable=
 | Machine > Stop (⌘.) | The Stop button, shown while a machine runs (Ctrl+.) |
 | Machine > Copy Command Line | Copy Command Line in the main menu (Ctrl+Shift+C), and the copy button by the command line |
 | Settings (UserDefaults) | Preferences in the main menu (Ctrl+,), stored with GSettings |
-| Debugger windows | MAME's debugger |
+| Debugger windows | MAME's GTK debugger |
 | An alert when MAME stops with an error | A libadwaita alert dialog with MAME's error lines |
 
 Opening a file in a window that has no machine and no file yet opens it in that window. Otherwise it opens in a new window.
@@ -73,7 +79,7 @@ The window takes the size MAME asks for, scaled down to fit the monitor. GTK 4 c
 
 Run with Debugger adds `-debug`, and with the GDB remote stub also `-debugger gdbstub -debugger_port <port>`.
 
-- MAME's debugger: with this engine, MAME chooses its ImGui debugger. The ImGui debugger needs MAME's BGFX renderer, and the engine draws with MAME's software renderer, so the run stops with the fatal error "ImGui debugger requires the BGFX renderer" and the app process ends.
+- MAME's GTK debugger windows: the engine is built with the GTK debugger, so MAME chooses it for its debugger windows. Its windows use the app's GTK display, and the app's windows stay live while the debugger has the machine stopped.
 - The GDB remote stub: the machine waits for a GDB client on the port from Preferences. While it waits, and while GDB has the machine stopped, the app does not respond, because the stub's wait loop does not run the app's events.
 
 ## Headless mode

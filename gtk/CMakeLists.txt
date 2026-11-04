@@ -12,10 +12,11 @@ pkg_check_modules(GTKMM REQUIRED IMPORTED_TARGET gtkmm-4.0>=4.10)
 pkg_check_modules(ADWAITA REQUIRED IMPORTED_TARGET libadwaita-1>=1.6)
 find_program(GLIB_COMPILE_SCHEMAS glib-compile-schemas REQUIRED)
 
-# The core, libpinesy, built from ../core with the engine it finds
-# there (../mame/libmame_pinesy.so unless PINESY_ENGINE_LIBRARY says
-# otherwise). Its tests are not part of this build.
+# The core, libpinesy, built from ../core. Its tests are not part of
+# this build.
 set(PINESY_CORE_TESTS OFF)
+# The engine with the GTK debugger, built by ../build-mame.sh --gtk.
+set(PINESY_ENGINE_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/../mame/libmame_pinesy_gtk.so" CACHE FILEPATH "The engine library, libmame_pinesy_gtk")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../core" "${CMAKE_CURRENT_BINARY_DIR}/core")
 
 set(PINESY_APP_ID "com.stalepixels.Pinesy")
