@@ -3,7 +3,7 @@
 #include "core.h"
 #include "runwindow.h"
 
-#include <QGuiApplication>
+#include <QApplication>
 
 #include <vector>
 
@@ -19,8 +19,9 @@ int runHeadless(int argc, char **argv)
 
 	// The machine gets its own window; closing it stops the machine. Qt
 	// sees only the program name, so none of MAME's options reach it.
+	// MAME's Qt debugger windows are widgets, so this is a QApplication.
 	int qtArgc = 1;
-	QGuiApplication app(qtArgc, argv);
+	QApplication app(qtArgc, argv);
 	RunWindow window;
 	QString title = QStringLiteral("Pinesy");
 	for (const char *argument : arguments) {

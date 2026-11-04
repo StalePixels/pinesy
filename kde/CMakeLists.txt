@@ -9,6 +9,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # The core, with the engine it links. It is added before the KDE compiler
 # settings, which turn off C++ exceptions, so it builds with its own flags.
 set(PINESY_CORE_TESTS OFF CACHE BOOL "Build the core's tests")
+# The engine with MAME's Qt debugger, built by ../build-mame.sh --qt.
+set(PINESY_ENGINE_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/../mame/libmame_pinesy_qt.so" CACHE FILEPATH "The engine library, libmame_pinesy_qt")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../core" core)
 
 find_package(ECM 6.0 REQUIRED NO_MODULE)

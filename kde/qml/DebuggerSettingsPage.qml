@@ -16,7 +16,7 @@ Kirigami.ScrollablePage {
 
         QQC2.RadioButton {
             Kirigami.FormData.label: i18nc("@label", "Run with Debugger uses:")
-            text: i18nc("@option:radio", "MAME's ImGui debugger, in the machine window")
+            text: i18nc("@option:radio", "MAME's Qt debugger windows")
             QQC2.ButtonGroup.group: debuggerGroup
             checked: Core.debugger === "windows"
             onToggled: if (checked) Core.debugger = "windows"

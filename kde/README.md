@@ -1,19 +1,25 @@
 # Pi/Ne-Sy for KDE Plasma
 
-The KDE Plasma front end for Pi/Ne-Sy. It is a Qt 6 and KDE Frameworks 6 app with a Kirigami (QML) user interface. It links `libpinesy`, the core library in `../core`, and the engine `libmame_pinesy.so`, the MAME library built from `../mame` with the `pinesy` OSD.
+The KDE Plasma front end for Pi/Ne-Sy. It is a Qt 6 and KDE Frameworks 6 app with a Kirigami (QML) user interface. It links `libpinesy`, the core library in `../core`, and the engine `libmame_pinesy_qt.so`, the MAME library built from `../mame` with the `pinesy` OSD and MAME's Qt debugger.
 
 The app holds only the user interface. Every rule (the machine list, configurations, `.pinesy` files, MAME's paths, the settings, the copied command line and headless mode) comes from the core. `../app/README.md` describes those rules.
 
 ## Build
 
-Build `../mame/libmame_pinesy.so` first. Then, from the repository root:
+Build the engine first, from the repository root:
+
+```sh
+./build-mame.sh --qt
+```
+
+This builds `../mame/libmame_pinesy_qt.so` in its own build folder, `../mame/build-qt`. `./build-mame.sh` without `--qt` builds `libmame_pinesy.so`, the engine without Qt that the GNOME front end uses. The two builds do not share objects. Then:
 
 ```sh
 cmake -S kde -B <build-dir>
 cmake --build <build-dir>
 ```
 
-The build needs CMake 3.20 or later, a C++20 compiler, Qt 6.5 or later (Core, Gui, Qml, Quick, QuickControls2, Widgets), extra-cmake-modules, and KDE Frameworks 6: Kirigami, KConfig, KCoreAddons and KI18n. The core is built as part of the same build, without its tests. The core's cache variables (`PINESY_ENGINE_LIBRARY`, `PINESY_ENGINE_INCLUDE_DIR`) apply here too.
+The build needs CMake 3.20 or later, a C++20 compiler, Qt 6.5 or later (Core, Gui, Qml, Quick, QuickControls2, Widgets), extra-cmake-modules, and KDE Frameworks 6: Kirigami, KConfig, KCoreAddons and KI18n. The core is built as part of the same build, without its tests. The core's cache variables (`PINESY_ENGINE_LIBRARY`, `PINESY_ENGINE_INCLUDE_DIR`) apply here too. Here `PINESY_ENGINE_LIBRARY` defaults to `../mame/libmame_pinesy_qt.so`.
 
 The executable is `<build-dir>/bin/pinesy-kde`.
 
@@ -58,7 +64,7 @@ One machine runs at a time. While it runs, configurations cannot be changed, and
 ### Settings
 
 - General: extra ROM folders, and the folder where MAME keeps its files. A folder with `;` in its path cannot be a ROM folder.
-- Debugger: what Run with Debugger uses. The choices are the core's: MAME's debugger windows, or the GDB remote stub with its port (23946 by default, from 1 to 65535). The engine is built without MAME's Qt debugger, so MAME's own choice for its debugger windows is the ImGui debugger.
+- Debugger: what Run with Debugger uses. The choices are the core's: MAME's debugger windows, or the GDB remote stub with its port (23946 by default, from 1 to 65535). The engine is built with MAME's Qt debugger, so MAME's own choice for its debugger windows is the Qt debugger. Its windows use the app's `QApplication`, and the app's windows stay live while the debugger has the machine stopped.
 
 Settings apply as they change.
 
@@ -80,6 +86,5 @@ The desktop file does not list the MIME type, so a file manager does not open `.
 
 ## Known limits
 
-- Run with Debugger with MAME's debugger windows does not work. MAME's ImGui debugger needs MAME's BGFX renderer, and this engine draws with its software renderer. MAME stops with `ImGui debugger requires the BGFX renderer`, and the process then aborts, which also closes the app. The GDB remote stub works.
 - While the GDB remote stub waits for a client, Stop does not end the run.
 - The engine has no pointer input, so the mouse does not reach the machine.
