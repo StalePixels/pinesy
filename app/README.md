@@ -1,6 +1,6 @@
 # Pinesy.app
 
-The macOS app for Pi/Ne-Sy. It is a SwiftUI document app that links `libmame_pinesy.dylib`, the MAME library built from `../mame` with the `pinesy` OSD. The C interface is `../mame/src/osd/pinesy/pinesy.h`.
+The macOS app for Pi/Ne-Sy. It is a SwiftUI document app that links `libmame_pinesy.dylib`, the MAME library built from `../mame` with the `pinesy` OSD in `../engine`. The C interface is `../engine/include/pinesy.h`.
 
 ## Build
 

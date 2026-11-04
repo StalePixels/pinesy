@@ -11,7 +11,7 @@ libpinesy is the core library of the Pi/Ne-Sy front ends. It holds every rule th
 - the headless command line that Copy Command Line gives, quoted for zsh
 - headless mode
 
-The rules are the ones `../app/README.md` describes. The core calls the engine, `libmame_pinesy`, through its C interface `../mame/src/osd/pinesy/pinesy.h`. It opens no windows.
+The rules are the ones `../app/README.md` describes. The core calls the engine, `libmame_pinesy`, through its C interface `../engine/include/pinesy.h`. It opens no windows.
 
 The core is C++20. Its C interface is `include/pinesy_core.h`, so Swift can import it. That interface wraps the C++ interface in `include/pinesy_core.hpp`.
 
@@ -29,7 +29,7 @@ This needs CMake 3.20 or later and a C++20 compiler. The result is `libpinesy` i
 The cache variables are:
 
 - `PINESY_ENGINE_LIBRARY`: the engine library. The default is `../mame/libmame_pinesy.so`, or `.dylib` on macOS.
-- `PINESY_ENGINE_INCLUDE_DIR`: the folder with `pinesy.h`. The default is `../mame/src/osd/pinesy`.
+- `PINESY_ENGINE_INCLUDE_DIR`: the folder with `pinesy.h`. The default is `../engine/include`.
 - `PINESY_CORE_TESTS`: build the tests. On by default.
 - `PINESY_TEST_RESOURCES`: the resources folder the tests use. The default is the repository root, so the ROM sets in `../roms` are the bundled ROMs.
 

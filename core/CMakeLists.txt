@@ -7,14 +7,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# The engine: libmame_pinesy, built from ../mame with the pinesy OSD.
+# The engine: libmame_pinesy, built from ../mame with the pinesy OSD in ../engine.
 if(APPLE)
 	set(_pinesy_engine_default "${CMAKE_CURRENT_SOURCE_DIR}/../mame/libmame_pinesy.dylib")
 else()
 	set(_pinesy_engine_default "${CMAKE_CURRENT_SOURCE_DIR}/../mame/libmame_pinesy.so")
 endif()
 set(PINESY_ENGINE_LIBRARY "${_pinesy_engine_default}" CACHE FILEPATH "The engine library, libmame_pinesy")
-set(PINESY_ENGINE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../mame/src/osd/pinesy" CACHE PATH "The folder with the engine's pinesy.h")
+set(PINESY_ENGINE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../engine/include" CACHE PATH "The folder with the engine's pinesy.h")
 
 if(NOT EXISTS "${PINESY_ENGINE_LIBRARY}")
 	message(FATAL_ERROR "The engine library is not there: ${PINESY_ENGINE_LIBRARY}. Build it first, or set PINESY_ENGINE_LIBRARY.")
