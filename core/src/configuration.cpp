@@ -454,8 +454,8 @@ std::string problem(std::uint64_t bytes)
 	std::uint64_t const blocks = bytes / 512;
 	if (usable(blocks)) return {};
 	if (blocks > (std::uint64_t(1) << 26))
-		return "This image is too big. The emulated SD card takes images up to 32 GiB.";
-	return "The emulated SD card cannot use an image of this size. Images up to 32 GiB that are a multiple of 512 KiB work.";
+		return "Too big: SD cards hold up to 32 GiB.";
+	return "Unusable size: use a multiple of 512 KiB.";
 }
 
 std::string problem(const std::string &path)

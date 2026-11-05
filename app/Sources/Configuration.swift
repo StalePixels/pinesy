@@ -469,9 +469,9 @@ enum SDCardImage {
         let blocks = bytes / 512
         if usable(blocks: blocks) { return nil }
         if blocks > largestSDHC {
-            return "This image is too big. The emulated SD card takes images up to 32 GiB."
+            return "Too big: SD cards hold up to 32 GiB."
         }
-        return "The emulated SD card cannot use an image of this size. Images up to 32 GiB that are a multiple of 512 KiB work."
+        return "Unusable size: use a multiple of 512 KiB."
     }
 
     /// The problem with the image at a path, or nil for an image that

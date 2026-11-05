@@ -391,7 +391,7 @@ void test_checking(pinesy_core *core)
 		};
 		std::string at_max = problems(sdhc_max), over = problems(too_big);
 		check(at_max == "<null>", "a 32 GiB SD card image has no problem (Configuration.swift:454-466): " + at_max);
-		check(over.find("too big") != std::string::npos, "an SD card image of 32 GiB and 512 KiB is too big (Configuration.swift:468-475): " + over);
+		check(over.find("Too big") != std::string::npos, "an SD card image of 32 GiB and 512 KiB is too big (Configuration.swift:468-475): " + over);
 		check(pinesy::core::sd_card::usable(std::uint64_t(1) << 21) && !pinesy::core::sd_card::usable((std::uint64_t(1) << 22) + 1),
 				"2 GiB is usable and 2 GiB and one block is not (spi_sdcard.cpp:250-251)");
 		fs::remove(sdhc_max);
