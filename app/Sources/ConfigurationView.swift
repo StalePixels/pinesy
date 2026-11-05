@@ -86,8 +86,10 @@ struct ConfigurationView: View {
                               window?.close()
                           })
         }
+        // Any file can be chosen: MAME opens files with extensions that its
+        // list for the device leaves out, such as .img SD card images.
         .fileImporter(isPresented: Binding(get: { mediaToChoose != nil }, set: { if !$0 { mediaToChoose = nil } }),
-                      allowedContentTypes: mediaToChoose.map(Self.contentTypes) ?? [.data]) { result in
+                      allowedContentTypes: [.data]) { result in
             if case .success(let url) = result, let media = mediaToChoose {
                 document.arguments = ConfigurationEditor.setMedia(document.arguments, media: media, path: url.path)
             }
@@ -336,11 +338,6 @@ struct ConfigurationView: View {
                     .truncationMode(.tail)
             }
         }
-    }
-
-    private static func contentTypes(_ media: Media) -> [UTType] {
-        let types = media.extensionList.compactMap { UTType(filenameExtension: $0) }
-        return types.isEmpty ? [.data] : types
     }
 
     // MARK: - Actions

@@ -658,6 +658,8 @@ void ConfigurationWindow::choose_media(const core::Media &media)
 {
 	auto dialog = Gtk::FileDialog::create();
 	dialog->set_title("Choose a File");
+	// "All files" is there because MAME opens files with extensions that
+	// its list for the device leaves out, such as .img SD card images.
 	auto extensions = media.extension_list();
 	if (!extensions.empty())
 	{
@@ -665,8 +667,12 @@ void ConfigurationWindow::choose_media(const core::Media &media)
 		filter->set_name("Files for this device");
 		for (const auto &ext : extensions)
 			filter->add_suffix(ext);
+		auto all = Gtk::FileFilter::create();
+		all->set_name("All files");
+		all->add_pattern("*");
 		auto filters = Gio::ListStore<Gtk::FileFilter>::create();
 		filters->append(filter);
+		filters->append(all);
 		dialog->set_filters(filters);
 		dialog->set_default_filter(filter);
 	}

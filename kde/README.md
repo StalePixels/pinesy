@@ -83,7 +83,7 @@ With no arguments the app starts and asks for a machine. With any arguments it r
 | Open and Save panels | File > Open (Ctrl+O), Save (Ctrl+S) and Save As (Ctrl+Shift+S) use Qt's file dialogs. On a Plasma desktop, Plasma's Qt platform integration supplies the KDE file dialog for these. An untouched new window takes the opened file; otherwise the file opens in a new window. |
 | Closing a document with changes | The window asks: Save, Discard or Cancel. |
 | Machine picker sheet | A dialog: makers on the left, their machines on the right, a search field above. Down moves from the search field into the list; Return or a double click chooses. |
-| Configuration window | A page with the machine, its model and ROM, a Hardware section, a Media section and the command line. MAME's errors show in an error message above the form, and Run is not available then. MAME's warnings show in an information message. A media file that is not there has a warning icon on its row. |
+| Configuration window | A page with the machine, its model and ROM, a Hardware section, a Media section and the command line. MAME's errors show in an error message above the form, and Run is not available then. MAME's warnings show in an information message. A media file that is not there has a warning icon on its row. The file dialog shows the device's file extensions first, and All files. |
 | Machine > Run (Cmd+R) | Machine > Run (Ctrl+R), also in the page's toolbar |
 | Machine > Run with Debugger (Opt+Cmd+R) | Machine > Run with Debugger (Ctrl+Shift+R), also in the page's toolbar |
 | Machine > Stop (Cmd+.) | Machine > Stop (Ctrl+.) |
