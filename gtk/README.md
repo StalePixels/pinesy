@@ -45,7 +45,7 @@ The data folder is `$XDG_DATA_HOME/pinesy` (by default `~/.local/share/pinesy`) 
 
 - `com.stalepixels.Pinesy.gschema.xml`: the settings schema. The keys are `rom-folders`, `data-folder`, `debugger` (`windows` or `gdbStub`) and `gdb-port`, as the core's settings schema names them.
 - `com.stalepixels.Pinesy.desktop`: the desktop entry, for the MIME type `application/x-pinesy`.
-- `com.stalepixels.Pinesy.mime.xml`: the MIME type for `*.pinesy` files.
+- `com.stalepixels.Pinesy.mime.xml`: the MIME type for `*.pinesy` files, with the app icon.
 - `com.stalepixels.Pinesy.service`: the D-Bus service file.
 
 The app icon is `../icons/hicolor/<size>x<size>/apps/pinesy.png`, installed as `com.stalepixels.Pinesy.png`. The desktop entry and the windows use that icon name.

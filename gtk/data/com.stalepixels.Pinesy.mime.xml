@@ -4,5 +4,6 @@
     <comment>Pinesy configuration</comment>
     <sub-class-of type="application/json"/>
     <glob pattern="*.pinesy"/>
+    <icon name="com.stalepixels.Pinesy"/>
   </mime-type>
 </mime-info>

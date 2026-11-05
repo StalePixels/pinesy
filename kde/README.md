@@ -117,7 +117,7 @@ With `-video none` there is no window and Qt is not started. Otherwise the machi
 
 ## Desktop file and MIME type
 
-`com.stalepixels.pinesy.kde.desktop` starts the app. The app icon is `../icons/hicolor/<size>x<size>/apps/pinesy.png`, installed as `com.stalepixels.pinesy.kde.png`; the desktop file and the windows use that icon name. `com.stalepixels.pinesy.kde.xml` defines the MIME type `application/x-pinesy-configuration` for `*.pinesy` files, a kind of `application/json`.
+`com.stalepixels.pinesy.kde.desktop` starts the app. The app icon is `../icons/hicolor/<size>x<size>/apps/pinesy.png`, installed as `com.stalepixels.pinesy.kde.png`; the desktop file and the windows use that icon name. `com.stalepixels.pinesy.kde.xml` defines the MIME type `application/x-pinesy-configuration` for `*.pinesy` files, a kind of `application/json`, with the app icon.
 
 The desktop file does not list the MIME type, so a file manager does not open `.pinesy` files with the app. Any argument starts headless mode, so a file path from a file manager would go to MAME as its command line.
 
