@@ -258,6 +258,8 @@ char *pinesy_core_normalise(pinesy_core *core, const char *arguments);
 //   warnings     MAME's warning text, which does not stop a run
 //   missingMedia labels of media MAME needs that have no file
 //   missingFiles media names whose file is not there
+//   sdCardProblems  for SD card media with an image MAME's SD card
+//                cannot use: an object of media name to the reason
 //   canRun       true when there are no errors and no missingMedia
 char *pinesy_core_summary(pinesy_core *core, const char *arguments, const char *machine_hint);
 

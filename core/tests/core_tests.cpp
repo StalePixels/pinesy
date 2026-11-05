@@ -27,6 +27,7 @@
 #include "json.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <string>
@@ -369,6 +370,33 @@ void test_checking(pinesy_core *core)
 	json::Value tape = parse(pinesy_core_summary(core, args_json(with_tape).c_str(), "tbblue"));
 	check(text_of(tape, "errors").empty() && member(tape, "missingFiles") && strings(*member(tape, "missingFiles")) == Strings{ "cass" },
 			"a missing tape file is marked on the cassette row (README.md:25, Configuration.swift:306-308)");
+
+	// README.md:25, Configuration.swift:312-318: an SD card image MAME's SD
+	// card cannot use is marked on its row. The images are sparse files.
+	{
+		namespace fs = std::filesystem;
+		const std::string sdhc_max = std::string(PINESY_TEST_DATA) + "/sd-32g.img";
+		const std::string too_big = std::string(PINESY_TEST_DATA) + "/sd-32g-512k.img";
+		const std::uint64_t gib = std::uint64_t(1) << 30;
+		for (const auto &[path, size] : { std::pair{ sdhc_max, 32 * gib }, std::pair{ too_big, 32 * gib + 512 * 1024 } })
+		{
+			std::FILE *f = std::fopen(path.c_str(), "wb");
+			if (f) std::fclose(f);
+			fs::resize_file(path, size);
+		}
+		auto problems = [&](const std::string &image) {
+			json::Value s = parse(pinesy_core_summary(core, args_json({ "specnext_ks3", "-hard1", image }).c_str(), nullptr));
+			const json::Value *p = member(s, "sdCardProblems");
+			return p ? text_of(*p, "hard1") : std::string("<no sdCardProblems>");
+		};
+		std::string at_max = problems(sdhc_max), over = problems(too_big);
+		check(at_max == "<null>", "a 32 GiB SD card image has no problem (Configuration.swift:454-466): " + at_max);
+		check(over.find("too big") != std::string::npos, "an SD card image of 32 GiB and 512 KiB is too big (Configuration.swift:468-475): " + over);
+		check(pinesy::core::sd_card::usable(std::uint64_t(1) << 21) && !pinesy::core::sd_card::usable((std::uint64_t(1) << 22) + 1),
+				"2 GiB is usable and 2 GiB and one block is not (spi_sdcard.cpp:250-251)");
+		fs::remove(sdhc_max);
+		fs::remove(too_big);
+	}
 
 	// Configuration.swift:264: the summary names the machine.
 	json::Value summary = parse(pinesy_core_summary(core, args_json(start).c_str(), nullptr));

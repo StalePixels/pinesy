@@ -253,6 +253,9 @@ struct ConfigurationSummary {
     let missingMedia: [String]
     /// The media names of files named on the command line that are not there.
     let missingFiles: Set<String>
+    /// For SD card media with an image MAME's SD card cannot use: the
+    /// reason, by media name.
+    let sdCardProblems: [String: String]
 
     var canRun: Bool { errors.isEmpty && missingMedia.isEmpty }
 
@@ -306,6 +309,13 @@ struct ConfigurationSummary {
         missingFiles = Set(media.filter {
             !$0.media.current.isEmpty && !FileManager.default.fileExists(atPath: $0.media.current)
         }.map(\.media.name))
+        var problems: [String: String] = [:]
+        for row in media where row.media.interface == "sdcard" && !row.media.current.isEmpty {
+            if let problem = SDCardImage.problem(path: row.media.current) {
+                problems[row.media.name] = problem
+            }
+        }
+        sdCardProblems = problems
     }
 
     private static func hardwareRows(_ slots: [Slot]) -> [HardwareRow] {
@@ -428,5 +438,48 @@ enum RunOptions {
             return text
         }
         return "'" + text.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+}
+
+// MARK: - SD card images
+
+/// The sizes MAME's SD card takes (spi_sdcard.cpp, device_start): an SD
+/// card of up to 1 GiB, or an SDHC card of up to 32 GiB that is a
+/// multiple of 512 KiB. A raw image has 512-byte blocks. A CHD is not
+/// checked, because its file size is not its disk size.
+enum SDCardImage {
+    static let largestSDHC: UInt64 = 1 << 26   // blocks: 32 GiB
+
+    /// Whether MAME's SD card takes an image of this many 512-byte blocks.
+    static func usable(blocks: UInt64) -> Bool {
+        guard blocks > 0 else { return false }
+        var mantissa = blocks
+        var exponent: UInt64 = 0
+        while mantissa & 1 == 0 {
+            mantissa >>= 1
+            exponent += 1
+        }
+        let sd = exponent >= 2 && mantissa << (exponent > 9 ? exponent - 9 : 0) <= 1 << 12
+        let sdhc = exponent >= 10 && mantissa << (exponent - 10) <= 1 << 16
+        return sd || sdhc
+    }
+
+    /// Why MAME's SD card cannot use an image of this many bytes, or nil.
+    static func problem(bytes: UInt64) -> String? {
+        let blocks = bytes / 512
+        if usable(blocks: blocks) { return nil }
+        if blocks > largestSDHC {
+            return "This image is too big. The emulated SD card takes images up to 32 GiB."
+        }
+        return "The emulated SD card cannot use an image of this size. Images up to 32 GiB that are a multiple of 512 KiB work."
+    }
+
+    /// The problem with the image at a path, or nil for an image that
+    /// works, a CHD, or a file that is not there.
+    static func problem(path: String) -> String? {
+        guard (path as NSString).pathExtension.lowercased() != "chd",
+              let size = (try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? UInt64
+        else { return nil }
+        return problem(bytes: size)
     }
 }

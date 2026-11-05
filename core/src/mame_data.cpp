@@ -298,6 +298,8 @@ Value summary(const Summary &s)
 			{ "media", media(row.media) }, { "label", row.label } });
 	json::Array missing_files;
 	for (const auto &name : s.missing_files) missing_files.push_back(name);
+	json::Object sd_card_problems;
+	for (const auto &[name, problem] : s.sd_card_problems) sd_card_problems.emplace_back(name, problem);
 	return json::Object{
 		{ "machine", s.machine ? machine(*s.machine) : Value() },
 		{ "driver", s.driver }, { "year", s.year }, { "preliminary", s.preliminary },
@@ -307,6 +309,7 @@ Value summary(const Summary &s)
 		{ "hardware", std::move(hardware) }, { "media", std::move(media_rows) },
 		{ "errors", s.errors }, { "warnings", s.warnings },
 		{ "missingMedia", strings(s.missing_media) }, { "missingFiles", std::move(missing_files) },
+		{ "sdCardProblems", std::move(sd_card_problems) },
 		{ "canRun", s.can_run() } };
 }
 

@@ -234,18 +234,20 @@ Kirigami.Page {
                         readonly property var extensions: media.extensions === "" ? [] : media.extensions.split(",")
                         readonly property bool needed: media.mandatory && media.current === ""
                         readonly property bool missing: (page.summary.missingFiles ?? []).indexOf(media.name) >= 0
+                        readonly property string sdCardProblem: (page.summary.sdCardProblems ?? {})[media.name] ?? ""
                         Kirigami.FormData.label: modelData.label + ":"
                         spacing: 0
 
                         RowLayout {
                             Kirigami.Icon {
-                                visible: mediaRow.needed || mediaRow.missing
+                                visible: mediaRow.needed || mediaRow.missing || mediaRow.sdCardProblem !== ""
                                 source: "dialog-warning"
                                 implicitWidth: Kirigami.Units.iconSizes.small
                                 implicitHeight: Kirigami.Units.iconSizes.small
                                 QQC2.ToolTip.visible: warningHover.hovered
                                 QQC2.ToolTip.text: mediaRow.needed ? i18n("This machine needs a file here before it can run.")
-                                                                   : i18n("This file is not there: %1", mediaRow.media.current)
+                                                 : mediaRow.missing ? i18n("This file is not there: %1", mediaRow.media.current)
+                                                                    : mediaRow.sdCardProblem
                                 HoverHandler { id: warningHover }
                             }
                             QQC2.Label {

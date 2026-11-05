@@ -25,7 +25,11 @@ struct ConfigurationView: View {
     @State private var summary: ConfigurationSummary?
     @State private var choosingMachine = false
     @State private var window: NSWindow?
+    /// The media device the file chooser is for. The chooser has its own
+    /// flag, so closing the chooser does not clear the device before the
+    /// chosen file is set.
     @State private var mediaToChoose: Media?
+    @State private var choosingMedia = false
     /// The configuration changed while a machine ran; MAME is asked about
     /// it when the run ends.
     @State private var refreshWaiting = false
@@ -88,8 +92,7 @@ struct ConfigurationView: View {
         }
         // Any file can be chosen: MAME opens files with extensions that its
         // list for the device leaves out, such as .img SD card images.
-        .fileImporter(isPresented: Binding(get: { mediaToChoose != nil }, set: { if !$0 { mediaToChoose = nil } }),
-                      allowedContentTypes: [.data]) { result in
+        .fileImporter(isPresented: $choosingMedia, allowedContentTypes: [.data]) { result in
             if case .success(let url) = result, let media = mediaToChoose {
                 document.arguments = ConfigurationEditor.setMedia(document.arguments, media: media, path: url.path)
             }
@@ -177,7 +180,7 @@ struct ConfigurationView: View {
             if !summary.media.isEmpty {
                 Section("Media") {
                     ForEach(summary.media) { row in
-                        mediaRow(row, missing: summary.missingFiles.contains(row.media.name))
+                        mediaRow(row, missing: summary.missingFiles.contains(row.media.name), sdCardProblem: summary.sdCardProblems[row.media.name])
                     }
                 }
             }
@@ -299,7 +302,7 @@ struct ConfigurationView: View {
     }
 
     @ViewBuilder
-    private func mediaRow(_ row: ConfigurationSummary.MediaRow, missing: Bool) -> some View {
+    private func mediaRow(_ row: ConfigurationSummary.MediaRow, missing: Bool, sdCardProblem: String?) -> some View {
         let media = row.media
         LabeledContent {
             HStack(spacing: 6) {
@@ -313,12 +316,17 @@ struct ConfigurationView: View {
                         .foregroundStyle(.yellow)
                         .help("This file is not there: \(media.current)")
                 }
+                if let sdCardProblem {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.yellow)
+                        .help(sdCardProblem)
+                }
                 Text(media.current.isEmpty ? "Empty" : (media.current as NSString).lastPathComponent)
                     .foregroundStyle(media.current.isEmpty ? .secondary : .primary)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .help(media.current)
-                Button("Choose…") { mediaToChoose = media }
+                Button("Choose…") { mediaToChoose = media; choosingMedia = true }
                 if !media.current.isEmpty {
                     Button("Eject", systemImage: "eject") {
                         document.arguments = ConfigurationEditor.setMedia(document.arguments, media: media, path: nil)

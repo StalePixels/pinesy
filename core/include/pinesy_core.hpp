@@ -22,6 +22,7 @@
 #ifndef PINESY_CORE_HPP
 #define PINESY_CORE_HPP
 
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <optional>
@@ -297,6 +298,25 @@ std::vector<std::string> normalise(const std::vector<std::string> &arguments, co
 
 } // namespace editor
 
+// The sizes MAME's SD card takes (spi_sdcard.cpp, device_start): an SD
+// card of up to 1 GiB, or an SDHC card of up to 32 GiB that is a
+// multiple of 512 KiB. A raw image has 512-byte blocks.
+namespace sd_card {
+
+// Whether MAME's SD card takes an image of this many 512-byte blocks.
+bool usable(std::uint64_t blocks);
+
+// Why MAME's SD card cannot use an image of this many bytes; empty when
+// it can.
+std::string problem(std::uint64_t bytes);
+
+// The problem with the image at a path; empty for an image that works,
+// a CHD (its file size is not its disk size), or a file that is not
+// there.
+std::string problem(const std::string &path);
+
+} // namespace sd_card
+
 // What the configuration window shows, in words a Spectrum owner uses.
 struct Summary
 {
@@ -345,6 +365,9 @@ struct Summary
 	std::string warnings;
 	std::vector<std::string> missing_media;   // labels of mandatory media with no file
 	std::set<std::string> missing_files;      // media names of files that are not there
+	// for SD card media with an image MAME's SD card cannot use: the
+	// reason, by media name
+	std::map<std::string, std::string> sd_card_problems;
 
 	bool can_run() const { return errors.empty() && missing_media.empty(); }
 

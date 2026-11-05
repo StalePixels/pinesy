@@ -591,6 +591,8 @@ AdwPreferencesGroup *ConfigurationWindow::media_group(const core::Summary &summa
 			adw_action_row_add_suffix(ADW_ACTION_ROW(item), warning_icon("This machine needs a file here before it can run."));
 		if (summary.missing_files.count(media.name))
 			adw_action_row_add_suffix(ADW_ACTION_ROW(item), warning_icon("This file is not there: " + media.current));
+		if (auto problem = summary.sd_card_problems.find(media.name); problem != summary.sd_card_problems.end())
+			adw_action_row_add_suffix(ADW_ACTION_ROW(item), warning_icon(problem->second));
 
 		GtkWidget *file = gtk_label_new(media.current.empty() ? "Empty" : Glib::path_get_basename(media.current).c_str());
 		if (media.current.empty())

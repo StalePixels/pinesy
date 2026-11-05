@@ -15,6 +15,7 @@
 #include "pinesy_core.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 
 namespace pinesy::core {
@@ -425,7 +426,49 @@ Summary::Summary(const std::vector<std::string> &arguments, const MachineDescrip
 		std::error_code error;
 		if (!row.media.current.empty() && !std::filesystem::exists(row.media.current, error))
 			missing_files.insert(row.media.name);
+		if (row.media.interface == "sdcard" && !row.media.current.empty())
+			if (std::string problem = sd_card::problem(row.media.current); !problem.empty())
+				sd_card_problems.emplace(row.media.name, problem);
 	}
 }
+
+namespace sd_card {
+
+bool usable(std::uint64_t blocks)
+{
+	if (blocks == 0) return false;
+	std::uint64_t mantissa = blocks;
+	unsigned exponent = 0;
+	while (!(mantissa & 1))
+	{
+		mantissa >>= 1;
+		++exponent;
+	}
+	bool const sd = exponent >= 2 && (mantissa << (exponent > 9 ? exponent - 9 : 0)) <= (std::uint64_t(1) << 12);
+	bool const sdhc = exponent >= 10 && (mantissa << (exponent - 10)) <= (std::uint64_t(1) << 16);
+	return sd || sdhc;
+}
+
+std::string problem(std::uint64_t bytes)
+{
+	std::uint64_t const blocks = bytes / 512;
+	if (usable(blocks)) return {};
+	if (blocks > (std::uint64_t(1) << 26))
+		return "This image is too big. The emulated SD card takes images up to 32 GiB.";
+	return "The emulated SD card cannot use an image of this size. Images up to 32 GiB that are a multiple of 512 KiB work.";
+}
+
+std::string problem(const std::string &path)
+{
+	std::string extension = std::filesystem::path(path).extension().string();
+	std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) { return char(std::tolower(c)); });
+	if (extension == ".chd") return {};
+	std::error_code error;
+	std::uintmax_t const size = std::filesystem::file_size(path, error);
+	if (error) return {};
+	return problem(std::uint64_t(size));
+}
+
+} // namespace sd_card
 
 } // namespace pinesy::core
