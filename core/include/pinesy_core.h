@@ -119,8 +119,9 @@ int pinesy_core_is_usable_rom_folder(const char *path);
 // writes in the data folder (inipath ini, homepath home,
 // cfg_directory cfg, nvram_directory nvram, input_directory inp,
 // state_directory sta, snapshot_directory snap, diff_directory
-// diff, comment_directory comments, share_directory share). The
-// caller's own options come after these, so any of them can be
+// diff, comment_directory comments, share_directory share); and
+// -skip_gameinfo, so MAME does not show the machine information
+// screen at start. The caller's own options come after these, so any of them can be
 // overridden for one run.
 char *pinesy_core_fixed_options(const pinesy_core *core);
 

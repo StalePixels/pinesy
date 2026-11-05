@@ -433,6 +433,7 @@ void test_paths(pinesy_core *core)
 	check(value_of("-cfg_directory") == data + "/cfg" && value_of("-nvram_directory") == data + "/nvram" && value_of("-snapshot_directory") == data + "/snap"
 			&& value_of("-inipath") == data + "/ini" && value_of("-homepath") == data + "/home",
 			"the folders MAME writes are in the data folder (README.md:69, MAMEPaths.swift:31-37)");
+	check(!options.empty() && options.back() == "-skip_gameinfo", "the fixed options end with -skip_gameinfo (README.md:70, MAMEPaths.swift:61)");
 	check(take(pinesy_core_data_folder(core)) == data, "an empty data folder setting uses the default (AppSettings.swift:41, 44)");
 
 	// AppSettings.swift:42-46: an unusable debugger or port takes its default.

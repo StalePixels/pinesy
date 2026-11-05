@@ -48,7 +48,8 @@ enum MAMEPaths {
         !path.contains(";")
     }
 
-    /// The options that give MAME the app's own paths.
+    /// The options every run starts with: the app's own paths, and
+    /// -skip_gameinfo, because the machine was chosen in the app.
     static func options(_ settings: AppSettings = .current) -> [String] {
         var result = ["-noreadconfig", "-rompath", romFolders(settings).joined(separator: ";")]
         for path in searchPaths {
@@ -57,6 +58,7 @@ enum MAMEPaths {
         for path in dataFolders {
             result += ["-" + path.option, settings.dataFolder.appendingPathComponent(path.folder).path]
         }
+        result.append("-skip_gameinfo")
         return result
     }
 

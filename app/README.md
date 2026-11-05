@@ -67,6 +67,7 @@ Pinesy is not MAME: it reads no `mame.ini` and uses nothing in `~/.mame`. Every 
 - `-rompath`: the ROM sets in the bundle (`Contents/Resources/roms`), then `roms` in the data folder from Settings (`~/Library/Application Support/Pinesy/roms` by default), then the ROM folders in Settings. MAME separates these with `;`, so Settings does not take a folder with `;` in its path.
 - MAME's other search paths, in `Contents/Resources`: `hash`, `samples`, `artwork`, `ctrlr`, `fonts`, `cheat`, `crosshair`, `plugins`, `language`, `software` and `bgfx`.
 - The folders MAME writes, in the data folder from Settings: `ini` (`inipath`), `home` (`homepath`), `cfg`, `nvram`, `inp`, `sta`, `snap`, `diff`, `comments` and `share`.
+- `-skip_gameinfo`: MAME does not show its machine information screen at start, because the machine was chosen in the app.
 
 `build.sh` copies the app icon, `Pinesy.icns`, into `Contents/Resources`. `.pinesy` files use the same icon. It copies `../roms` into the bundle. Each entry there must be a ROM set: a zip, a 7z or a folder of ROM dumps. The script stops on anything else, and on a disk image (SD card, hard disk or floppy) loose in a folder or inside a zip. It cannot list a 7z, so it does not check what one holds. It also copies MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders from `../mame`; the other search paths have no folder in the bundle.
 

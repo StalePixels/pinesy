@@ -118,6 +118,7 @@ std::vector<std::string> Core::fixed_options() const
 		result.push_back(std::string("-") + option);
 		result.push_back(join(data, folder));
 	}
+	result.push_back("-skip_gameinfo");
 	return result;
 }
 

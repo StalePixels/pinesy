@@ -456,8 +456,8 @@ public:
 	std::vector<std::string> rom_folders() const;
 
 	// The options every run starts with: -noreadconfig, -rompath, the
-	// search paths in the resources folder and the folders MAME
-	// writes in the data folder.
+	// search paths in the resources folder, the folders MAME writes
+	// in the data folder, and -skip_gameinfo.
 	std::vector<std::string> fixed_options() const;
 
 	// Creates the user's ROM folder and the folders MAME writes.
