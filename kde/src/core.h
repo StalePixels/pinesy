@@ -45,6 +45,8 @@ public:
 	QStringList setSlot(const QStringList &arguments, const QString &slot, const QString &card);
 	QStringList setCardRom(const QStringList &arguments, const QString &slot, const QString &bios);
 	QStringList setMedia(const QStringList &arguments, const QString &media, const QString &path);
+	// Why MAME's SD card cannot use the image at path; empty when it can.
+	static QString sdCardProblem(const QString &path);
 	QVariantMap summary(const QStringList &arguments, const QString &machineHint);
 	QString copyCommandLine(const QStringList &arguments, bool debug);
 

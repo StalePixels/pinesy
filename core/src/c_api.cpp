@@ -263,6 +263,11 @@ char *pinesy_core_set_media(const char *arguments, const char *media, const char
 	return give(encode::strings(editor::set_media(*args, media, file)));
 }
 
+char *pinesy_core_sd_card_problem(const char *path)
+{
+	return give(path ? sd_card::problem(std::string(path)) : std::string());
+}
+
 char *pinesy_core_normalise(pinesy_core *core, const char *arguments)
 {
 	auto args = read_arguments(arguments);

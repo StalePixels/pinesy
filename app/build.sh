@@ -26,7 +26,7 @@ frameworks=$contents/Frameworks
 rm -rf "$app"
 mkdir -p "$contents/MacOS" "$contents/Resources" "$frameworks"
 cp "$here/Info.plist" "$contents/Info.plist"
-cp "$here/Pinesy.icns" "$contents/Resources/Pinesy.icns"
+cp "$here/Pinesy.icns" "$here/PinesyDocument.icns" "$contents/Resources/"
 
 # The ROM sets ship in the bundle: one zip, 7z or folder of ROM dumps per
 # set. Disk images (SD cards, hard disks, floppies) never ship, loose or

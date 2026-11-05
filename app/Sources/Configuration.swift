@@ -257,7 +257,7 @@ struct ConfigurationSummary {
     /// reason, by media name.
     let sdCardProblems: [String: String]
 
-    var canRun: Bool { errors.isEmpty && missingMedia.isEmpty }
+    var canRun: Bool { errors.isEmpty && missingMedia.isEmpty && sdCardProblems.isEmpty }
 
     /// `machineHint` is the document's machine, used when the catalogue
     /// does not have the driver, so the user can choose another model.
@@ -330,7 +330,11 @@ struct ConfigurationSummary {
             return count
         }
 
+        // MIDI ports on the machine itself are not shown: MAME gives them
+        // to the Next for the UART of its joystick ports, which has no MIDI
+        // socket. A card's MIDI ports are its own sockets and are shown.
         let shown = slots.filter { slot in
+            if slot.type == "midi_port" && slot.parent.isEmpty { return false }
             if slot.fixed || slot.options.isEmpty { return !slot.current.isEmpty }
             return true
         }

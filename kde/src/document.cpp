@@ -123,9 +123,20 @@ void ConfigurationDocument::setCardRom(const QString &slot, const QString &bios)
 	setArguments(Core::instance()->setCardRom(m_arguments, slot, bios));
 }
 
-void ConfigurationDocument::setMedia(const QString &media, const QString &path)
+QString ConfigurationDocument::setMedia(const QString &media, const QString &path)
 {
+	if (!path.isEmpty())
+		for (const QVariant &row : m_summary.value(QStringLiteral("media")).toList())
+		{
+			const QVariantMap device = row.toMap().value(QStringLiteral("media")).toMap();
+			if (device.value(QStringLiteral("name")).toString() != media
+					|| device.value(QStringLiteral("interface")).toString() != QStringLiteral("sdcard"))
+				continue;
+			if (QString problem = Core::sdCardProblem(path); !problem.isEmpty())
+				return problem;
+		}
 	setArguments(Core::instance()->setMedia(m_arguments, media, path));
+	return {};
 }
 
 QString ConfigurationDocument::load(const QUrl &url)

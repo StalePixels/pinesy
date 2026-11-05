@@ -222,6 +222,10 @@ char *pinesy_core_set_card_rom(pinesy_core *core, const char *arguments, const c
 // path NULL empties it. Not checked with MAME.
 char *pinesy_core_set_media(const char *arguments, const char *media, const char *path);
 
+// Why MAME's SD card cannot use the image at path, as text; "" when it
+// can, and for a CHD or a file that is not there.
+char *pinesy_core_sd_card_problem(const char *path);
+
 // The command line with every option MAME rejects removed. Options
 // are added back in their order, so a card's own slots and media are
 // kept once the card is fitted. When MAME rejects the driver itself,
@@ -260,7 +264,8 @@ char *pinesy_core_normalise(pinesy_core *core, const char *arguments);
 //   missingFiles media names whose file is not there
 //   sdCardProblems  for SD card media with an image MAME's SD card
 //                cannot use: an object of media name to the reason
-//   canRun       true when there are no errors and no missingMedia
+//   canRun       true when there are no errors, no missingMedia and
+//                no sdCardProblems
 char *pinesy_core_summary(pinesy_core *core, const char *arguments, const char *machine_hint);
 
 //------------------------------------------------------------

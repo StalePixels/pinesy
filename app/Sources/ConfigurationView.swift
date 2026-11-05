@@ -30,6 +30,8 @@ struct ConfigurationView: View {
     /// chosen file is set.
     @State private var mediaToChoose: Media?
     @State private var choosingMedia = false
+    /// Why the chosen file was refused, shown in an alert.
+    @State private var refusedFile: String?
     /// The configuration changed while a machine ran; MAME is asked about
     /// it when the run ends.
     @State private var refreshWaiting = false
@@ -94,9 +96,19 @@ struct ConfigurationView: View {
         // list for the device leaves out, such as .img SD card images.
         .fileImporter(isPresented: $choosingMedia, allowedContentTypes: [.data]) { result in
             if case .success(let url) = result, let media = mediaToChoose {
-                document.arguments = ConfigurationEditor.setMedia(document.arguments, media: media, path: url.path)
+                if media.interface == "sdcard", let problem = SDCardImage.problem(path: url.path) {
+                    refusedFile = problem
+                } else {
+                    document.arguments = ConfigurationEditor.setMedia(document.arguments, media: media, path: url.path)
+                }
             }
             mediaToChoose = nil
+        }
+        .alert("This SD card image cannot be used",
+               isPresented: Binding(get: { refusedFile != nil }, set: { if !$0 { refusedFile = nil } })) {
+            Button("OK") {}
+        } message: {
+            Text(refusedFile ?? "")
         }
         .onAppear {
             if document.arguments.isEmpty {
@@ -304,22 +316,15 @@ struct ConfigurationView: View {
     @ViewBuilder
     private func mediaRow(_ row: ConfigurationSummary.MediaRow, missing: Bool, sdCardProblem: String?) -> some View {
         let media = row.media
+        let problem: String? = media.mandatory && media.current.isEmpty
+            ? "This machine needs a file here before it can run."
+            : missing ? "This file is not there."
+            : sdCardProblem
         LabeledContent {
             HStack(spacing: 6) {
-                if media.mandatory && media.current.isEmpty {
+                if problem != nil {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.yellow)
-                        .help("This machine needs a file here before it can run.")
-                }
-                if missing {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.yellow)
-                        .help("This file is not there: \(media.current)")
-                }
-                if let sdCardProblem {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.yellow)
-                        .help(sdCardProblem)
+                        .foregroundStyle(.red)
                 }
                 Text(media.current.isEmpty ? "Empty" : (media.current as NSString).lastPathComponent)
                     .foregroundStyle(media.current.isEmpty ? .secondary : .primary)
@@ -339,6 +344,11 @@ struct ConfigurationView: View {
         } label: {
             VStack(alignment: .leading, spacing: 1) {
                 Text(row.label)
+                if let problem {
+                    Text(problem)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
                 Text(media.extensionList.map { "." + $0 }.joined(separator: " "))
                     .font(.caption)
                     .foregroundStyle(.secondary)

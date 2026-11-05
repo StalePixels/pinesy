@@ -214,7 +214,7 @@ Kirigami.ApplicationWindow {
         property string media
         title: i18nc("@title:window", "Choose a File")
         fileMode: FileDialog.OpenFile
-        onAccepted: window.document.setMedia(media, Core.localPath(selectedFile))
+        onAccepted: window.report(window.document.setMedia(media, Core.localPath(selectedFile)))
     }
 
     Kirigami.PromptDialog {

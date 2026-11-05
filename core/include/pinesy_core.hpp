@@ -369,7 +369,7 @@ struct Summary
 	// reason, by media name
 	std::map<std::string, std::string> sd_card_problems;
 
-	bool can_run() const { return errors.empty() && missing_media.empty(); }
+	bool can_run() const { return errors.empty() && missing_media.empty() && sd_card_problems.empty(); }
 
 	// machine_hint is the document's machine, used when the catalogue
 	// does not have the driver.

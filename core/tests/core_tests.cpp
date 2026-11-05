@@ -391,6 +391,10 @@ void test_checking(pinesy_core *core)
 		};
 		std::string at_max = problems(sdhc_max), over = problems(too_big);
 		check(at_max == "<null>", "a 32 GiB SD card image has no problem (Configuration.swift:454-466): " + at_max);
+		json::Value with_big = parse(pinesy_core_summary(core, args_json({ "specnext_ks3", "-hard1", too_big }).c_str(), nullptr));
+		check(member(with_big, "canRun") && !member(with_big, "canRun")->boolean(), "a configuration with an SD card image MAME cannot use cannot run (README.md:25)");
+		check(take(pinesy_core_sd_card_problem(too_big.c_str())) == over && take(pinesy_core_sd_card_problem(sdhc_max.c_str())).empty(),
+				"pinesy_core_sd_card_problem() gives the same reason as the summary");
 		check(over.find("Too big") != std::string::npos, "an SD card image of 32 GiB and 512 KiB is too big (Configuration.swift:468-475): " + over);
 		check(pinesy::core::sd_card::usable(std::uint64_t(1) << 21) && !pinesy::core::sd_card::usable((std::uint64_t(1) << 22) + 1),
 				"2 GiB is usable and 2 GiB and one block is not (spi_sdcard.cpp:250-251)");
@@ -402,6 +406,8 @@ void test_checking(pinesy_core *core)
 	json::Value summary = parse(pinesy_core_summary(core, args_json(start).c_str(), nullptr));
 	check(member(summary, "machine") && text_of(*member(summary, "machine"), "id") == "tbblue" && member(summary, "canRun")->boolean(),
 			"the summary of a new Next configuration names the Next and can run (Configuration.swift:257, 264)");
+	check(!slot_row(summary, "mdin") && !slot_row(summary, "mdthru") && !slot_row(summary, "mdout"),
+			"the Next's MIDI ports on the machine itself have no row (README.md:41, Configuration.swift:333-340)");
 	const json::Value *ram = slot_row(summary, "ram");
 	check(ram && text_of(*ram, "label") == "Memory", "the memory slot's row is labelled \"Memory\" (Configuration.swift:362-369)");
 

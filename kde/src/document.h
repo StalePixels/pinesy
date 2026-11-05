@@ -53,7 +53,9 @@ public:
 	Q_INVOKABLE void setSlot(const QString &slot, const QString &card);
 	Q_INVOKABLE void setCardRom(const QString &slot, const QString &bios);
 	// An empty path empties the media device.
-	Q_INVOKABLE void setMedia(const QString &media, const QString &path);
+	// Puts a file in a media device. An SD card image that MAME's SD card
+	// cannot use is refused: the reason is returned, and nothing changes.
+	Q_INVOKABLE QString setMedia(const QString &media, const QString &path);
 
 	// Read and write a .pinesy file. On failure they return the reason.
 	Q_INVOKABLE QString load(const QUrl &url);

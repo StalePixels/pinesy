@@ -262,9 +262,15 @@ std::vector<Summary::HardwareRow> hardware_rows(const std::vector<Slot> &slots)
 		return count;
 	};
 
+	// MIDI ports on the machine itself are not shown: MAME gives them to
+	// the Next for the UART of its joystick ports, which has no MIDI
+	// socket. A card's MIDI ports are its own sockets and are shown.
 	std::vector<const Slot *> shown;
 	for (const Slot &s : slots)
+	{
+		if (s.type == "midi_port" && s.parent.empty()) continue;
 		if (!(s.fixed || s.options.empty()) || !s.current.empty()) shown.push_back(&s);
+	}
 
 	std::vector<Summary::HardwareRow> rows;
 	for (const Slot *slot : shown)

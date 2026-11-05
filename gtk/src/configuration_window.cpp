@@ -584,15 +584,21 @@ AdwPreferencesGroup *ConfigurationWindow::media_group(const core::Summary &summa
 		std::string extensions;
 		for (const auto &ext : media.extension_list())
 			extensions += (extensions.empty() ? "." : " .") + ext;
-		adw_action_row_set_subtitle(ADW_ACTION_ROW(item), extensions.c_str());
-		adw_action_row_set_subtitle_lines(ADW_ACTION_ROW(item), 1);
-
+		std::string problem;
 		if (media.mandatory && media.current.empty())
-			adw_action_row_add_suffix(ADW_ACTION_ROW(item), warning_icon("This machine needs a file here before it can run."));
-		if (summary.missing_files.count(media.name))
-			adw_action_row_add_suffix(ADW_ACTION_ROW(item), warning_icon("This file is not there: " + media.current));
-		if (auto problem = summary.sd_card_problems.find(media.name); problem != summary.sd_card_problems.end())
-			adw_action_row_add_suffix(ADW_ACTION_ROW(item), warning_icon(problem->second));
+			problem = "This machine needs a file here before it can run.";
+		else if (summary.missing_files.count(media.name))
+			problem = "This file is not there.";
+		else if (auto found = summary.sd_card_problems.find(media.name); found != summary.sd_card_problems.end())
+			problem = found->second;
+		// a problem is the subtitle, in place of the extensions
+		adw_action_row_set_subtitle(ADW_ACTION_ROW(item), (problem.empty() ? extensions : problem).c_str());
+		adw_action_row_set_subtitle_lines(ADW_ACTION_ROW(item), problem.empty() ? 1 : 0);
+		if (!problem.empty())
+		{
+			gtk_widget_add_css_class(item, "error");
+			adw_action_row_add_suffix(ADW_ACTION_ROW(item), warning_icon(problem));
+		}
 
 		GtkWidget *file = gtk_label_new(media.current.empty() ? "Empty" : Glib::path_get_basename(media.current).c_str());
 		if (media.current.empty())
@@ -693,6 +699,14 @@ void ConfigurationWindow::choose_media(const core::Media &media)
 		if (alive.expired() || !file || file->get_path().empty())
 			return;
 		std::string path = file->get_path();
+		if (m_summary)
+			for (const auto &row : m_summary->media)
+				if (row.media.name == name && row.media.interface == "sdcard")
+					if (std::string problem = core::sd_card::problem(path); !problem.empty())
+					{
+						m_app.alert("This SD card image cannot be used", problem, &window());
+						return;
+					}
 		edit([this, name, path] { return core::editor::set_media(m_document.arguments, name, path); });
 	});
 }

@@ -4,7 +4,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension UTType {
-    static let pinesyConfiguration = UTType(exportedAs: "com.stalepixels.pinesy.configuration", conformingTo: .json)
+    static let pinesyConfiguration = UTType(exportedAs: "com.stalepixels.pinesy.configuration", conformingTo: .data)
 }
 
 struct ConfigurationDocument: FileDocument {

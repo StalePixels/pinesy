@@ -159,6 +159,11 @@ QStringList Core::setMedia(const QStringList &arguments, const QString &media, c
 			arguments);
 }
 
+QString Core::sdCardProblem(const QString &path)
+{
+	return QString::fromUtf8(take(pinesy_core_sd_card_problem(path.toUtf8().constData())));
+}
+
 QVariantMap Core::summary(const QStringList &arguments, const QString &machineHint)
 {
 	const QByteArray hint = machineHint.toUtf8();
