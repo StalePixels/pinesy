@@ -76,7 +76,7 @@ for folder in plugins hash bgfx artwork language; do
 done
 
 swiftc -swift-version 6 -O \
-	-target arm64-apple-macos27.2 \
+	-target arm64-apple-macos26.0 \
 	-I "$here/Sources/CPinesy" \
 	-L "$(dirname "$mame_lib")" -lmame_pinesy \
 	-Xlinker -rpath -Xlinker @executable_path/../Frameworks \
