@@ -3,6 +3,7 @@ Type=Application
 Name=Pi/Ne-Sy
 Comment=Configure and run emulated machines
 Exec=pinesy
+Icon=com.stalepixels.Pinesy
 Terminal=false
 Categories=Game;Emulator;
 MimeType=application/x-pinesy;

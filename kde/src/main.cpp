@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 	KAboutData about(QStringLiteral("pinesy"), i18n("Pi/Ne-Sy"), QStringLiteral(PINESY_VERSION));
 	about.setDesktopFileName(QStringLiteral("com.stalepixels.pinesy.kde"));
 	KAboutData::setApplicationData(about);
-	QGuiApplication::setWindowIcon(QIcon::fromTheme(QStringLiteral("computer")));
+	QGuiApplication::setWindowIcon(QIcon::fromTheme(QStringLiteral("com.stalepixels.pinesy.kde")));
 
 	createCore();
 

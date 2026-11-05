@@ -89,3 +89,9 @@ target_link_libraries(pinesy-kde PRIVATE
 install(TARGETS pinesy-kde ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 install(FILES com.stalepixels.pinesy.kde.desktop DESTINATION ${KDE_INSTALL_APPDIR})
 install(FILES com.stalepixels.pinesy.kde.xml DESTINATION ${KDE_INSTALL_MIMEDIR})
+# the app icon, from ../icons, under the app id
+foreach(_size 16 24 32 48 64 128 256 512)
+	install(FILES "${PINESY_PUBLIC_DIR}/icons/hicolor/${_size}x${_size}/apps/pinesy.png"
+		DESTINATION "${KDE_INSTALL_ICONDIR}/hicolor/${_size}x${_size}/apps"
+		RENAME com.stalepixels.pinesy.kde.png)
+endforeach()

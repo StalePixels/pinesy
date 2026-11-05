@@ -27,7 +27,7 @@ The executable is `<build-dir>/bin/pinesy-kde`.
 
 The core needs a resources folder. It holds the bundled ROM sets in `roms`, and MAME's search folders (`hash`, `plugins` and the others the core names). The cache variable `PINESY_RESOURCES_FOLDER` sets it. The default is `<build-dir>/resources`, which CMake makes at configure time with symbolic links to `../roms` and to MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders in `../mame`. These are the folders `../app/build.sh` copies into the macOS bundle. The path is compiled into the executable, so a build runs from its build folder.
 
-`cmake --install` installs the executable, the `.desktop` file and the MIME type, but the executable still reads the resources folder in the build folder. The Flatpak (below) installs its own resources folder.
+`cmake --install` installs the executable, the `.desktop` file, the MIME type and the app icon, but the executable still reads the resources folder in the build folder. The Flatpak (below) installs its own resources folder.
 
 ## Flatpak
 
@@ -117,7 +117,7 @@ With `-video none` there is no window and Qt is not started. Otherwise the machi
 
 ## Desktop file and MIME type
 
-`com.stalepixels.pinesy.kde.desktop` starts the app. `com.stalepixels.pinesy.kde.xml` defines the MIME type `application/x-pinesy-configuration` for `*.pinesy` files, a kind of `application/json`.
+`com.stalepixels.pinesy.kde.desktop` starts the app. The app icon is `../icons/hicolor/<size>x<size>/apps/pinesy.png`, installed as `com.stalepixels.pinesy.kde.png`; the desktop file and the windows use that icon name. `com.stalepixels.pinesy.kde.xml` defines the MIME type `application/x-pinesy-configuration` for `*.pinesy` files, a kind of `application/json`.
 
 The desktop file does not list the MIME type, so a file manager does not open `.pinesy` files with the app. Any argument starts headless mode, so a file path from a file manager would go to MAME as its command line.
 

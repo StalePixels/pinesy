@@ -41,6 +41,7 @@ void Application::on_startup()
 {
 	Gtk::Application::on_startup();
 	adw_init();
+	gtk_window_set_default_icon_name(PINESY_APP_ID);
 
 	add_action("new", [this] { new_configuration(); });
 	add_action("open", [this] { open(); });

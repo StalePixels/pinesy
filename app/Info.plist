@@ -23,6 +23,8 @@
 	<string>Pi/Ne-Sy</string>
 	<key>CFBundleExecutable</key>
 	<string>Pinesy</string>
+	<key>CFBundleIconFile</key>
+	<string>Pinesy</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.stalepixels.pinesy</string>
 	<key>CFBundleInfoDictionaryVersion</key>

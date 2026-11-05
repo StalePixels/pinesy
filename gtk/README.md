@@ -48,6 +48,8 @@ The data folder is `$XDG_DATA_HOME/pinesy` (by default `~/.local/share/pinesy`) 
 - `com.stalepixels.Pinesy.mime.xml`: the MIME type for `*.pinesy` files.
 - `com.stalepixels.Pinesy.service`: the D-Bus service file.
 
+The app icon is `../icons/hicolor/<size>x<size>/apps/pinesy.png`, installed as `com.stalepixels.Pinesy.png`. The desktop entry and the windows use that icon name.
+
 The CMake build does not install these files; the Flatpak does. The desktop entry sets `DBusActivatable=true`: a file manager opens a `.pinesy` file through D-Bus (`org.freedesktop.Application.Open`), not through the command line, because any command-line argument starts headless mode. The one exception is `--gapplication-service` alone, which D-Bus activation uses to start the app.
 
 ## Flatpak
@@ -77,7 +79,7 @@ In the Flatpak:
 
 - The resources folder is `/app/share/pinesy/resources`. `../flatpak/install-resources.sh` fills it with the content that `../app/build.sh` puts in the macOS bundle: the ROM sets from `../roms`, with the same check, and MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders.
 - The data folder is `~/.var/app/com.stalepixels.Pinesy/data/pinesy`.
-- The settings schema, the desktop entry, the MIME type and the D-Bus service file are installed. Flatpak exports the last three to the desktop.
+- The settings schema, the desktop entry, the MIME type, the D-Bus service file and the app icon are installed. Flatpak exports all but the schema to the desktop.
 - Copy Command Line gives `/app/bin/pinesy`, the path inside the Flatpak. Outside it, the command is `flatpak run com.stalepixels.Pinesy`.
 
 The permissions:

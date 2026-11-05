@@ -6,7 +6,7 @@
 # MAME_LIB overrides the library to bundle
 # (default: mame/libmame_pinesy.dylib in this repo).
 #
-# The bundle carries the ROM sets in ../roms in Contents/Resources/roms,
+# The bundle carries the app icon (Pinesy.icns), the ROM sets in ../roms in Contents/Resources/roms,
 # MAME's plugins, hash, bgfx, artwork and language folders in
 # Contents/Resources, and libmame_pinesy.dylib and every library it needs outside /usr/lib
 # and /System in Contents/Frameworks. Their install
@@ -26,6 +26,7 @@ frameworks=$contents/Frameworks
 rm -rf "$app"
 mkdir -p "$contents/MacOS" "$contents/Resources" "$frameworks"
 cp "$here/Info.plist" "$contents/Info.plist"
+cp "$here/Pinesy.icns" "$contents/Resources/Pinesy.icns"
 
 # The ROM sets ship in the bundle: one zip, 7z or folder of ROM dumps per
 # set. Disk images (SD cards, hard disks, floppies) never ship, loose or

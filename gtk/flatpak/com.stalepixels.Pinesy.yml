@@ -150,6 +150,7 @@ modules:
       - install -Dm644 gtk/data/com.stalepixels.Pinesy.gschema.xml /app/share/glib-2.0/schemas/com.stalepixels.Pinesy.gschema.xml
       - glib-compile-schemas --strict /app/share/glib-2.0/schemas
       - install -Dm644 gtk/data/com.stalepixels.Pinesy.desktop /app/share/applications/com.stalepixels.Pinesy.desktop
+      - for size in 16 24 32 48 64 128 256 512; do install -Dm644 icons/hicolor/${size}x${size}/apps/pinesy.png /app/share/icons/hicolor/${size}x${size}/apps/com.stalepixels.Pinesy.png; done
       - install -Dm644 gtk/data/com.stalepixels.Pinesy.mime.xml /app/share/mime/packages/com.stalepixels.Pinesy.xml
       - install -Dm644 gtk/data/com.stalepixels.Pinesy.service /app/share/dbus-1/services/com.stalepixels.Pinesy.service
     sources:
