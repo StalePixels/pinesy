@@ -16,6 +16,8 @@
 
 #include "pinesy.h"
 
+#include "hostmonitor.h"
+
 #include <cstdint>
 #include <iterator>
 
@@ -184,6 +186,11 @@ uint32_t MacDisplayIDForWindow(void *wincontroller)
 }
 
 bool MacGetDisplayWorkArea(uint32_t displayID, int *x, int *y, int *width, int *height)
+{
+	return false;
+}
+
+bool host_display_area(osd_rect &area, osd_rect &work)
 {
 	return false;
 }

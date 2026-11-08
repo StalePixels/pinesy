@@ -6,3 +6,6 @@
 	path = mame
 	url = git@github.com:StalePixels/mame.git
 	branch = pinesy
+[submodule "vendor/rpi-utils"]
+	path = vendor/rpi-utils
+	url = https://github.com/raspberrypi/utils.git

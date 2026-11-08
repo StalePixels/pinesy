@@ -21,6 +21,8 @@
 
 #include "pinesy.h"
 
+#include "hostmonitor.h"
+
 #include <cstdint>
 
 
@@ -254,6 +256,23 @@ bool MacGetDisplayWorkArea(uint32_t displayID, int *x, int *y, int *width, int *
 	*height = (int)visible.size.height;
 
 	return true;
+}
+
+bool host_display_area(osd_rect &area, osd_rect &work)
+{
+	NSScreen *screen = [NSScreen mainScreen];
+
+	if (screen == nil)
+		return false;
+
+	// AppKit puts the origin at the bottom left of the first screen
+	CGFloat const top = NSMaxY([[[NSScreen screens] firstObject] frame]);
+	NSRect const frame = [screen frame];
+	NSRect const visible = [screen visibleFrame];
+	area = osd_rect(int(frame.origin.x), int(top - NSMaxY(frame)), int(frame.size.width), int(frame.size.height));
+	work = osd_rect(int(visible.origin.x), int(top - NSMaxY(visible)), int(visible.size.width), int(visible.size.height));
+
+	return area.width() > 0 && area.height() > 0;
 }
 
 

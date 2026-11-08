@@ -73,6 +73,12 @@ modules:
           - mame/3rdparty/genie/build/gmake.linux/obj
           - qemu/.git
           - qemu/roms
+      # QEMU's dtc subproject (qemu/subprojects/dtc.wrap). Meson cannot
+      # fetch it in the build sandbox, so the manifest does.
+      - type: git
+        url: https://gitlab.com/qemu-project/dtc.git
+        commit: b6910bec11614980a21e46fbccc35934b671bd81
+        dest: qemu/subprojects/dtc
 
   # the core and the app
   - name: pinesy-kde

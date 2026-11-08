@@ -206,6 +206,28 @@ project ("osd_" .. _OPTIONS["osd"])
 		MAME_DIR .. "../engine/include/pinesy.h",
 		MAME_DIR .. "../engine/osd/pinesymain.cpp",
 		MAME_DIR .. "../engine/osd/pinesyinfo.cpp",
+		MAME_DIR .. "../engine/osd/hostmonitor.cpp",
+		MAME_DIR .. "../engine/osd/hostmonitor.h",
+	}
+
+	-- Raspberry Pi's dtoverlay library, for the nextpi card's config.txt
+	-- overlays and parameters; libfdt comes with QEMU
+	includedirs {
+		MAME_DIR .. "../qemu/subprojects/dtc/libfdt",
+	}
+	files {
+		MAME_DIR .. "../vendor/rpi-utils/dtmerge/dtoverlay.c",
+		MAME_DIR .. "../vendor/rpi-utils/dtmerge/dtoverlay.h",
+	}
+	-- MAME's warnings are errors; these two fire in dtoverlay.c and libfdt.h
+	buildoptions_c {
+		"-Wno-bad-function-cast",
+		"-Wno-pointer-arith",
+	}
+
+	-- hostmonitor.cpp defines MONITOR_MAC
+	removefiles {
+		MAME_DIR .. "src/osd/modules/monitor/monitor_mac.cpp",
 	}
 
 	if PINESY_MACOS then
@@ -222,9 +244,6 @@ project ("osd_" .. _OPTIONS["osd"])
 			MAME_DIR .. "../engine/osd/input_evdev.cpp",
 			MAME_DIR .. "../engine/osd/linuxmain.cpp",
 			MAME_DIR .. "../engine/osd/linuxmodules.cpp",
-		}
-		removefiles {
-			MAME_DIR .. "src/osd/modules/monitor/monitor_mac.cpp",
 		}
 	end
 

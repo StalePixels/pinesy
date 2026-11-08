@@ -46,6 +46,9 @@ modules:
   - name: libsigc++
     buildsystem: meson
     config-opts:
+      # flatpak-builder 1.4.2 leaves meson's libdir at lib64, where
+      # pkg-config in the SDK does not look
+      - -Dlibdir=lib
       - -Dbuild-documentation=false
       - -Dbuild-examples=false
       - -Dbuild-tests=false
@@ -57,6 +60,7 @@ modules:
   - name: glibmm
     buildsystem: meson
     config-opts:
+      - -Dlibdir=lib
       - -Dbuild-documentation=false
       - -Dbuild-examples=false
     sources:
@@ -67,6 +71,7 @@ modules:
   - name: cairomm
     buildsystem: meson
     config-opts:
+      - -Dlibdir=lib
       - -Dbuild-documentation=false
       - -Dbuild-examples=false
       - -Dbuild-tests=false
@@ -78,6 +83,7 @@ modules:
   - name: pangomm
     buildsystem: meson
     config-opts:
+      - -Dlibdir=lib
       - -Dbuild-documentation=false
     sources:
       - type: archive
@@ -87,6 +93,7 @@ modules:
   - name: gtkmm
     buildsystem: meson
     config-opts:
+      - -Dlibdir=lib
       - -Dbuild-documentation=false
       - -Dbuild-demos=false
       - -Dbuild-tests=false
@@ -136,6 +143,12 @@ modules:
           - mame/3rdparty/genie/build/gmake.linux/obj
           - qemu/.git
           - qemu/roms
+      # QEMU's dtc subproject (qemu/subprojects/dtc.wrap). Meson cannot
+      # fetch it in the build sandbox, so the manifest does.
+      - type: git
+        url: https://gitlab.com/qemu-project/dtc.git
+        commit: b6910bec11614980a21e46fbccc35934b671bd81
+        dest: qemu/subprojects/dtc
 
   # the core and the app
   - name: pinesy
