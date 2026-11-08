@@ -75,6 +75,11 @@ function maintargetosdoptions(_target,_subtarget)
 			"-Wl,-soname,lib" .. libname .. ".so",
 			"-Wl,-z,defs",
 		}
+		-- libfdt is in QEMU's deps archive, which the link reads before
+		-- the osd library; only dtoverlay.c there uses fdt_empty_tree.o
+		linkoptions {
+			"-Wl,-u,fdt_create_empty_tree",
+		}
 		for _, fn in ipairs(exports) do
 			linkoptions {
 				"-Wl,-u,pinesy_" .. fn,
