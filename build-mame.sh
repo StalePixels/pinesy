@@ -25,8 +25,16 @@ here=$(cd "$(dirname "$0")" && pwd)
 mame=$here/mame
 conf=$here/build-mame.conf
 
+# mame, qemu and vendor/rpi-utils build at the commits this repo pins.
+# A pull moves the pins, not the checkouts, so put each submodule on its
+# pin first. Not --recursive: qemu's own submodules are firmware sources
+# that this build does not use.
+if [ -e "$here/.git" ]; then
+	git -C "$here" submodule update --init
+fi
+
 if [ ! -f "$mame/makefile" ]; then
-	echo "build-mame: $mame is empty; run: git submodule update --init mame" >&2
+	echo "build-mame: $mame is empty; run: git submodule update --init" >&2
 	exit 1
 fi
 

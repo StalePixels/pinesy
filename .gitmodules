@@ -1,10 +1,10 @@
 [submodule "qemu"]
 	path = qemu
-	url = git@github.com:StalePixels/qemu.git
+	url = https://github.com/StalePixels/qemu.git
 	branch = pinesy
 [submodule "mame"]
 	path = mame
-	url = git@github.com:StalePixels/mame.git
+	url = https://github.com/StalePixels/mame.git
 	branch = pinesy
 [submodule "vendor/rpi-utils"]
 	path = vendor/rpi-utils
