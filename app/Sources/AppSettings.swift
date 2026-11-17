@@ -93,7 +93,7 @@ private struct GeneralSettings: View {
             } header: {
                 Text("ROM folders")
             } footer: {
-                Text("Pinesy looks for machine ROMs in the ROM sets it comes with, then in \(MAMEPaths.userROMs(dataFolderURL).path), then in these folders.")
+                Text("Pinesy also looks for ROMs in these folders.")
                     .foregroundStyle(.secondary)
             }
 
@@ -111,9 +111,6 @@ private struct GeneralSettings: View {
                 }
             } header: {
                 Text("Machine settings and snapshots")
-            } footer: {
-                Text("MAME keeps each machine's settings, memory contents and snapshots in this folder.")
-                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -167,7 +164,7 @@ private struct DebuggerSettings: View {
                         if clamped != gdbPort { gdbPort = clamped }
                     }
             } footer: {
-                Text("With the GDB remote stub, the machine waits for a GDB client to connect to this port.")
+                Text("GDB clients connect to this port.")
                     .foregroundStyle(.secondary)
             }
         }

@@ -66,8 +66,7 @@ Kirigami.ScrollablePage {
                 wrapMode: Text.Wrap
                 color: Kirigami.Theme.disabledTextColor
                 font: Kirigami.Theme.smallFont
-                text: i18n("Pi/Ne-Sy looks for machine ROMs in the ROM sets it comes with, then in %1, then in these folders.",
-                           Core.userRomFolder)
+                text: i18n("Pi/Ne-Sy also looks for ROMs in these folders.")
             }
         }
 
@@ -95,14 +94,6 @@ Kirigami.ScrollablePage {
                     text: i18nc("@action:button", "Use Default")
                     onClicked: Core.setDataFolder("")
                 }
-            }
-            QQC2.Label {
-                Layout.fillWidth: true
-                Layout.maximumWidth: Kirigami.Units.gridUnit * 24
-                wrapMode: Text.Wrap
-                color: Kirigami.Theme.disabledTextColor
-                font: Kirigami.Theme.smallFont
-                text: i18n("MAME keeps each machine's settings, memory contents and snapshots in this folder.")
             }
         }
     }

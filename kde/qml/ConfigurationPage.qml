@@ -236,7 +236,7 @@ Kirigami.Page {
                         readonly property bool missing: (page.summary.missingFiles ?? []).indexOf(media.name) >= 0
                         readonly property string sdCardProblem: (page.summary.sdCardProblems ?? {})[media.name] ?? ""
                         readonly property string problem: needed ? i18n("This machine needs a file here before it can run.")
-                                                        : missing ? i18n("This file is not there.")
+                                                        : missing ? i18n("File not found: %1", media.current)
                                                                   : sdCardProblem
                         Kirigami.FormData.label: modelData.label + ":"
                         spacing: 0
@@ -274,6 +274,8 @@ Kirigami.Page {
                         }
                         QQC2.Label {
                             visible: mediaRow.problem !== ""
+                            Layout.maximumWidth: Kirigami.Units.gridUnit * 20
+                            wrapMode: Text.WrapAnywhere
                             text: mediaRow.problem
                             color: Kirigami.Theme.negativeTextColor
                             font: Kirigami.Theme.smallFont
@@ -307,13 +309,6 @@ Kirigami.Page {
                         text: page.document.commandLine
                         font.family: "monospace"
                         wrapMode: Text.WrapAnywhere
-                    }
-                    QQC2.Label {
-                        Layout.fillWidth: true
-                        text: i18n("The same machine, run headless from a terminal.")
-                        color: Kirigami.Theme.disabledTextColor
-                        font: Kirigami.Theme.smallFont
-                        wrapMode: Text.Wrap
                     }
                     QQC2.Button {
                         text: i18nc("@action:button", "Copy Command Line")

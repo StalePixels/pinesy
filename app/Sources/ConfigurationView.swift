@@ -208,9 +208,6 @@ struct ConfigurationView: View {
                 }
             } header: {
                 Text("Command line")
-            } footer: {
-                Text("The same machine, run headless from a terminal.")
-                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -318,7 +315,7 @@ struct ConfigurationView: View {
         let media = row.media
         let problem: String? = media.mandatory && media.current.isEmpty
             ? "This machine needs a file here before it can run."
-            : missing ? "This file is not there."
+            : missing ? "File not found: \(media.current)"
             : sdCardProblem
         LabeledContent {
             HStack(spacing: 6) {
@@ -348,6 +345,8 @@ struct ConfigurationView: View {
                     Text(problem)
                         .font(.caption)
                         .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
                 }
                 Text(media.extensionList.map { "." + $0 }.joined(separator: " "))
                     .font(.caption)

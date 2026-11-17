@@ -45,7 +45,7 @@ Kirigami.ScrollablePage {
             wrapMode: Text.Wrap
             color: Kirigami.Theme.disabledTextColor
             font: Kirigami.Theme.smallFont
-            text: i18n("With the GDB remote stub, the machine waits for a GDB client to connect to this port.")
+            text: i18n("GDB clients connect to this port.")
         }
     }
 }

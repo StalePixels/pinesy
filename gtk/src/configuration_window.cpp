@@ -588,7 +588,7 @@ AdwPreferencesGroup *ConfigurationWindow::media_group(const core::Summary &summa
 		if (media.mandatory && media.current.empty())
 			problem = "This machine needs a file here before it can run.";
 		else if (summary.missing_files.count(media.name))
-			problem = "This file is not there.";
+			problem = "File not found: " + media.current;
 		else if (auto found = summary.sd_card_problems.find(media.name); found != summary.sd_card_problems.end())
 			problem = found->second;
 		// a problem is the subtitle, in place of the extensions
@@ -635,7 +635,6 @@ AdwPreferencesGroup *ConfigurationWindow::command_line_group()
 {
 	auto group = ADW_PREFERENCES_GROUP(adw_preferences_group_new());
 	adw_preferences_group_set_title(group, "Command line");
-	adw_preferences_group_set_description(group, "The same machine, run headless from a terminal.");
 
 	GtkWidget *copy = gtk_button_new_from_icon_name("edit-copy-symbolic");
 	gtk_widget_add_css_class(copy, "flat");

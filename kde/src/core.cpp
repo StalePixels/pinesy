@@ -244,11 +244,6 @@ QString Core::dataFolder() const
 	return QString::fromUtf8(take(pinesy_core_data_folder(m_core)));
 }
 
-QString Core::userRomFolder() const
-{
-	return QString::fromUtf8(take(pinesy_core_user_rom_folder(dataFolder().toUtf8().constData())));
-}
-
 QString Core::debugger() const
 {
 	return m_debugger;

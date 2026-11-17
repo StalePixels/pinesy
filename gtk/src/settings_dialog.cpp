@@ -18,11 +18,6 @@ namespace pinesy::gtk {
 
 namespace {
 
-std::string escaped(const std::string &text)
-{
-	return Glib::Markup::escape_text(text).raw();
-}
-
 class SettingsDialog
 {
 public:
@@ -68,8 +63,7 @@ SettingsDialog::SettingsDialog(Glib::RefPtr<Gio::Settings> settings) : m_setting
 	adw_preferences_page_set_icon_name(debugger, "system-run-symbolic");
 	auto group = ADW_PREFERENCES_GROUP(adw_preferences_group_new());
 	adw_preferences_group_set_title(group, "Run with Debugger uses");
-	adw_preferences_group_set_description(group,
-			"With the GDB remote stub, the machine waits for a GDB client to connect to this port.");
+	adw_preferences_group_set_description(group, "GDB clients connect to this port.");
 
 	auto choice_row = [group](const char *title, const char *subtitle, GtkWidget *check) {
 		GtkWidget *row = adw_action_row_new();
@@ -137,9 +131,7 @@ void SettingsDialog::build_general()
 
 	m_rom_group = ADW_PREFERENCES_GROUP(adw_preferences_group_new());
 	adw_preferences_group_set_title(m_rom_group, "ROM folders");
-	adw_preferences_group_set_description(m_rom_group, escaped(
-			"Pinesy looks for machine ROMs in the ROM sets it comes with, then in "
-			+ core::paths::user_roms(shown_data) + ", then in these folders.").c_str());
+	adw_preferences_group_set_description(m_rom_group, "Pinesy also looks for ROMs in these folders.");
 	GtkWidget *add = gtk_button_new_from_icon_name("list-add-symbolic");
 	gtk_widget_add_css_class(add, "flat");
 	gtk_widget_set_valign(add, GTK_ALIGN_CENTER);
@@ -182,8 +174,6 @@ void SettingsDialog::build_general()
 
 	m_data_group = ADW_PREFERENCES_GROUP(adw_preferences_group_new());
 	adw_preferences_group_set_title(m_data_group, "Machine settings and snapshots");
-	adw_preferences_group_set_description(m_data_group,
-			"MAME keeps each machine’s settings, memory contents and snapshots in this folder.");
 	GtkWidget *row = adw_action_row_new();
 	adw_preferences_row_set_use_markup(ADW_PREFERENCES_ROW(row), FALSE);
 	adw_preferences_row_set_title(ADW_PREFERENCES_ROW(row), "Folder");

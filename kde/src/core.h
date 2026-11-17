@@ -20,7 +20,6 @@ class Core : public QObject
 	Q_PROPERTY(QStringList romFolders READ romFolders NOTIFY settingsChanged)
 	Q_PROPERTY(QString dataFolderSetting READ dataFolderSetting NOTIFY settingsChanged)
 	Q_PROPERTY(QString dataFolder READ dataFolder NOTIFY settingsChanged)
-	Q_PROPERTY(QString userRomFolder READ userRomFolder NOTIFY settingsChanged)
 	Q_PROPERTY(QString debugger READ debugger WRITE setDebugger NOTIFY settingsChanged)
 	Q_PROPERTY(int gdbPort READ gdbPort WRITE setGdbPort NOTIFY settingsChanged)
 	Q_PROPERTY(int minGdbPort READ minGdbPort CONSTANT)
@@ -58,7 +57,6 @@ public:
 	QStringList romFolders() const { return m_romFolders; }
 	QString dataFolderSetting() const { return m_dataFolder; }
 	QString dataFolder() const;
-	QString userRomFolder() const;
 	QString debugger() const;
 	int gdbPort() const;
 	int minGdbPort() const { return PINESY_CORE_MIN_GDB_PORT; }
