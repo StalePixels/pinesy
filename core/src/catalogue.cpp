@@ -20,8 +20,11 @@
 //  - Sections. Machines are grouped by their first maker, and
 //    a clone joins its parent's section when they share a
 //    maker. Makers with one product (a machine with models
-//    counts each model) go into "Other makers". Sections and
-//    machines are in year order.
+//    counts each model) go into "Other makers". A maker that
+//    MAME does not name as the maker gets its own section by
+//    the driver's source file (Byte, for sinclair/byte.cpp),
+//    with any number of products. Sections and machines are in
+//    year order.
 //  - Starting configuration. A port where MAME fits the same
 //    card on every model of a machine family is MAME's
 //    convenience, not part of any product, so a new
@@ -36,6 +39,8 @@
 #include "pinesy_core.hpp"
 
 #include <algorithm>
+#include <map>
+#include <set>
 #include <tuple>
 
 namespace pinesy::core {
@@ -253,12 +258,29 @@ Catalogue::Catalogue(const std::vector<DriverInfo> &list)
 		first_maker[m.id] = list.empty() ? m.manufacturer : list.front();
 	}
 
+	// Makers MAME does not name as the maker, by the driver's source
+	// file. Each has its own section, however many products it has.
+	static const std::map<std::string, std::string> maker_by_source = {
+		{ "sinclair/byte.cpp", "Byte" },
+	};
+	std::set<std::string> own_sections;
+
 	// a clone joins its parent's section when the two share a maker
 	std::map<std::string, std::string> section_of;
 	for (const Machine &m : m_machines)
 	{
 		std::string section = first_maker[m.id];
 		const DriverInfo *info = driver(m.id);
+		if (info)
+		{
+			auto maker = maker_by_source.find(info->sourcefile);
+			if (maker != maker_by_source.end())
+			{
+				section_of[m.id] = maker->second;
+				own_sections.insert(maker->second);
+				continue;
+			}
+		}
 		if (info && info->cloneof)
 		{
 			auto parent = std::find_if(m_machines.begin(), m_machines.end(), [&](const Machine &p) { return p.id == *info->cloneof; });
@@ -284,7 +306,7 @@ Catalogue::Catalogue(const std::vector<DriverInfo> &list)
 	for (const Machine &m : m_machines)
 	{
 		const std::string &section = section_of[m.id];
-		bool other = products[section] < 2 || starts_with(section, "<");
+		bool other = !own_sections.count(section) && (products[section] < 2 || starts_with(section, "<"));
 		grouped[other ? other_makers : section].push_back(m);
 	}
 
