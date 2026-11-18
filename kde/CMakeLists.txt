@@ -54,6 +54,8 @@ set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 include(KDEInstallDirs)
 include(KDECMakeSettings)
 include(KDECompilerSettings NO_POLICY_SCOPE)
+# the executable is <build-dir>/bin/pinesy-kde
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Widgets)
 find_package(KF6 6.8 REQUIRED COMPONENTS Kirigami Config CoreAddons I18n)
 qt_standard_project_setup(REQUIRES 6.8)

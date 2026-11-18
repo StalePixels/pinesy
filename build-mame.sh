@@ -28,26 +28,6 @@ here=$(cd "$(dirname "$0")" && pwd)
 mame=$here/mame
 conf=$here/build-mame.conf
 
-# mame, qemu and vendor/rpi-utils build at the commits this repo pins.
-# A pull moves the pins, not the checkouts, so put each submodule on its
-# pin first. Not --recursive: qemu's own submodules are firmware sources
-# that this build does not use.
-if [ -e "$here/.git" ]; then
-	git -C "$here" submodule update --init
-fi
-
-if [ ! -f "$mame/makefile" ]; then
-	echo "build-mame: $mame is empty; run: git submodule update --init" >&2
-	exit 1
-fi
-
-. "$conf"
-if [ -z "$SOURCES" ]; then
-	echo "build-mame: SOURCES is empty in $conf" >&2
-	exit 1
-fi
-sources=$SOURCES
-
 qt=0
 gtk=0
 if [ "$1" = "--qt" ]; then
@@ -72,6 +52,49 @@ for arg in "$@"; do
 			;;
 	esac
 done
+
+# On Linux, check what the build needs before it starts. A missing
+# compiler otherwise shows up deep in MAME's build, as an error about the
+# GCC version. The check names the package of this OS for each missing
+# part (cmake/PinesyEngineCheck.cmake).
+if [ "$(uname -s)" != Darwin ]; then
+	if ! command -v cmake >/dev/null 2>&1; then
+		echo "build-mame: cmake is not installed. Install the cmake package of your distribution." >&2
+		exit 1
+	fi
+	flavour=plain
+	[ $qt = 1 ] && flavour=qt
+	[ $gtk = 1 ] && flavour=gtk
+	qt_home=""
+	for arg in "$@"; do
+		case "$arg" in QT_HOME=*) qt_home=${arg#QT_HOME=} ;; esac
+	done
+	report=$(cmake -DFLAVOUR=$flavour -DQT_HOME="$qt_home" -P "$here/cmake/PinesyEngineCheck.cmake" 2>&1)
+	if [ -n "$report" ]; then
+		printf '%s\n' "$report" >&2
+		exit 1
+	fi
+fi
+
+# mame, qemu and vendor/rpi-utils build at the commits this repo pins.
+# A pull moves the pins, not the checkouts, so put each submodule on its
+# pin first. Not --recursive: qemu's own submodules are firmware sources
+# that this build does not use.
+if [ -e "$here/.git" ]; then
+	git -C "$here" submodule update --init
+fi
+
+if [ ! -f "$mame/makefile" ]; then
+	echo "build-mame: $mame is empty; run: git submodule update --init" >&2
+	exit 1
+fi
+
+. "$conf"
+if [ -z "$SOURCES" ]; then
+	echo "build-mame: SOURCES is empty in $conf" >&2
+	exit 1
+fi
+sources=$SOURCES
 
 # every object goes into a shared library, so on Linux all code is PIC
 extra=()

@@ -6,6 +6,7 @@
 - Xcode, or Xcode's command line tools, version 26 or later.
 - From Homebrew: `python`, `ccache`, `ninja`, `glib` and `pkgconf`.
 - Network access on the first build.
+- For the core tests only: `cmake`, from Homebrew.
 
 ## Build
 

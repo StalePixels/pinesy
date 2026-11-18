@@ -1,8 +1,9 @@
 # Tells the user what to install when the packages an app needs are missing.
 #
 #   pinesy_missing_message(<out> <app> <entries>...)
-#     Each entry is "<what>|<file>|<version>": what the app needs, the file
-#     its CMake or pkg-config lookup reads, and the minimum version. For
+#     Each entry is "<what>|<file>|<version>": what the build needs, the
+#     file its lookup reads (a file name, or the full path of a program),
+#     and the minimum version. For
 #     each entry the package of this OS that has the file is looked up,
 #     with the version the OS has. <out> gets the message: what to
 #     install, what is too old on this OS, and what this OS does not have.
@@ -13,6 +14,28 @@
 # file: dnf, pacman (with its file database) or apt-file. Debian, Ubuntu
 # and the systems based on them, without apt-file, use the file search of
 # packages.debian.org or packages.ubuntu.com.
+
+# The version in a library's pkg-config file, read without pkg-config, so
+# libraries can be checked when pkg-config itself is missing. Empty when
+# the file is not there.
+function(pinesy_pc_version module out)
+	set(${out} "" PARENT_SCOPE)
+	file(GLOB _files
+		/usr/lib/pkgconfig/${module}.pc /usr/lib/*/pkgconfig/${module}.pc
+		/usr/lib64/pkgconfig/${module}.pc /usr/share/pkgconfig/${module}.pc
+		/usr/local/lib/pkgconfig/${module}.pc /usr/local/lib/*/pkgconfig/${module}.pc
+		/usr/local/share/pkgconfig/${module}.pc)
+	if(_files)
+		list(GET _files 0 _file)
+		file(STRINGS "${_file}" _lines REGEX "^Version:")
+		set(_version "0")
+		if(_lines)
+			list(GET _lines 0 _line)
+			string(REGEX REPLACE "^Version:[ \t]*" "" _version "${_line}")
+		endif()
+		set(${out} "${_version}" PARENT_SCOPE)
+	endif()
+endfunction()
 
 function(_pinesy_os_release key out)
 	set(${out} "" PARENT_SCOPE)
@@ -35,9 +58,18 @@ endfunction()
 
 function(_pinesy_download url out)
 	set(${out} "" PARENT_SCOPE)
-	set(_page "${CMAKE_BINARY_DIR}/pinesy-package-search.html")
-	foreach(_try 1 2)
-		file(DOWNLOAD "${url}" "${_page}" TIMEOUT 30 STATUS _status)
+	if(CMAKE_BINARY_DIR)
+		set(_page "${CMAKE_BINARY_DIR}/pinesy-package-search.html")
+	else()
+		string(RANDOM _name)
+		set(_page "/tmp/pinesy-package-search-${_name}.html")
+	endif()
+	# the package sites are sometimes slow to answer, so try a few times
+	foreach(_try 1 2 3 4)
+		if(_try GREATER 1)
+			execute_process(COMMAND ${CMAKE_COMMAND} -E sleep 3)
+		endif()
+		file(DOWNLOAD "${url}" "${_page}" TIMEOUT 45 STATUS _status)
 		list(GET _status 0 _code)
 		if(_code EQUAL 0)
 			file(READ "${_page}" _html)
@@ -65,9 +97,16 @@ function(_pinesy_lookup file prefix)
 	_pinesy_os_release(ID_LIKE _id_like)
 
 	if(_PINESY_DNF)
-		execute_process(COMMAND ${_PINESY_DNF} -q provides "*/${file}"
+		if(file MATCHES "^/")
+			set(_query "${file}")
+		else()
+			set(_query "*/${file}")
+		endif()
+		execute_process(COMMAND ${_PINESY_DNF} -q provides "${_query}"
 			RESULT_VARIABLE _result OUTPUT_VARIABLE _output ERROR_QUIET TIMEOUT 180)
-		# "kf6-ki18n-devel-6.8.0-1.fc41.x86_64 : ..."
+		# "kf6-ki18n-devel-6.8.0-1.fc41.x86_64 : ...". Packages for cross
+		# builds (mingw32-, mingw64-) have the same files under another root.
+		string(REGEX REPLACE "(^|\n)mingw[^\n]*" "" _output "${_output}")
 		if(_output MATCHES "(^|\n)([A-Za-z0-9_.+-]+)-([0-9][^-]*)-[^- ]+ :")
 			set(_state FOUND)
 			set(_package "${CMAKE_MATCH_2}")
@@ -76,10 +115,18 @@ function(_pinesy_lookup file prefix)
 			set(_state NONE)
 		endif()
 	elseif(_PINESY_PACMAN)
-		execute_process(COMMAND ${_PINESY_PACMAN} -F "${file}"
+		string(REGEX REPLACE "^/" "" _query "${file}")
+		execute_process(COMMAND ${_PINESY_PACMAN} -F "${_query}"
 			OUTPUT_VARIABLE _output ERROR_VARIABLE _error TIMEOUT 60)
-		# "extra/ki18n 6.8.0-1"
-		if(_output MATCHES "^[^/\n]+/([^ \n]+) ([^ \n]+)")
+		# a path: "usr/bin/clang is owned by extra/clang 23.1.5-1";
+		# a file name: "extra/ki18n 6.8.0-1"
+		# (separate tests: if() evaluates both sides of an OR, and the
+		# second match would overwrite the first one's CMAKE_MATCH_n)
+		if(_output MATCHES "is owned by [^/ \n]+/([^ \n]+) ([^ \n]+)")
+			set(_state FOUND)
+			set(_package "${CMAKE_MATCH_1}")
+			set(_version "${CMAKE_MATCH_2}")
+		elseif(_output MATCHES "^[^/ \n]+/([^ \n]+) ([^ \n]+)")
 			set(_state FOUND)
 			set(_package "${CMAKE_MATCH_1}")
 			set(_version "${CMAKE_MATCH_2}")
@@ -87,7 +134,12 @@ function(_pinesy_lookup file prefix)
 			set(_state NONE)
 		endif()
 	elseif(_PINESY_APT_FILE AND _PINESY_APT_CACHE)
-		execute_process(COMMAND ${_PINESY_APT_FILE} -l search "/${file}"
+		if(file MATCHES "^/")
+			set(_pattern "^${file}$")
+		else()
+			set(_pattern "/${file}$")
+		endif()
+		execute_process(COMMAND ${_PINESY_APT_FILE} -l search -x "${_pattern}"
 			RESULT_VARIABLE _result OUTPUT_VARIABLE _output ERROR_QUIET TIMEOUT 180)
 		string(REGEX MATCH "^[^\n]+" _package "${_output}")
 		if(_package)
@@ -113,8 +165,21 @@ function(_pinesy_lookup file prefix)
 			_pinesy_os_release(VERSION_CODENAME _suite)
 		endif()
 		if(_host AND _suite)
-			_pinesy_download("https://${_host}/search?searchon=contents&keywords=${file}&mode=exactfilename&suite=${_suite}&arch=any" _html)
-			if(_html MATCHES "class=\"keyword\">${file}</span></td>[ \t\r\n]*<td>[ \t\r\n]*<a href=\"/${_suite}/([^\"]+)\"")
+			# the file name goes into a regular expression
+			string(REGEX REPLACE "([][+.*?^$()|\\\\])" "\\\\\\1" _escaped "${file}")
+			# "+" means a space in a URL
+			string(REPLACE "+" "%2B" _url_file "${file}")
+			if(file MATCHES "^/")
+				string(REGEX REPLACE "^/" "" _keyword "${file}")
+				string(REGEX REPLACE "^/" "" _url_keyword "${_url_file}")
+				string(REGEX REPLACE "^/" "" _escaped "${_escaped}")
+				_pinesy_download("https://${_host}/search?searchon=contents&keywords=${_url_keyword}&mode=path&suite=${_suite}&arch=any" _html)
+				set(_row "<td class=\"file\">/<span class=\"keyword\">${_escaped}</span></td>")
+			else()
+				_pinesy_download("https://${_host}/search?searchon=contents&keywords=${_url_file}&mode=exactfilename&suite=${_suite}&arch=any" _html)
+				set(_row "class=\"keyword\">${_escaped}</span></td>")
+			endif()
+			if(_html MATCHES "${_row}[ \t\r\n]*<td>[ \t\r\n]*<a href=\"/${_suite}/([^\"]+)\"")
 				set(_package "${CMAKE_MATCH_1}")
 				_pinesy_download("https://${_host}/${_suite}/${_package}" _page)
 				if(_page MATCHES "<h1>Package: ${_package} \\(([^)]+)\\)")
@@ -188,6 +253,7 @@ function(pinesy_missing_message out app)
 	else()
 		if(_install)
 			list(JOIN _install "\n  " _text)
+			list(REMOVE_DUPLICATES _packages)
 			list(JOIN _packages " " _list)
 			if(_PINESY_DNF)
 				set(_command "sudo dnf install ${_list}")
@@ -201,6 +267,9 @@ function(pinesy_missing_message out app)
 		if(_unknown)
 			list(JOIN _unknown "\n  " _text)
 			string(APPEND _message "Also install these. The packages of ${_os} could not be searched, so find the package that has each file:\n  ${_text}\n")
+			if(_PINESY_PACMAN)
+				string(APPEND _message "\npacman searches files after its file database is downloaded: run sudo pacman -Fy, then build again, and this list names the packages.\n")
+			endif()
 		endif()
 	endif()
 	set(${out} "${_message}" PARENT_SCOPE)
