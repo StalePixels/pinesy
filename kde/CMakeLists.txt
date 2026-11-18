@@ -15,9 +15,9 @@ add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../core" core)
 
 # Every package the app needs, each looked for on its own, so one
 # configure lists every package that is missing. Each has its CMake name,
-# its minimum version, and the name of the project it comes from, which
-# is the name distributions give their packages.
-set(_projects "")
+# its minimum version, and the name of its project, which is the name
+# distributions give their packages.
+set(_missing "")
 foreach(_package IN ITEMS
 		"ECM|6.0|KDE: extra-cmake-modules"
 		"Qt6Core|6.8|Qt: qtbase"
@@ -36,22 +36,10 @@ foreach(_package IN ITEMS
 	list(GET _package 2 _project)
 	find_package(${_name} ${_version} QUIET CONFIG)
 	if(NOT ${_name}_FOUND)
-		string(MAKE_C_IDENTIFIER "${_project}" _key)
-		if(NOT DEFINED _cmake_${_key})
-			list(APPEND _projects "${_project}|${_version}")
-		endif()
-		list(APPEND _cmake_${_key} ${_name})
+		list(APPEND _missing "${_project} ${_version} or later")
 	endif()
 endforeach()
-set(_missing "")
-foreach(_entry IN LISTS _projects)
-	string(REPLACE "|" ";" _entry "${_entry}")
-	list(GET _entry 0 _project)
-	list(GET _entry 1 _version)
-	string(MAKE_C_IDENTIFIER "${_project}" _key)
-	list(JOIN _cmake_${_key} ", " _names)
-	list(APPEND _missing "${_project} ${_version} or later (CMake: ${_names})")
-endforeach()
+list(REMOVE_DUPLICATES _missing)
 if(_missing)
 	list(JOIN _missing "\n  " _missing)
 	message(FATAL_ERROR "Install these from your distribution, with their development files:\n  ${_missing}")
