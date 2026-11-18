@@ -21,10 +21,20 @@ usage() {
 
 case "$(uname -s)" in
 	Darwin)
-		if [ $# -ne 0 ]; then
-			echo "build.sh: on macOS this builds the macOS app; gtk and kde build on Linux only" >&2
-			usage
-		fi
+		case "${1:-}" in
+			"") ;;
+			gtk)
+				echo "The GNOME app (gtk) builds on Linux only. On macOS, run ./build.sh to build the macOS app." >&2
+				exit 1
+				;;
+			kde)
+				echo "The KDE app (kde) builds on Linux only. On macOS, run ./build.sh to build the macOS app." >&2
+				exit 1
+				;;
+			*)
+				usage
+				;;
+		esac
 		./build-mame.sh
 		app/build.sh
 		;;
