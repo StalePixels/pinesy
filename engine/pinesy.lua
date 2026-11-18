@@ -275,6 +275,8 @@ project ("osd_" .. _OPTIONS["osd"])
 			MAME_DIR .. "../debuggers/gtk/logwindow.h",
 			MAME_DIR .. "../debuggers/gtk/mainwindow.cpp",
 			MAME_DIR .. "../debuggers/gtk/mainwindow.h",
+			MAME_DIR .. "../debuggers/gtk/memoryviewaccess.cpp",
+			MAME_DIR .. "../debuggers/gtk/memoryviewaccess.h",
 			MAME_DIR .. "../debuggers/gtk/memorywindow.cpp",
 			MAME_DIR .. "../debuggers/gtk/memorywindow.h",
 			MAME_DIR .. "../debuggers/gtk/windowgtk.cpp",

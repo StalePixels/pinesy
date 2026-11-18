@@ -3,15 +3,17 @@
 #include "emu.h"
 #include "memorywindow.h"
 
+#include "memoryviewaccess.h"
+
 #include "debugger.h"
-#include "debug/dvmemory.h"
 #include "debug/debugcon.h"
-#include "debug/debugcpu.h"
 
 #include "util/xmlfile.h"
 
 
 namespace osd::debugger::gtk {
+
+namespace mva = memory_view_access;
 
 memory_window::memory_window(debugger_gtk &debugger, window_gtk *parent) :
 	window_gtk(debugger, parent),
@@ -64,7 +66,7 @@ memory_window::memory_window(debugger_gtk &debugger, window_gtk *parent) :
 	// Create a data format group
 	m_data_format = add_radio_action(
 			"dataformat",
-			int(debug_view_memory::data_format::HEX_8BIT),
+			int(mva::data_format::HEX_8BIT),
 			[this] (int format) { format_changed(format); });
 
 	// Create an address display group
@@ -93,17 +95,17 @@ memory_window::memory_window(debugger_gtk &debugger, window_gtk *parent) :
 	GMenu *const options_menu = add_menu("_Options");
 
 	GMenu *const format_section = g_menu_new();
-	append_item(format_section, "1-byte Chunks (Hex)", "dataformat", "<Control>1", g_variant_new_int32(int(debug_view_memory::data_format::HEX_8BIT)));
-	append_item(format_section, "2-byte Chunks (Hex)", "dataformat", "<Control>2", g_variant_new_int32(int(debug_view_memory::data_format::HEX_16BIT)));
-	append_item(format_section, "4-byte Chunks (Hex)", "dataformat", "<Control>4", g_variant_new_int32(int(debug_view_memory::data_format::HEX_32BIT)));
-	append_item(format_section, "8-byte Chunks (Hex)", "dataformat", "<Control>8", g_variant_new_int32(int(debug_view_memory::data_format::HEX_64BIT)));
-	append_item(format_section, "1-byte Chunks (Octal)", "dataformat", "<Control>3", g_variant_new_int32(int(debug_view_memory::data_format::OCTAL_8BIT)));
-	append_item(format_section, "2-byte Chunks (Octal)", "dataformat", "<Control>5", g_variant_new_int32(int(debug_view_memory::data_format::OCTAL_16BIT)));
-	append_item(format_section, "4-byte Chunks (Octal)", "dataformat", "<Control>7", g_variant_new_int32(int(debug_view_memory::data_format::OCTAL_32BIT)));
-	append_item(format_section, "8-byte Chunks (Octal)", "dataformat", "<Control>9", g_variant_new_int32(int(debug_view_memory::data_format::OCTAL_64BIT)));
-	append_item(format_section, "32-bit Floating Point", "dataformat", "<Control><Shift>f", g_variant_new_int32(int(debug_view_memory::data_format::FLOAT_32BIT)));
-	append_item(format_section, "64-bit Floating Point", "dataformat", "<Control><Shift>d", g_variant_new_int32(int(debug_view_memory::data_format::FLOAT_64BIT)));
-	append_item(format_section, "80-bit Floating Point", "dataformat", "<Control><Shift>e", g_variant_new_int32(int(debug_view_memory::data_format::FLOAT_80BIT)));
+	append_item(format_section, "1-byte Chunks (Hex)", "dataformat", "<Control>1", g_variant_new_int32(int(mva::data_format::HEX_8BIT)));
+	append_item(format_section, "2-byte Chunks (Hex)", "dataformat", "<Control>2", g_variant_new_int32(int(mva::data_format::HEX_16BIT)));
+	append_item(format_section, "4-byte Chunks (Hex)", "dataformat", "<Control>4", g_variant_new_int32(int(mva::data_format::HEX_32BIT)));
+	append_item(format_section, "8-byte Chunks (Hex)", "dataformat", "<Control>8", g_variant_new_int32(int(mva::data_format::HEX_64BIT)));
+	append_item(format_section, "1-byte Chunks (Octal)", "dataformat", "<Control>3", g_variant_new_int32(int(mva::data_format::OCTAL_8BIT)));
+	append_item(format_section, "2-byte Chunks (Octal)", "dataformat", "<Control>5", g_variant_new_int32(int(mva::data_format::OCTAL_16BIT)));
+	append_item(format_section, "4-byte Chunks (Octal)", "dataformat", "<Control>7", g_variant_new_int32(int(mva::data_format::OCTAL_32BIT)));
+	append_item(format_section, "8-byte Chunks (Octal)", "dataformat", "<Control>9", g_variant_new_int32(int(mva::data_format::OCTAL_64BIT)));
+	append_item(format_section, "32-bit Floating Point", "dataformat", "<Control><Shift>f", g_variant_new_int32(int(mva::data_format::FLOAT_32BIT)));
+	append_item(format_section, "64-bit Floating Point", "dataformat", "<Control><Shift>d", g_variant_new_int32(int(mva::data_format::FLOAT_64BIT)));
+	append_item(format_section, "80-bit Floating Point", "dataformat", "<Control><Shift>e", g_variant_new_int32(int(mva::data_format::FLOAT_80BIT)));
 	g_menu_append_section(options_menu, nullptr, G_MENU_MODEL(format_section));
 	g_object_unref(format_section);
 
@@ -149,22 +151,12 @@ memory_window::~memory_window()
 
 bool memory_window::select_space(address_space &space)
 {
-	auto *const view = m_mem_table->view<debug_view_memory>();
-	std::size_t i = 0;
-	for (auto &ptr : view->source_list())
-	{
-		auto const *const source = downcast<debug_view_memory_source const *>(ptr.get());
-		auto const [mintf, spacenum] = source->space();
-		assert(!mintf || ((0 <= spacenum) && mintf->has_space(spacenum)));
-		if (mintf && (&mintf->space(spacenum) == &space))
-		{
-			if (view->source() != source)
-				set_region_index(i);
-			return true;
-		}
-		++i;
-	}
-	return false;
+	int const index = mva::source_index_for_space(*m_mem_table->view(), space);
+	if (0 > index)
+		return false;
+	if (m_mem_table->source_index() != index)
+		set_region_index(index);
+	return true;
 }
 
 
@@ -172,7 +164,7 @@ void memory_window::debug_act_open_memory()
 {
 	memory_window *const foo = new memory_window(m_debugger, this);
 	foo->set_region_index(m_mem_table->source_index());
-	foo->m_input_edit.set_text(m_mem_table->view<debug_view_memory>()->expression());
+	foo->m_input_edit.set_text(mva::expression(*m_mem_table->view()));
 	foo->expression_submitted();
 }
 
@@ -181,49 +173,33 @@ void memory_window::restore_configuration(util::xml::data_node const &node)
 {
 	window_gtk::restore_configuration(node);
 
-	debug_view_memory &mem_view = *m_mem_table->view<debug_view_memory>();
+	debug_view &mem_view = *m_mem_table->view();
 
 	auto const region = node.get_attribute_int(ATTR_WINDOW_MEMORY_REGION, m_mem_table->source_index());
 	if ((0 <= region) && (g_list_model_get_n_items(gtk_drop_down_get_model(GTK_DROP_DOWN(m_memory_combo_box))) > region))
 		set_region_index(region);
 
-	auto const reverse = node.get_attribute_int(ATTR_WINDOW_MEMORY_REVERSE_COLUMNS, mem_view.reverse() ? 1 : 0);
-	if (mem_view.reverse() != bool(reverse))
+	auto const reverse = node.get_attribute_int(ATTR_WINDOW_MEMORY_REVERSE_COLUMNS, mva::reverse(mem_view) ? 1 : 0);
+	if (mva::reverse(mem_view) != bool(reverse))
 	{
-		mem_view.set_reverse(bool(reverse));
+		mva::set_reverse(mem_view, bool(reverse));
 		set_toggle_checked(m_reverse_act, bool(reverse));
 	}
 
-	auto const mode = node.get_attribute_int(ATTR_WINDOW_MEMORY_ADDRESS_MODE, mem_view.physical() ? 1 : 0);
+	auto const mode = node.get_attribute_int(ATTR_WINDOW_MEMORY_ADDRESS_MODE, mva::physical(mem_view) ? 1 : 0);
 	if ((0 == mode) || (1 == mode))
 		trigger_radio(m_address_group, mode);
 
-	auto const radix = node.get_attribute_int(ATTR_WINDOW_MEMORY_ADDRESS_RADIX, mem_view.address_radix());
+	auto const radix = node.get_attribute_int(ATTR_WINDOW_MEMORY_ADDRESS_RADIX, mva::address_radix(mem_view));
 	if ((16 == radix) || (10 == radix) || (8 == radix))
 		trigger_radio(m_radix_group, radix);
 
-	auto const format = node.get_attribute_int(ATTR_WINDOW_MEMORY_DATA_FORMAT, int(mem_view.get_data_format()));
-	switch (debug_view_memory::data_format(format))
-	{
-	case debug_view_memory::data_format::HEX_8BIT:
-	case debug_view_memory::data_format::HEX_16BIT:
-	case debug_view_memory::data_format::HEX_32BIT:
-	case debug_view_memory::data_format::HEX_64BIT:
-	case debug_view_memory::data_format::OCTAL_8BIT:
-	case debug_view_memory::data_format::OCTAL_16BIT:
-	case debug_view_memory::data_format::OCTAL_32BIT:
-	case debug_view_memory::data_format::OCTAL_64BIT:
-	case debug_view_memory::data_format::FLOAT_32BIT:
-	case debug_view_memory::data_format::FLOAT_64BIT:
-	case debug_view_memory::data_format::FLOAT_80BIT:
+	auto const format = node.get_attribute_int(ATTR_WINDOW_MEMORY_DATA_FORMAT, mva::get_data_format(mem_view));
+	if (mva::is_data_format(format))
 		trigger_radio(m_data_format, format);
-		break;
-	default:
-		break;
-	}
 
-	auto const chunks = node.get_attribute_int(ATTR_WINDOW_MEMORY_ROW_CHUNKS, mem_view.chunks_per_row());
-	mem_view.set_chunks_per_row(chunks);
+	auto const chunks = node.get_attribute_int(ATTR_WINDOW_MEMORY_ROW_CHUNKS, mva::chunks_per_row(mem_view));
+	mva::set_chunks_per_row(mem_view, chunks);
 
 	util::xml::data_node const *const expression = node.get_child(NODE_WINDOW_EXPRESSION);
 	if (expression && expression->get_value())
@@ -243,14 +219,14 @@ void memory_window::save_configuration_to_node(util::xml::data_node &node)
 
 	node.set_attribute_int(ATTR_WINDOW_TYPE, WINDOW_TYPE_MEMORY_VIEWER);
 
-	debug_view_memory &mem_view = *m_mem_table->view<debug_view_memory>();
+	debug_view &mem_view = *m_mem_table->view();
 	node.set_attribute_int(ATTR_WINDOW_MEMORY_REGION, m_mem_table->source_index());
-	node.set_attribute_int(ATTR_WINDOW_MEMORY_REVERSE_COLUMNS, mem_view.reverse() ? 1 : 0);
-	node.set_attribute_int(ATTR_WINDOW_MEMORY_ADDRESS_MODE, mem_view.physical() ? 1 : 0);
-	node.set_attribute_int(ATTR_WINDOW_MEMORY_ADDRESS_RADIX, mem_view.address_radix());
-	node.set_attribute_int(ATTR_WINDOW_MEMORY_DATA_FORMAT, int(mem_view.get_data_format()));
-	node.set_attribute_int(ATTR_WINDOW_MEMORY_ROW_CHUNKS, mem_view.chunks_per_row());
-	node.add_child(NODE_WINDOW_EXPRESSION, mem_view.expression());
+	node.set_attribute_int(ATTR_WINDOW_MEMORY_REVERSE_COLUMNS, mva::reverse(mem_view) ? 1 : 0);
+	node.set_attribute_int(ATTR_WINDOW_MEMORY_ADDRESS_MODE, mva::physical(mem_view) ? 1 : 0);
+	node.set_attribute_int(ATTR_WINDOW_MEMORY_ADDRESS_RADIX, mva::address_radix(mem_view));
+	node.set_attribute_int(ATTR_WINDOW_MEMORY_DATA_FORMAT, mva::get_data_format(mem_view));
+	node.set_attribute_int(ATTR_WINDOW_MEMORY_ROW_CHUNKS, mva::chunks_per_row(mem_view));
+	node.add_child(NODE_WINDOW_EXPRESSION, mva::expression(mem_view).c_str());
 
 	m_mem_table->save_configuration_to_node(node);
 	m_input_history.save_configuration_to_node(node);
@@ -278,9 +254,9 @@ void memory_window::memory_region_changed(int index)
 		m_mem_table->update();
 
 		// Update the data format radio buttons to the memory region's default
-		debug_view_memory *const mem_view = m_mem_table->view<debug_view_memory>();
-		set_radio_checked(m_data_format, int(mem_view->get_data_format()));
-		set_radio_checked(m_radix_group, mem_view->address_radix());
+		debug_view &mem_view = *m_mem_table->view();
+		set_radio_checked(m_data_format, mva::get_data_format(mem_view));
+		set_radio_checked(m_radix_group, mva::address_radix(mem_view));
 	}
 }
 
@@ -289,7 +265,7 @@ bool memory_window::input_key(guint keyval)
 {
 	if (GDK_KEY_Escape == keyval)
 	{
-		m_input_edit.set_text(m_mem_table->view<debug_view_memory>()->expression());
+		m_input_edit.set_text(mva::expression(*m_mem_table->view()));
 		m_input_edit.select_all();
 		m_input_history.reset();
 		return true;
@@ -324,7 +300,7 @@ bool memory_window::input_key(guint keyval)
 void memory_window::expression_submitted()
 {
 	std::string const expression = m_input_edit.text();
-	m_mem_table->view<debug_view_memory>()->set_expression(expression);
+	mva::set_expression(*m_mem_table->view(), expression);
 	m_input_edit.select_all();
 
 	// Add history
@@ -341,48 +317,44 @@ void memory_window::expression_edited()
 
 void memory_window::format_changed(int format)
 {
-	debug_view_memory *const mem_view = m_mem_table->view<debug_view_memory>();
-	mem_view->set_data_format(debug_view_memory::data_format(format));
+	mva::set_data_format(*m_mem_table->view(), format);
 	m_mem_table->update();
 }
 
 
 void memory_window::address_changed(bool physical)
 {
-	debug_view_memory *const mem_view = m_mem_table->view<debug_view_memory>();
-	mem_view->set_physical(physical);
+	mva::set_physical(*m_mem_table->view(), physical);
 	m_mem_table->update();
 }
 
 
 void memory_window::radix_changed(int radix)
 {
-	debug_view_memory *const mem_view = m_mem_table->view<debug_view_memory>();
-	mem_view->set_address_radix(radix);
+	mva::set_address_radix(*m_mem_table->view(), radix);
 	m_mem_table->update();
 }
 
 
 void memory_window::reverse_changed(bool reverse)
 {
-	debug_view_memory *const mem_view = m_mem_table->view<debug_view_memory>();
-	mem_view->set_reverse(reverse);
+	mva::set_reverse(*m_mem_table->view(), reverse);
 	m_mem_table->update();
 }
 
 
 void memory_window::increase_bytes_per_line()
 {
-	debug_view_memory *const mem_view = m_mem_table->view<debug_view_memory>();
-	mem_view->set_chunks_per_row(mem_view->chunks_per_row() + 1);
+	debug_view &mem_view = *m_mem_table->view();
+	mva::set_chunks_per_row(mem_view, mva::chunks_per_row(mem_view) + 1);
 	m_mem_table->update();
 }
 
 
 void memory_window::decrease_bytes_per_line()
 {
-	debug_view_memory *const mem_view = m_mem_table->view<debug_view_memory>();
-	mem_view->set_chunks_per_row(mem_view->chunks_per_row() - 1);
+	debug_view &mem_view = *m_mem_table->view();
+	mva::set_chunks_per_row(mem_view, mva::chunks_per_row(mem_view) - 1);
 	m_mem_table->update();
 }
 
@@ -440,58 +412,16 @@ void debugger_mem_view::add_items_to_context_menu(GMenu *menu)
 
 	if (view()->cursor_visible())
 	{
-		debug_view_memory &mem_view = *view<debug_view_memory>();
-		debug_view_memory_source const &source = downcast<debug_view_memory_source const &>(*mem_view.source());
-		auto const [mintf, spacenum] = source.space();
-		assert(!mintf || ((0 <= spacenum) && mintf->has_space(spacenum)));
-		if (mintf)
+		mva::last_pc const last_pc = mva::last_pc_at_cursor(*view());
+		if (last_pc.has_space)
 		{
-			const address_space_config *config = mintf->logical_space_config(spacenum);
-			// get the last known PC to write to this memory location
-			debug_view_xy const pos = mem_view.cursor_position();
-			offs_t const address = config->byte2addr(mem_view.addressAtCursorPosition(pos));
-			offs_t a = address & config->logaddrmask();
-			bool good = false;
-			address_space *tspace;
-			if (!mintf->translate(spacenum, device_memory_interface::TR_READ, a, tspace))
-			{
-				m_last_pc = "Bad address";
-			}
-			else
-			{
-				uint64_t mem_value = tspace->unmap();
-				auto dis = tspace->device().machine().disable_side_effects();
-				switch (tspace->data_width())
-				{
-				case  8: mem_value = tspace->read_byte(a);            break;
-				case 16: mem_value = tspace->read_word_unaligned(a);  break;
-				case 32: mem_value = tspace->read_dword_unaligned(a); break;
-				case 64: mem_value = tspace->read_qword_unaligned(a); break;
-				}
-
-				offs_t const pc = source.device()->debug()->track_mem_pc_from_space_address_data(
-						tspace->spacenum(),
-						address,
-						mem_value);
-				if (pc != offs_t(-1))
-				{
-					if (tspace->is_octal())
-						m_last_pc = util::string_format("Address %2o written at PC=%2o", address, pc);
-					else
-						m_last_pc = util::string_format("Address %2x written at PC=%2x", address, pc);
-					good = true;
-				}
-				else
-				{
-					m_last_pc = "Unknown PC";
-				}
-			}
+			m_last_pc = last_pc.text;
 
 			GMenu *const section = g_menu_new();
 			g_menu_append(section, m_last_pc.c_str(), "view.copy-last-pc");
 			g_menu_append_section(menu, nullptr, G_MENU_MODEL(section));
 			g_object_unref(section);
-			g_simple_action_set_enabled(m_copy_last_pc_action, good);
+			g_simple_action_set_enabled(m_copy_last_pc_action, last_pc.known);
 		}
 	}
 }
