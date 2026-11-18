@@ -257,6 +257,13 @@ struct ConfigurationView: View {
                     }
                 }
             }
+
+            Picker("Window size", selection: $document.windowSize) {
+                Text("Fit to screen").tag(Core.windowFit)
+                ForEach(1...Core.maxWindowMagnification, id: \.self) { magnification in
+                    Text("\(magnification)×").tag(magnification)
+                }
+            }
         }
     }
 
@@ -355,7 +362,7 @@ struct ConfigurationView: View {
 
     private func run(debug: Bool) {
         guard canRun else { return }
-        runner.start(title: title, arguments: document.arguments, debug: debug)
+        runner.start(title: title, arguments: document.arguments, debug: debug, windowSize: document.windowSize)
     }
 
     private func copyCommandLine() {

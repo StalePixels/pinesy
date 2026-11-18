@@ -18,7 +18,6 @@
 
 #include "hostmonitor.h"
 
-#include <cmath>
 #include <cstdint>
 #include <iterator>
 
@@ -35,7 +34,7 @@ struct host_surface
 	bool shown;     // the host shows this window
 	int width;      // size used when the host does not show it
 	int height;
-	int frame_width = 0;    // the frame size the host's view was last fitted to
+	int frame_width = 0;    // the frame size last sent to the host
 	int frame_height = 0;
 };
 
@@ -54,6 +53,7 @@ int s_view_pixel_height = 0;
 // in pinesymain.cpp
 void pinesy_retry_exit();
 void pinesy_render_size(void *wincontroller, int &width, int &height);
+void pinesy_fill_frame(void *wincontroller);
 void pinesy_release_keys();
 
 void pinesy_attach_host(const pinesy_host *host)
@@ -142,20 +142,18 @@ void MacWindowGetSizePixels(void *wincontroller, int *width, int *height)
 		*height = s_view_pixel_height;
 		pinesy_render_size(wincontroller, *width, *height);
 
-		// A new frame size (the first frame, a new screen mode) gives
-		// the view the frame's shape, and the frame's size in logical
-		// units. The host scales the view down when it does not fit.
+		// The first frame size, and each new one (a new screen mode),
+		// goes to the host, which sizes its window for it.
 		if ((*width != surface->frame_width) || (*height != surface->frame_height))
 		{
+			if (surface->frame_width == 0)
+				pinesy_fill_frame(wincontroller);
 			surface->frame_width = *width;
 			surface->frame_height = *height;
 			if (s_host.aspect != nullptr)
 				s_host.aspect(s_host.context, *width, *height);
 			if (s_host.size != nullptr)
-			{
-				const double scale = (s_view_width > 0) ? double(s_view_pixel_width) / s_view_width : 1.0;
-				s_host.size(s_host.context, int(std::lround(*width / scale)), int(std::lround(*height / scale)));
-			}
+				s_host.size(s_host.context, *width, *height);
 		}
 		return;
 	}

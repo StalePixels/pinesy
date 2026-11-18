@@ -293,14 +293,34 @@ char *pinesy_core_read_document(const char *text)
 	if (!text) return nullptr;
 	auto document = Document::read(text);
 	if (!document) return nullptr;
-	return give(json::Object{ { "machine", document->machine }, { "arguments", encode::strings(document->arguments) } });
+	return give(json::Object{
+		{ "machine", document->machine },
+		{ "arguments", encode::strings(document->arguments) },
+		{ "windowSize", document->window_size } });
 }
 
-char *pinesy_core_write_document(const char *machine, const char *arguments)
+char *pinesy_core_write_document(const char *machine, const char *arguments, int window_size)
 {
 	auto args = read_arguments(arguments);
 	if (!machine || !args) return nullptr;
-	return give(Document{ machine, *args }.write());
+	return give(Document{ machine, *args, window_size }.write());
+}
+
+//------------------------------------------------------------
+//  The machine window's size
+//------------------------------------------------------------
+
+static_assert(PINESY_CORE_WINDOW_FIT == window::fit && PINESY_CORE_MAX_WINDOW_MAGNIFICATION == window::max_magnification);
+
+int pinesy_core_window_size(int frame_width, int frame_height, int window_size, double pixel_ratio,
+		int usable_width, int usable_height, int *width, int *height)
+{
+	if (!width || !height) return -1;
+	const window::ContentSize size = window::content_size(frame_width, frame_height, window_size, pixel_ratio,
+			usable_width, usable_height);
+	*width = size.width;
+	*height = size.height;
+	return size.width > 0 ? size.multiple : -1;
 }
 
 //------------------------------------------------------------

@@ -24,14 +24,14 @@ MachineRunner *MachineRunner::create(QQmlEngine *, QJSEngine *)
 	return runner;
 }
 
-bool MachineRunner::start(const QString &title, const QStringList &arguments, bool debug)
+bool MachineRunner::start(const QString &title, const QStringList &arguments, bool debug, int windowSize)
 {
 	if (!m_running.isEmpty() || arguments.isEmpty())
 		return false;
 	m_running = title;
 	Q_EMIT runningChanged();
 
-	m_window = new RunWindow;
+	m_window = new RunWindow(windowSize);
 	m_window->setTitle(title);
 	m_window->show();
 	m_window->requestActivate();

@@ -7,8 +7,8 @@
 //  Every rule the front ends share: the machine catalogue,
 //  the configuration model and .pinesy files, the starting
 //  configuration, option checking, MAME's paths, the settings
-//  schema, the copied command line and headless mode. The
-//  front ends hold only UI.
+//  schema, the machine window's size, the copied command line
+//  and headless mode. The front ends hold only UI.
 //
 //  The C interface in pinesy_core.h wraps this one.
 //
@@ -381,6 +381,45 @@ struct Summary
 };
 
 //------------------------------------------------------------
+//  The machine window's size
+//------------------------------------------------------------
+
+namespace window {
+
+// A configuration's window size: fit, or a whole-number
+// magnification of the frame from 1 to max_magnification.
+constexpr int fit = 0;
+constexpr int max_magnification = 4;
+
+// True for fit and for 1 to max_magnification.
+bool is_window_size(int window_size);
+
+struct ContentSize
+{
+	int width = 0;      // in logical units
+	int height = 0;
+	int multiple = 0;   // the frame's magnification; 0 when even 1x does not fit
+};
+
+// The size of the machine window's content, in logical units, for a
+// frame of frame_width x frame_height device pixels. pixel_ratio is
+// the screen's device pixels per logical unit, and usable_width x
+// usable_height the room the window's content has on the screen, in
+// logical units. The content is the frame times a whole number:
+// with fit, the largest that fits the usable room; with a
+// magnification, that one, or the largest that fits when it does
+// not. When even 1x does not fit, the content is the largest size of
+// the frame's shape that fits, and multiple is 0. A usable size of 0
+// or less is a screen of unknown size: fit is then 1x, and a
+// magnification is used as it is. A window_size of 0 or less is fit.
+// The content is 0 x 0 when the frame size is 0 or less or
+// pixel_ratio is not more than 0.
+ContentSize content_size(int frame_width, int frame_height, int window_size, double pixel_ratio,
+		int usable_width, int usable_height);
+
+} // namespace window
+
+//------------------------------------------------------------
 //  .pinesy files
 //------------------------------------------------------------
 
@@ -390,10 +429,13 @@ struct Document
 
 	std::string machine;                 // the machine's driver; empty until chosen
 	std::vector<std::string> arguments;  // the MAME command line
+	int window_size = window::fit;       // the machine window's size (window::content_size)
 
 	// Reads a .pinesy file's text. nullopt when it is not JSON with
 	// format, machine and arguments, its format is newer than this
-	// core reads, or its arguments are empty.
+	// core reads, or its arguments are empty. A file without
+	// windowSize, or with a value window::is_window_size() refuses,
+	// reads as window::fit.
 	static std::optional<Document> read(std::string_view text);
 
 	// The file's text.

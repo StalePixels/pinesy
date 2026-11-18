@@ -45,20 +45,24 @@ void MachineView::snapshot_vfunc(const Glib::RefPtr<Gtk::Snapshot> &snapshot)
 		gtk_snapshot_append_color(snap, &black, &bounds);
 		return;
 	}
-	// The frame is a whole multiple of the machine's pixels, and the GPU
-	// scales it to the view: sharp when the view is a whole multiple of
-	// the frame, smoothed at any other size, which would make uneven pixels.
+	// The frame is a whole multiple of the machine's pixels. It keeps its
+	// shape, centred, with black bars where the view's shape differs,
+	// and the GPU scales it: sharp where the drawn size is a whole
+	// multiple of the frame, smoothed at any other size, which would
+	// make uneven pixels.
 	double scale = get_scale_factor();
 	if (GtkNative *native = gtk_widget_get_native(GTK_WIDGET(gobj())))
 		if (GdkSurface *surface = gtk_native_get_surface(native))
 			scale = gdk_surface_get_scale(surface);
 	const int view_width = int(std::lround(get_width() * scale));
 	const int view_height = int(std::lround(get_height() * scale));
-	const int frame_width = gdk_texture_get_width(m_texture);
-	const int frame_height = gdk_texture_get_height(m_texture);
-	const bool whole = (view_width >= frame_width) && (view_height >= frame_height)
-			&& (view_width % frame_width == 0) && (view_height % frame_height == 0);
-	gtk_snapshot_append_scaled_texture(snap, m_texture, whole ? GSK_SCALING_FILTER_NEAREST : GSK_SCALING_FILTER_LINEAR, &bounds);
+	int x, y, width, height;
+	const bool whole = pinesy_frame_rect(gdk_texture_get_width(m_texture), gdk_texture_get_height(m_texture),
+			view_width, view_height, &x, &y, &width, &height) != 0;
+	GdkRGBA black = {0, 0, 0, 1};
+	gtk_snapshot_append_color(snap, &black, &bounds);
+	graphene_rect_t drawn = GRAPHENE_RECT_INIT(float(x / scale), float(y / scale), float(width / scale), float(height / scale));
+	gtk_snapshot_append_scaled_texture(snap, m_texture, whole ? GSK_SCALING_FILTER_NEAREST : GSK_SCALING_FILTER_LINEAR, &drawn);
 }
 
 void MachineView::size_allocate_vfunc(int width, int height, int)
@@ -104,7 +108,7 @@ void key_released(GtkEventControllerKey *controller, guint, guint keycode, GdkMo
 
 } // namespace
 
-MachineWindow::MachineWindow(const std::string &title)
+MachineWindow::MachineWindow(const std::string &title, int window_size) : m_window_size(window_size)
 {
 	m_window = ADW_WINDOW(adw_window_new());
 	g_object_ref_sink(m_window);
@@ -188,23 +192,24 @@ void MachineWindow::on_size(void *context, int width, int height)
 	if (width <= 0 || height <= 0)
 		return;
 
-	// The size is the view's; the header bar comes on top of it.
+	// The size is the frame's, in pixels. The core gives the view's size
+	// from it, the window size and the monitor the window is on; the
+	// header bar comes on top of the view.
 	int header = 0;
 	gtk_widget_measure(self->m_header, GTK_ORIENTATION_VERTICAL, -1, nullptr, &header, nullptr, nullptr);
 
-	// Scale the view down to fit the monitor the window is on.
 	GdkDisplay *display = gtk_widget_get_display(GTK_WIDGET(self->m_window));
 	GdkSurface *surface = gtk_native_get_surface(GTK_NATIVE(self->m_window));
 	GdkMonitor *monitor = surface ? gdk_display_get_monitor_at_surface(display, surface) : nullptr;
+	const double scale = surface ? gdk_surface_get_scale(surface) : 1.0;
+	GdkRectangle area = {0, 0, 0, 0};
 	if (monitor)
-	{
-		GdkRectangle area;
 		gdk_monitor_get_geometry(monitor, &area);
-		double scale = std::min({1.0, double(area.height - header) / height, double(area.width) / width});
-		width = int(std::lround(width * scale));
-		height = int(std::lround(height * scale));
-	}
-	gtk_window_set_default_size(GTK_WINDOW(self->m_window), width, height + header);
+	const core::window::ContentSize view = core::window::content_size(width, height, self->m_window_size, scale,
+			area.width, area.height - header);
+	if (view.width <= 0)
+		return;
+	gtk_window_set_default_size(GTK_WINDOW(self->m_window), view.width, view.height + header);
 }
 
 void MachineWindow::on_pump(void *)
@@ -250,7 +255,7 @@ void MachineWindow::release_keys()
 //------------------------------------------------------------
 
 void MachineRunner::start(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-		bool debug)
+		bool debug, int window_size)
 {
 	if (m_running)
 		return;
@@ -260,19 +265,19 @@ void MachineRunner::start(const core::Core &core, const std::string &title, cons
 
 	// pinesy_run() keeps its own loop. Start it from an idle callback, so
 	// the action or click that asked for the run has been handled first.
-	Glib::signal_idle().connect_once([this, &core, title, arguments, debug] {
-		run(core, title, arguments, debug);
+	Glib::signal_idle().connect_once([this, &core, title, arguments, debug, window_size] {
+		run(core, title, arguments, debug, window_size);
 	});
 }
 
 void MachineRunner::run(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-		bool debug)
+		bool debug, int window_size)
 {
 	int code = 0;
 	bool ran = false;
 	std::string errors;
 	{
-		MachineWindow window(title);
+		MachineWindow window(title, window_size);
 		if (window.show_and_wait())
 		{
 			pinesy_host host = window.host();
@@ -320,7 +325,7 @@ int run_headless_in_window(const core::Core &core, const std::vector<std::string
 	auto driver = std::find_if(mame.begin(), mame.end(), [](const std::string &a) { return a.empty() || a[0] != '-'; });
 	std::string title = driver != mame.end() ? *driver : "Pi/Ne-Sy";
 
-	MachineWindow window(title);
+	MachineWindow window(title, core::window::fit);
 	// A window closed before the run still runs MAME, so the exit code
 	// is MAME's. The engine keeps an exit request made before the
 	// machine starts, so the machine stops at once.

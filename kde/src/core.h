@@ -49,10 +49,11 @@ public:
 	QVariantMap summary(const QStringList &arguments, const QString &machineHint);
 	QString copyCommandLine(const QStringList &arguments, bool debug);
 
-	// .pinesy files: an empty machine and arguments when the text is not
-	// a configuration the core reads.
-	static bool readDocument(const QByteArray &text, QString *machine, QStringList *arguments);
-	static QByteArray writeDocument(const QString &machine, const QStringList &arguments);
+	// .pinesy files. readDocument returns false when the text is not a
+	// configuration the core reads. windowSize is the machine window's
+	// size, as pinesy_core_window_size() takes it.
+	static bool readDocument(const QByteArray &text, QString *machine, QStringList *arguments, int *windowSize);
+	static QByteArray writeDocument(const QString &machine, const QStringList &arguments, int windowSize);
 
 	QStringList romFolders() const { return m_romFolders; }
 	QString dataFolderSetting() const { return m_dataFolder; }

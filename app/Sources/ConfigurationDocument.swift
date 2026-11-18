@@ -18,15 +18,20 @@ struct ConfigurationDocument: FileDocument {
     /// The MAME command line: the driver to run, then options. Only
     /// options that differ from the starting configuration are written.
     var arguments: [String]
+    /// The machine window's size: Core.windowFit, or a magnification of
+    /// the frame (pinesy_core_window_size()).
+    var windowSize: Int
 
     init() {
         machine = ""
         arguments = []
+        windowSize = Core.windowFit
     }
 
     private struct Contents: Decodable {
         var machine: String
         var arguments: [String]
+        var windowSize: Int
     }
 
     init(configuration: ReadConfiguration) throws {
@@ -38,10 +43,11 @@ struct ConfigurationDocument: FileDocument {
         }
         machine = contents.machine
         arguments = contents.arguments
+        windowSize = contents.windowSize
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        guard let text = Core.take(pinesy_core_write_document(machine, Core.encode(arguments))) else {
+        guard let text = Core.take(pinesy_core_write_document(machine, Core.encode(arguments), Int32(windowSize))) else {
             throw CocoaError(.fileWriteUnknown)
         }
         return FileWrapper(regularFileWithContents: Data(text.utf8))

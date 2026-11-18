@@ -8,6 +8,7 @@ libpinesy is the core library of the Pi/Ne-Sy front ends. It holds every rule th
 - the starting configuration of a new machine
 - the options and search paths every run starts with
 - the settings schema, and the options settings add to a run
+- the machine window's size
 - the headless command line that Copy Command Line gives, quoted for zsh
 - headless mode
 
@@ -33,7 +34,8 @@ To build it and run its tests, see [docs/build-macos.md](../docs/build-macos.md)
 - **The catalogue.** `pinesy_core_catalogue()` gives the machine list in sections. `pinesy_core_search()` finds machines by name, maker, model or ROM variant name. `pinesy_core_machine_for_driver()` gives the machine a driver belongs to. `pinesy_core_starting_arguments()` gives the command line a new configuration for a driver starts with.
 - **Configurations.** `pinesy_core_new_configuration()` starts a configuration for a machine. `pinesy_core_set_driver()`, `pinesy_core_set_rom()`, `pinesy_core_set_slot()`, `pinesy_core_set_card_rom()` and `pinesy_core_set_media()` edit one. Each edit except `pinesy_core_set_media()` checks the result with the engine and removes the options the machine no longer has, as `pinesy_core_normalise()` does.
 - **Checking.** `pinesy_core_summary()` asks the engine about a configuration and gives what the configuration window shows: the machine, its models and ROMs, a row for each slot and each media device, the engine's errors and warnings, mandatory media with no file, media files that are not there, SD card images that MAME's SD card cannot use, and whether it can run. A configuration with such an image cannot run. `pinesy_core_sd_card_problem()` gives the reason for one image, so a front end can refuse it when it is chosen.
-- **Files.** `pinesy_core_read_document()` reads a `.pinesy` file's text, and `pinesy_core_write_document()` writes it.
+- **Files.** `pinesy_core_read_document()` reads a `.pinesy` file's text, with its window size, and `pinesy_core_write_document()` writes it.
+- **The machine window.** The engine's `size` callback gives the frame's size in device pixels. `pinesy_core_window_size()` turns it into the window's content size in logical units, from the configuration's window size (`PINESY_CORE_WINDOW_FIT` or a magnification from 1 to `PINESY_CORE_MAX_WINDOW_MAGNIFICATION`), the screen's device pixels per logical unit, and the room the content has on the screen. Each front end measures the screen and calls it when a machine starts and when the frame's size changes.
 - **Runs.** `pinesy_core_run()` runs a configuration with `pinesy_run()`, with the fixed options first and the debugger options from the settings last. `pinesy_core_copy_command_line()` gives the headless command for a configuration, quoted for zsh.
 - **Headless mode.** `pinesy_core_headless()` runs the executable's arguments as headless mode does. `pinesy_core_video_none()` and `pinesy_core_opens_debugger_windows()` tell the front end whether MAME needs a window, and whether MAME's debugger windows will open.
 

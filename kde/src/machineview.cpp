@@ -65,15 +65,18 @@ QSGNode *MachineView::updatePaintNode(QSGNode *node, UpdatePaintNodeData *)
 		texture->setTexture(window()->createTextureFromImage(m_frame));
 		m_frameChanged = false;
 	}
-	// The frame is a whole multiple of the machine's pixels, and the GPU
-	// scales it to the view: sharp when the view is a whole multiple of
-	// the frame, smoothed at any other size, which would make uneven pixels.
+	// The frame is a whole multiple of the machine's pixels. It keeps its
+	// shape, centred, with the window's black where the item's shape
+	// differs, and the GPU scales it: sharp where the drawn size is a
+	// whole multiple of the frame, smoothed at any other size, which
+	// would make uneven pixels.
 	const qreal ratio = window() ? window()->effectiveDevicePixelRatio() : 1.0;
 	const int viewWidth = qRound(width() * ratio), viewHeight = qRound(height() * ratio);
-	const bool whole = viewWidth >= m_frame.width() && viewHeight >= m_frame.height()
-		&& viewWidth % m_frame.width() == 0 && viewHeight % m_frame.height() == 0;
+	int x = 0, y = 0, drawnWidth = 0, drawnHeight = 0;
+	const bool whole = pinesy_frame_rect(m_frame.width(), m_frame.height(), viewWidth, viewHeight,
+			&x, &y, &drawnWidth, &drawnHeight) != 0;
 	texture->setFiltering(whole ? QSGTexture::Nearest : QSGTexture::Linear);
-	texture->setRect(boundingRect());
+	texture->setRect(QRectF(x / ratio, y / ratio, drawnWidth / ratio, drawnHeight / ratio));
 	return texture;
 }
 

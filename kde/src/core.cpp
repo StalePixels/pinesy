@@ -179,7 +179,7 @@ QString Core::copyCommandLine(const QStringList &arguments, bool debug)
 			toJson(arguments).constData(), debug ? 1 : 0)));
 }
 
-bool Core::readDocument(const QByteArray &text, QString *machine, QStringList *arguments)
+bool Core::readDocument(const QByteArray &text, QString *machine, QStringList *arguments, int *windowSize)
 {
 	const QByteArray json = take(pinesy_core_read_document(text.constData()));
 	if (json.isEmpty())
@@ -189,12 +189,13 @@ bool Core::readDocument(const QByteArray &text, QString *machine, QStringList *a
 	arguments->clear();
 	for (const QJsonValue &value : object.value(QLatin1String("arguments")).toArray())
 		arguments->append(value.toString());
+	*windowSize = object.value(QLatin1String("windowSize")).toInt(PINESY_CORE_WINDOW_FIT);
 	return true;
 }
 
-QByteArray Core::writeDocument(const QString &machine, const QStringList &arguments)
+QByteArray Core::writeDocument(const QString &machine, const QStringList &arguments, int windowSize)
 {
-	return take(pinesy_core_write_document(machine.toUtf8().constData(), toJson(arguments).constData()));
+	return take(pinesy_core_write_document(machine.toUtf8().constData(), toJson(arguments).constData(), windowSize));
 }
 
 //------------------------------------------------------------

@@ -150,6 +150,20 @@ Kirigami.Page {
                     onActivated: index => page.document.setRom(roms[index].driver, roms[index].bios)
                 }
 
+                // index 0 is fit, then each magnification
+                QQC2.ComboBox {
+                    Kirigami.FormData.label: i18nc("@label:listbox", "Window size:")
+                    Layout.minimumWidth: Kirigami.Units.gridUnit * 14
+                    model: {
+                        const sizes = [i18nc("@item:inlistbox window size", "Fit to screen")]
+                        for (let magnification = 1; magnification <= page.document.maxWindowMagnification; magnification++)
+                            sizes.push(i18nc("@item:inlistbox window magnification", "%1×", magnification))
+                        return sizes
+                    }
+                    currentIndex: page.document.windowSize
+                    onActivated: index => page.document.windowSize = index
+                }
+
             }
 
             Kirigami.FormLayout {

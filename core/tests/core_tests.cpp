@@ -6,7 +6,8 @@
 //  real engine
 //
 //  core_tests rules     the catalogue, configurations, .pinesy
-//                       files, checking and the fixed options
+//                       files, the window size, checking and
+//                       the fixed options
 //  core_tests headless  one headless run with -video none
 //
 //  The expected values are the rules in public/app/README.md.
@@ -302,21 +303,43 @@ void test_documents()
 	check(args.array() == line, "a command line reads back as it was written");
 
 	// a JSON object
-	// with format (now 1), machine and arguments.
+	// with format (now 1), machine, arguments and windowSize.
 	Strings saved{ "specnext_ks3", "-rs232_rpi", "", "-pi", "/tmp/a b/next.img" };
-	std::string text = take(pinesy_core_write_document("tbblue", args_json(saved).c_str()));
+	std::string text = take(pinesy_core_write_document("tbblue", args_json(saved).c_str(), 3));
 	json::Value written;
 	try { written = json::parse(text); } catch (const json::Error &) {}
-	check(written.is_object() && written.object().size() == 3 && member(written, "format") && member(written, "format")->number() == 1
-			&& text_of(written, "machine") == "tbblue" && strings(*member(written, "arguments")) == saved,
-			"a .pinesy file has format 1, machine and arguments");
+	check(written.is_object() && written.object().size() == 4 && member(written, "format") && member(written, "format")->number() == 1
+			&& text_of(written, "machine") == "tbblue" && strings(*member(written, "arguments")) == saved
+			&& member(written, "windowSize") && member(written, "windowSize")->number() == 3,
+			"a .pinesy file has format 1, machine, arguments and windowSize");
 	check(text.find("\"/tmp/a b/next.img\"") != std::string::npos, "slashes are not escaped");
-	check(text.find("\"arguments\"") < text.find("\"format\"") && text.find("\"format\"") < text.find("\"machine\""),
+	check(text.find("\"arguments\"") < text.find("\"format\"") && text.find("\"format\"") < text.find("\"machine\"")
+			&& text.find("\"machine\"") < text.find("\"windowSize\""),
 			"keys are written sorted");
 
 	json::Value read = parse(pinesy_core_read_document(text.c_str()));
-	check(text_of(read, "machine") == "tbblue" && member(read, "arguments") && strings(*member(read, "arguments")) == saved,
+	check(text_of(read, "machine") == "tbblue" && member(read, "arguments") && strings(*member(read, "arguments")) == saved
+			&& member(read, "windowSize") && member(read, "windowSize")->number() == 3,
 			"a .pinesy file reads back as it was written");
+
+	// the window size: fit (0) or a magnification from 1 to 4
+	auto window_size_of = [](const char *file) {
+		json::Value document = parse(pinesy_core_read_document(file));
+		const json::Value *size = document.is_object() ? member(document, "windowSize") : nullptr;
+		return size ? int(size->number()) : -1;
+	};
+	check(window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"]})") == PINESY_CORE_WINDOW_FIT,
+			"a file without windowSize opens as fit");
+	check(window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":4})") == 4,
+			"a file with windowSize 4 opens as 4x");
+	check(window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":5})") == PINESY_CORE_WINDOW_FIT
+			&& window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":-1})") == PINESY_CORE_WINDOW_FIT
+			&& window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":1.5})") == PINESY_CORE_WINDOW_FIT
+			&& window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":"2"})") == PINESY_CORE_WINDOW_FIT,
+			"a windowSize that is not 0 to 4 opens as fit");
+	json::Value too_big = parse(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), 9));
+	check(member(too_big, "windowSize") && member(too_big, "windowSize")->number() == PINESY_CORE_WINDOW_FIT,
+			"a window size outside 0 to 4 is written as fit");
 
 	// a newer format, or empty arguments,
 	// is not read.
@@ -326,6 +349,45 @@ void test_documents()
 			"a file with empty arguments is not read");
 	check(take(pinesy_core_read_document(R"({"format":1,"arguments":["tbblue"]})")) == "<NULL>",
 			"a file without machine is not read");
+}
+
+//------------------------------------------------------------
+//  The machine window's size
+//------------------------------------------------------------
+
+void test_window_size()
+{
+	int width = -1, height = -1;
+	auto size = [&](int frame_width, int frame_height, int window_size, double ratio, int usable_width, int usable_height) {
+		return pinesy_core_window_size(frame_width, frame_height, window_size, ratio, usable_width, usable_height, &width, &height);
+	};
+
+	// tbblue's frame is 720 x 576 device pixels
+	check(size(720, 576, PINESY_CORE_WINDOW_FIT, 1.0, 1920, 1050) == 1 && width == 720 && height == 576,
+			"fit on a 1920 x 1050 screen at 1x is 1x: " + std::to_string(width) + " x " + std::to_string(height));
+	check(size(720, 576, PINESY_CORE_WINDOW_FIT, 2.0, 1512, 945) == 3 && width == 1080 && height == 864,
+			"fit on a 1512 x 945 screen at 2x is 3x, 1080 x 864 logical: " + std::to_string(width) + " x " + std::to_string(height));
+	check(size(720, 576, PINESY_CORE_WINDOW_FIT, 2.0, 3840, 2100) == 7,
+			"fit has no upper limit of its own");
+	check(size(720, 576, 1, 2.0, 1512, 945) == 1 && width == 360 && height == 288,
+			"1x at a pixel ratio of 2 is half the frame in logical units: " + std::to_string(width) + " x " + std::to_string(height));
+	check(size(720, 576, 2, 1.5, 1706, 1000) == 2 && width == 960 && height == 768,
+			"2x at a pixel ratio of 1.5 is 960 x 768 logical: " + std::to_string(width) + " x " + std::to_string(height));
+	check(size(720, 576, 4, 1.0, 1920, 1050) == 1 && width == 720 && height == 576,
+			"a magnification too big for the screen falls back to the largest that fits");
+	check(size(720, 576, 2, 1.0, 1440, 1152) == 2 && width == 1440 && height == 1152,
+			"a magnification that fits exactly is kept");
+	check(size(720, 576, PINESY_CORE_WINDOW_FIT, 1.0, 640, 1000) == 0 && width == 640 && height == 512,
+			"when even 1x does not fit, the window is the largest of the frame's shape that fits: "
+			+ std::to_string(width) + " x " + std::to_string(height));
+	check(size(720, 576, 3, 1.0, 0, 0) == 3 && width == 2160 && height == 1728,
+			"on a screen of unknown size a magnification is used as it is");
+	check(size(720, 576, PINESY_CORE_WINDOW_FIT, 1.0, 0, 0) == 1 && width == 720 && height == 576,
+			"on a screen of unknown size fit is 1x");
+	check(size(0, 576, 1, 1.0, 1920, 1050) == -1 && width == 0 && height == 0
+			&& size(720, 576, 1, 0.0, 1920, 1050) == -1
+			&& pinesy_core_window_size(720, 576, 1, 1.0, 1920, 1050, nullptr, &height) == -1,
+			"a frame of no size, no pixel ratio or no output gives -1");
 }
 
 //------------------------------------------------------------
@@ -498,6 +560,7 @@ int run_rules()
 {
 	pinesy_core *core = make_core();
 	test_documents();
+	test_window_size();
 	test_paths(core);
 	test_catalogue(core);
 	test_starting(core);

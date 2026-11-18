@@ -26,8 +26,9 @@ public:
 
 	// Starts a configuration's command line. The core adds the fixed
 	// options and, with debug, the debugger options from the settings.
-	// Returns false when a machine is already running.
-	bool start(const QString &title, const QStringList &arguments, bool debug);
+	// windowSize is the configuration's window size. Returns false when
+	// a machine is already running.
+	bool start(const QString &title, const QStringList &arguments, bool debug, int windowSize);
 
 	// Asks the running machine to stop. Its window closes when it has.
 	Q_INVOKABLE void stop();

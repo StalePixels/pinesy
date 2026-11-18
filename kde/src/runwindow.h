@@ -1,11 +1,11 @@
 // The window a machine runs in, and the pinesy_host that ties it to
-// MAME: frames, the size MAME asks for, focus, MAME's error lines and
-// the event pump. Closing the window asks MAME to exit; the window
+// MAME: frames, the frame's size, focus, MAME's error lines and the
+// event pump. Closing the window asks MAME to exit; the window
 // stays until MAME has.
 
 #pragma once
 
-#include "pinesy.h"
+#include "pinesy_core.h"
 
 #include <QQuickWindow>
 #include <QStringList>
@@ -17,7 +17,9 @@ class RunWindow : public QQuickWindow
 	Q_OBJECT
 
 public:
-	RunWindow();
+	// windowSize is the configuration's window size, as
+	// pinesy_core_window_size() takes it.
+	explicit RunWindow(int windowSize = PINESY_CORE_WINDOW_FIT);
 
 	// The host for pinesy_run(), valid while the window is.
 	const pinesy_host *host() const { return &m_host; }
@@ -37,9 +39,10 @@ private:
 	static void onSize(void *context, int width, int height);
 	static void onPump(void *context);
 
-	void resizeToFit(int width, int height);
+	void resizeForFrame(int frameWidth, int frameHeight);
 
 	MachineView *m_view = nullptr;
+	int m_windowSize = PINESY_CORE_WINDOW_FIT;
 	pinesy_host m_host = {};
 	QStringList m_errors;
 	bool m_sized = false;

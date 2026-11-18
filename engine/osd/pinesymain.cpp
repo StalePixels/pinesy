@@ -204,6 +204,60 @@ void pinesy_render_size(void *wincontroller, int &width, int &height)
 }
 
 
+// The picture fills the frame, as with MAME's -nokeepaspect: the
+// frame is already the shape of whole machine pixels, so each machine
+// pixel becomes exactly the multiplier's number of frame pixels on each
+// axis. The hosts call this once for the view's window, when it gets
+// its first frame size, so a change made later in MAME's video options
+// menu still takes effect.
+void pinesy_fill_frame(void *wincontroller)
+{
+	for (const auto &w : osd_common_t::window_list())
+	{
+		auto &win = static_cast<mac_window_info &>(*w);
+		if ((win.platform_window() == wincontroller) && (win.target() != nullptr))
+		{
+			win.target()->set_keepaspect(false);
+			return;
+		}
+	}
+}
+
+
+//============================================================
+//  pinesy_frame_rect
+//============================================================
+
+extern "C" int pinesy_frame_rect(int frame_width, int frame_height, int view_width, int view_height,
+		int *x, int *y, int *width, int *height)
+{
+	if ((x == nullptr) || (y == nullptr) || (width == nullptr) || (height == nullptr))
+		return 0;
+	*x = *y = *width = *height = 0;
+	if ((frame_width <= 0) || (frame_height <= 0) || (view_width <= 0) || (view_height <= 0))
+		return 0;
+
+	// the axis with less room sets the scale; the other gets bars
+	if (long(view_width) * frame_height <= long(view_height) * frame_width)
+	{
+		*width = view_width;
+		*height = int(std::lround(double(frame_height) * view_width / frame_width));
+	}
+	else
+	{
+		*width = int(std::lround(double(frame_width) * view_height / frame_height));
+		*height = view_height;
+	}
+	*width = std::max(1, *width);
+	*height = std::max(1, *height);
+	*x = (view_width - *width) / 2;
+	*y = (view_height - *height) / 2;
+
+	return ((*width % frame_width) == 0) && ((*height % frame_height) == 0)
+			&& ((*width / frame_width) == (*height / frame_height)) ? 1 : 0;
+}
+
+
 //============================================================
 //  pinesy_release_keys
 //============================================================

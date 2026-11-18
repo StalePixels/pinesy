@@ -30,6 +30,10 @@ class ConfigurationDocument : public QObject
 	Q_PROPERTY(bool canRun READ canRun NOTIFY canRunChanged)
 	// The headless command, as Copy Command Line gives it.
 	Q_PROPERTY(QString commandLine READ commandLine NOTIFY changed)
+	// The machine window's size: PINESY_CORE_WINDOW_FIT (0), or a
+	// magnification of the frame from 1 to maxWindowMagnification.
+	Q_PROPERTY(int windowSize READ windowSize WRITE setWindowSize NOTIFY windowSizeChanged)
+	Q_PROPERTY(int maxWindowMagnification READ maxWindowMagnification CONSTANT)
 
 public:
 	explicit ConfigurationDocument(QObject *parent = nullptr);
@@ -44,6 +48,9 @@ public:
 	bool waiting() const { return m_waiting; }
 	bool canRun() const;
 	QString commandLine() const;
+	int windowSize() const { return m_windowSize; }
+	void setWindowSize(int windowSize);
+	int maxWindowMagnification() const;
 
 	// Starts a new configuration for a machine of the catalogue.
 	Q_INVOKABLE void choose(const QString &machine);
@@ -71,6 +78,7 @@ Q_SIGNALS:
 	void modifiedChanged();
 	void summaryChanged();
 	void canRunChanged();
+	void windowSizeChanged();
 	// This document's run stopped with an error.
 	void runFailed(const QString &title, const QString &message);
 
@@ -81,6 +89,7 @@ private:
 
 	QString m_machine;
 	QStringList m_arguments;
+	int m_windowSize = 0;
 	QUrl m_url;
 	bool m_modified = false;
 	QVariantMap m_summary;

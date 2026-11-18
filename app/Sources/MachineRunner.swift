@@ -15,12 +15,13 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
     private var quitAfterRun = false
 
     /// Starts a configuration. `arguments` is its command line; the core
-    /// adds the app's paths and the debugger options.
-    func start(title: String, arguments: [String], debug: Bool) {
+    /// adds the app's paths and the debugger options. `windowSize` is
+    /// the configuration's window size.
+    func start(title: String, arguments: [String], debug: Bool, windowSize: Int) {
         guard running == nil else { return }
         running = title
 
-        // MAME sets the window's size and shape once it has the view
+        // the window takes its size and shape from the first frame
         let view = MachineView(frame: NSRect(x: 0, y: 0, width: 640, height: 480))
         let window = NSWindow(contentRect: view.frame,
                               styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -52,9 +53,9 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
                     }
                 }
                 var sized = false
-                host.onSize = { size in
-                    Self.setContentSize(window, size)
-                    // the first size is MAME's window size; the window starts centred at it
+                host.onSize = { frame in
+                    Self.fit(window, frame: frame, windowSize: windowSize)
+                    // the window starts centred at its first size
                     if !sized {
                         sized = true
                         window.center()
@@ -68,15 +69,17 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
         }
     }
 
-    /// Gives the window the content size MAME asks for, scaled down to fit
-    /// the screen, keeping its top-left corner where it is.
-    static func setContentSize(_ window: NSWindow, _ size: NSSize) {
-        var size = size
-        if let screen = (window.screen ?? NSScreen.main)?.visibleFrame.size {
+    /// Gives the window the content size the core decides for a frame of
+    /// `frame` pixels and the window size, on the window's screen,
+    /// keeping its top-left corner where it is.
+    static func fit(_ window: NSWindow, frame: NSSize, windowSize: Int) {
+        var usable = NSSize.zero
+        if let visible = (window.screen ?? NSScreen.main)?.visibleFrame {
             let chrome = window.frame.height - window.contentLayoutRect.height
-            let scale = min(1, (screen.height - chrome) / size.height, screen.width / size.width)
-            size = NSSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
+            usable = NSSize(width: visible.width, height: visible.height - chrome)
         }
+        guard let size = Core.windowContentSize(frame: frame, windowSize: windowSize,
+                                                pixelRatio: window.backingScaleFactor, usable: usable) else { return }
         var content = window.contentRect(forFrameRect: window.frame)
         content.origin.y += content.height - size.height
         content.size = size

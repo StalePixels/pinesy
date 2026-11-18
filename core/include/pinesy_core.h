@@ -8,8 +8,8 @@
 //  The core holds every rule the front ends share: the
 //  machine catalogue, configurations and .pinesy files, the
 //  starting configuration, option checking, MAME's paths, the
-//  settings schema, the copied command line and headless
-//  mode. It calls the engine, libmame_pinesy (pinesy.h).
+//  settings schema, the machine window's size, the copied
+//  command line and headless mode. It calls the engine, libmame_pinesy (pinesy.h).
 //
 //  Conventions:
 //
@@ -270,19 +270,55 @@ char *pinesy_core_normalise(pinesy_core *core, const char *arguments);
 char *pinesy_core_summary(pinesy_core *core, const char *arguments, const char *machine_hint);
 
 //------------------------------------------------------------
+//  The machine window's size
+//------------------------------------------------------------
+
+// A configuration's window size: PINESY_CORE_WINDOW_FIT, or a
+// whole-number magnification of the frame from 1 to
+// PINESY_CORE_MAX_WINDOW_MAGNIFICATION.
+#define PINESY_CORE_WINDOW_FIT 0
+#define PINESY_CORE_MAX_WINDOW_MAGNIFICATION 4
+
+// The size of the machine window's content, in logical units, for a
+// frame of frame_width x frame_height device pixels, as the engine's
+// size callback gives it (pinesy.h). pixel_ratio is the screen's
+// device pixels per logical unit. usable_width x usable_height is the
+// room the window's content has on the screen, in logical units: the
+// screen's usable area, without the window's title bar and frame.
+//
+// The content is the frame times a whole number. With
+// PINESY_CORE_WINDOW_FIT it is the largest that fits the room. With a
+// magnification it is that one, or the largest that fits when it
+// does not. When even 1x does not fit, the content is the largest
+// size of the frame's shape that fits. A usable size of 0 or less is
+// a screen of unknown size: fit is then 1x, and a magnification is
+// used as it is. A window_size of 0 or less is fit.
+//
+// Sets width and height. Returns the multiple used, 0 when even 1x
+// does not fit, or -1 (with width and height 0) when a frame size is
+// 0 or less, pixel_ratio is not more than 0, or an output is NULL.
+int pinesy_core_window_size(int frame_width, int frame_height, int window_size, double pixel_ratio,
+		int usable_width, int usable_height, int *width, int *height);
+
+//------------------------------------------------------------
 //  .pinesy files
 //------------------------------------------------------------
 
-// Reads a .pinesy file's text. Returns a JSON object with machine
-// and arguments, or NULL when the text is not a configuration this
-// core reads: not a JSON object with format (a whole number),
-// machine (a string) and arguments (an array of strings), a format
-// newer than 1, or empty arguments.
+// Reads a .pinesy file's text. Returns a JSON object with machine,
+// arguments and windowSize, or NULL when the text is not a
+// configuration this core reads: not a JSON object with format (a
+// whole number), machine (a string) and arguments (an array of
+// strings), a format newer than 1, or empty arguments. windowSize is
+// PINESY_CORE_WINDOW_FIT or a magnification, as
+// pinesy_core_window_size() takes it; a file without it, or with a
+// value outside that range, reads as PINESY_CORE_WINDOW_FIT.
 char *pinesy_core_read_document(const char *text);
 
 // The text of a .pinesy file: a JSON object with format 1, the
-// machine and the arguments, keys in order, indented.
-char *pinesy_core_write_document(const char *machine, const char *arguments);
+// machine, the arguments and the window size, keys in order,
+// indented. A window size outside the range is written as
+// PINESY_CORE_WINDOW_FIT.
+char *pinesy_core_write_document(const char *machine, const char *arguments, int window_size);
 
 //------------------------------------------------------------
 //  Runs

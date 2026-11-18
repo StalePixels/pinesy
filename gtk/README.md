@@ -64,7 +64,7 @@ Opening a file in a window that has no machine and no file yet opens it in that 
 
 The machine runs in its own window. MAME draws each frame into a buffer, and the window shows it as a texture. Each key goes to the machine by its XKB keycode, and typed characters go to MAME's menus. Every key goes to the machine, also key combinations with Ctrl, so the app's keyboard shortcuts do not work in the machine window. To stop the machine, close its window, or use Stop in a configuration window.
 
-The window takes the size MAME asks for, scaled down to fit the monitor. GTK 4 cannot keep a window's aspect ratio, so a window resized to another shape shows the picture centred, with black bars.
+The window takes the size the core gives for the frame and the configuration's window size (`../app/README.md`, "The machine window"). The room on the screen is the monitor's whole area (`gdk_monitor_get_geometry`) below the header bar, because GTK 4 does not give the work area. The configuration window's Window size row chooses the size. GTK 4 cannot keep a window's aspect ratio, so a window resized to another shape shows the frame at its own shape, centred, with black bars.
 
 ## Debugger
 

@@ -490,6 +490,18 @@ AdwPreferencesGroup *ConfigurationWindow::machine_group(const core::Summary &sum
 			});
 		}));
 	}
+
+	// the window size: index 0 is fit, then each magnification
+	std::vector<std::string> sizes{ "Fit to screen" };
+	for (int magnification = 1; magnification <= core::window::max_magnification; magnification++)
+		sizes.push_back(std::to_string(magnification) + "×");
+	adw_preferences_group_add(group, combo_row("Window size", sizes, guint(m_document.window_size), [this](guint index) {
+		if (int(index) == m_document.window_size || !core::window::is_window_size(int(index)))
+			return;
+		m_document.window_size = int(index);
+		m_modified = true;
+		update_title();
+	}));
 	return group;
 }
 
@@ -722,7 +734,7 @@ void ConfigurationWindow::run(bool debug)
 {
 	if (m_app.runner().running() || !m_summary || !m_summary->can_run() || m_refresh_waiting)
 		return;
-	m_app.runner().start(m_app.core(), title(), m_document.arguments, debug);
+	m_app.runner().start(m_app.core(), title(), m_document.arguments, debug, m_document.window_size);
 }
 
 void ConfigurationWindow::copy_command_line()

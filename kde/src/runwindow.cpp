@@ -6,9 +6,10 @@
 #include <QCoreApplication>
 #include <QScreen>
 
-RunWindow::RunWindow()
+RunWindow::RunWindow(int windowSize)
+	: m_windowSize(windowSize)
 {
-	// MAME sets the size and shape once it has the view
+	// the window takes its size from the first frame
 	resize(640, 480);
 	setColor(Qt::black);
 
@@ -53,7 +54,7 @@ void RunWindow::onOutput(void *context, int channel, const char *text)
 
 void RunWindow::onSize(void *context, int width, int height)
 {
-	static_cast<RunWindow *>(context)->resizeToFit(width, height);
+	static_cast<RunWindow *>(context)->resizeForFrame(width, height);
 }
 
 void RunWindow::onPump(void *)
@@ -61,18 +62,21 @@ void RunWindow::onPump(void *)
 	QCoreApplication::processEvents();
 }
 
-// Takes the size MAME asks for, scaled down to fit the screen. The first
-// size is MAME's window size; the window starts centred at it.
-void RunWindow::resizeToFit(int width, int height)
+// Takes the size the core gives for a frame of frameWidth x frameHeight
+// pixels, the window size and the screen. The window starts centred at
+// its first size.
+void RunWindow::resizeForFrame(int frameWidth, int frameHeight)
 {
-	if (width <= 0 || height <= 0)
-		return;
-	QSize wanted(width, height);
+	QSize usable;
 	if (QScreen *s = screen()) {
-		const QSize available = s->availableGeometry().size();
-		const double scale = qMin(1.0, qMin(double(available.width()) / width, double(available.height()) / height));
-		wanted = QSize(qRound(width * scale), qRound(height * scale));
+		const QMargins frame = frameMargins();
+		usable = s->availableGeometry().size().shrunkBy(frame);
 	}
+	int width = 0, height = 0;
+	if (pinesy_core_window_size(frameWidth, frameHeight, m_windowSize, devicePixelRatio(),
+			usable.width(), usable.height(), &width, &height) < 0)
+		return;
+	const QSize wanted(width, height);
 	resize(wanted);
 	if (!m_sized) {
 		m_sized = true;

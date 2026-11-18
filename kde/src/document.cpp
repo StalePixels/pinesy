@@ -53,6 +53,20 @@ QString ConfigurationDocument::commandLine() const
 	return Core::instance()->copyCommandLine(m_arguments, false);
 }
 
+void ConfigurationDocument::setWindowSize(int windowSize)
+{
+	if (windowSize == m_windowSize || windowSize < PINESY_CORE_WINDOW_FIT || windowSize > PINESY_CORE_MAX_WINDOW_MAGNIFICATION)
+		return;
+	m_windowSize = windowSize;
+	setModified(true);
+	Q_EMIT windowSizeChanged();
+}
+
+int ConfigurationDocument::maxWindowMagnification() const
+{
+	return PINESY_CORE_MAX_WINDOW_MAGNIFICATION;
+}
+
 void ConfigurationDocument::setArguments(const QStringList &arguments)
 {
 	if (arguments == m_arguments)
@@ -146,13 +160,16 @@ QString ConfigurationDocument::load(const QUrl &url)
 		return file.errorString();
 	QString machine;
 	QStringList arguments;
-	if (!Core::readDocument(file.readAll(), &machine, &arguments))
+	int windowSize = PINESY_CORE_WINDOW_FIT;
+	if (!Core::readDocument(file.readAll(), &machine, &arguments, &windowSize))
 		return i18n("This file is not a Pinesy configuration, or it is from a newer version of Pinesy.");
 	m_machine = machine;
 	m_arguments = arguments;
+	m_windowSize = windowSize;
 	m_url = url;
 	setModified(false);
 	Q_EMIT changed();
+	Q_EMIT windowSizeChanged();
 	Q_EMIT urlChanged();
 	refresh();
 	return {};
@@ -163,7 +180,7 @@ QString ConfigurationDocument::save(const QUrl &url)
 	QSaveFile file(url.toLocalFile());
 	if (!file.open(QIODevice::WriteOnly))
 		return file.errorString();
-	file.write(Core::writeDocument(m_machine, m_arguments));
+	file.write(Core::writeDocument(m_machine, m_arguments, m_windowSize));
 	if (!file.commit())
 		return file.errorString();
 	if (url != m_url) {
@@ -178,7 +195,7 @@ void ConfigurationDocument::run(bool debug)
 {
 	if (!canRun())
 		return;
-	m_runningThis = MachineRunner::instance()->start(title(), m_arguments, debug);
+	m_runningThis = MachineRunner::instance()->start(title(), m_arguments, debug, m_windowSize);
 }
 
 void ConfigurationDocument::copyCommandLine()

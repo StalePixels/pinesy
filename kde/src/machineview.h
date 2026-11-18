@@ -1,5 +1,5 @@
 // The item a running machine is shown in: each frame MAME draws, as a
-// texture filling the item. Keys go to MAME by their position.
+// texture at the frame's shape, centred, on the window's black. Keys go to MAME by their position.
 
 #pragma once
 

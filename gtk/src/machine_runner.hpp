@@ -19,8 +19,9 @@
 
 namespace pinesy::gtk {
 
-// The widget MAME's first screen shows in. It draws the last frame
-// and tells the engine its size.
+// The widget MAME's first screen shows in. It draws the last frame at
+// the frame's shape, centred, with black bars where the view's shape
+// differs, and tells the engine its size.
 class MachineView : public Gtk::Widget
 {
 public:
@@ -48,7 +49,9 @@ private:
 class MachineWindow
 {
 public:
-	explicit MachineWindow(const std::string &title);
+	// window_size is the configuration's window size
+	// (core::window::content_size).
+	MachineWindow(const std::string &title, int window_size);
 	~MachineWindow();
 
 	MachineWindow(const MachineWindow &) = delete;
@@ -76,6 +79,7 @@ private:
 	AdwWindow *m_window = nullptr;
 	GtkWidget *m_header = nullptr;
 	MachineView *m_view = nullptr;
+	int m_window_size = core::window::fit;
 	gulong m_active_handler = 0;
 	std::set<unsigned> m_keys_down;
 	std::string m_errors;
@@ -100,10 +104,10 @@ public:
 	bool running() const { return m_running; }
 
 	// Runs a configuration in its own window, starting from the main
-	// loop once the current event has been handled. Does nothing while
-	// a machine runs.
+	// loop once the current event has been handled. window_size is the
+	// configuration's window size. Does nothing while a machine runs.
 	void start(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-			bool debug);
+			bool debug, int window_size);
 
 	// Asks the running machine to stop. Its window closes when it has.
 	void stop();
@@ -126,11 +130,11 @@ private:
 	sigc::signal<void(const std::string &, int, const std::string &)> m_failed;
 
 	void run(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-			bool debug);
+			bool debug, int window_size);
 };
 
-// Headless mode with a window: runs the arguments in a machine window,
-// with no app around it. Returns MAME's exit code.
+// Headless mode with a window: runs the arguments in a machine window
+// that fits the screen, with no app around it. Returns MAME's exit code.
 int run_headless_in_window(const core::Core &core, const std::vector<std::string> &arguments);
 
 } // namespace pinesy::gtk

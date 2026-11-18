@@ -46,8 +46,8 @@ enum Headless {
             }
         }
         var sized = false
-        host.onSize = { size in
-            MachineRunner.setContentSize(window, size)
+        host.onSize = { frame in
+            MachineRunner.fit(window, frame: frame, windowSize: Core.windowFit)
             if !sized {
                 sized = true
                 window.center()

@@ -34,7 +34,7 @@ typedef void (*pinesy_text_fn)(void *context, const char *text);
 // 0 error, 1 warning, 2 info, 3 debug, 4 verbose, 5 log.
 typedef void (*pinesy_output_fn)(void *context, int channel, const char *text);
 
-// Receives a size for the host's window, in points.
+// Receives a width and a height, in pixels.
 typedef void (*pinesy_size_fn)(void *context, int width, int height);
 
 // Runs the host's pending events once, without waiting.
@@ -43,15 +43,19 @@ typedef void (*pinesy_pump_fn)(void *context);
 typedef struct pinesy_host
 {
 	// macOS: the NSView that shows the first screen. MAME sets the
-	// frame as the contents of its layer, which scales it to the view.
-	// The host keeps the view alive for the whole run.
+	// frame as the contents of its layer, which draws it where
+	// pinesy_frame_rect() says. The host keeps the view alive for the
+	// whole run.
 	// Linux: any non-null value says that the host shows the first
-	// screen; the host scales each frame it gets to its view. With a
-	// view, MAME renders at the shape of the view's pixel size (the
-	// backing size on macOS, pinesy_view_size() on Linux), made only as
-	// big as the smallest size that shows every pixel of the machine's
-	// picture. May be null: then MAME renders at its own size and only
-	// calls frame.
+	// screen; the host draws each frame it gets in its view, where
+	// pinesy_frame_rect() says. With a view, MAME renders the frame at
+	// the visible area of the machine's first screen times a whole
+	// number on each axis, so each machine pixel is the same number of
+	// frame pixels wide and high: of the multiples that fit in 800 x
+	// 900, the one with the shape closest to MAME's view of the
+	// machine, and of equal ones the smaller. The picture fills the
+	// frame, as with MAME's -nokeepaspect. May be null: then MAME
+	// renders at its own size and only calls frame.
 	void *view;
 
 	pinesy_frame_fn frame;
@@ -60,15 +64,12 @@ typedef struct pinesy_host
 	// prints the output as it does without a host.
 	pinesy_output_fn output;
 
-	// The shape MAME wants for the view: aspect gets the ratio to keep
-	// when the user resizes (0, 0: any shape), size the view's size.
-	// The ratio is not reduced (10000, 7500 for 4:3), and the same
-	// ratio can come more than once. MAME calls size with its own
-	// window size when it takes the view, and again when the picture
-	// changes (screen mode, rotation, aspect setting) and the view's
-	// shape no longer fits it. A resize by the user brings no call:
-	// MAME draws the picture centred in the view, with black bars.
-	// Either may be null.
+	// The frame's size, in pixels: aspect gives the shape to keep when
+	// the user resizes the window, size the frame to size the window
+	// for (pinesy_core_window_size() in the core gives the window's
+	// size). MAME calls both with the first frame, and again when the
+	// frame's size changes (screen mode, rotation). A resize by the
+	// user brings no call. Either may be null.
 	pinesy_size_fn aspect;
 	pinesy_size_fn size;
 
@@ -112,6 +113,18 @@ void pinesy_char(unsigned int ch);
 // whenever the view changes size. macOS takes the size from the
 // NSView and has no such function.
 void pinesy_view_size(int width, int height, int pixel_width, int pixel_height);
+
+// Where a host draws a frame in its view: at the frame's shape, as
+// big as the view takes, centred. The rest of the view is black. All
+// sizes are in pixels. Gives the rectangle in x, y, width and height,
+// from the view's top left. Returns 1 when the drawn size is a whole
+// multiple of the frame, so the host scales it with nearest-neighbour
+// filtering and every frame pixel covers the same number of view
+// pixels; 0 when it is not, and the host scales it with linear
+// filtering. Returns 0, with every output 0, when a size is 0 or less
+// or an output is null.
+int pinesy_frame_rect(int frame_width, int frame_height, int view_width, int view_height,
+		int *x, int *y, int *width, int *height);
 
 // Linux: whether the host's window has the keyboard focus (1) or not
 // (0). Without -background_input MAME ignores input while it has not.

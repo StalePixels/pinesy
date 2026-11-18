@@ -6,13 +6,14 @@ To build it, see [docs/build-macos.md](../docs/build-macos.md).
 
 ## Configurations
 
-A configuration is a document: a machine, what is fitted to it, its ROM and the media in its drives. It is saved as a `.pinesy` file, a JSON object with three keys:
+A configuration is a document: a machine, what is fitted to it, its ROM and the media in its drives. It is saved as a `.pinesy` file, a JSON object with four keys:
 
 - `format`: the file format version, now 1.
 - `machine`: the driver that stands for the machine in the machine list.
 - `arguments`: the MAME command line the configuration runs, as an array of strings. The first string is the driver to run, then options, such as `-exp intf1,bios=v1` or `-pi /path/nextpi.img`. An empty value, as in `-rs232_rpi ""`, leaves a slot empty. A string that starts with `-` is always an option name, never a value, so a flag such as `-skip_gameinfo` stays a flag. Strings that are not options stay where they are.
+- `windowSize`: the machine window's size. `0` is Fit to screen; `1` to `4` is that whole-number magnification of the frame. A file without this key, or with another value, opens as Fit to screen.
 
-File > New (⌘N) opens a window and asks for the machine. A launch with no document to open does the same. The configuration window shows the machine, its model and ROM, its hardware and its media, and the command line. Every change is checked with MAME, and an option the machine no longer has is removed. When MAME rejects the driver itself, no option is removed. When MAME rejects the command line, the window shows MAME's error text and Run is not available. MAME's warnings are shown too, and do not stop a run. A media row with a problem shows it in red under the row's name: a file the machine needs and does not have, a file that is not found (the row shows its full path), or an SD card image that MAME's SD card cannot use. MAME takes SD cards of up to 1 GiB, and SDHC cards of up to 32 GiB that are a multiple of 512 KiB. A CHD is not checked. Choose refuses such an SD card image and says why, and a configuration that holds one cannot run. Each media row shows the file extensions MAME lists for the device, but any file can be chosen, because MAME also opens others, such as `.img` SD card images.
+File > New (⌘N) opens a window and asks for the machine. A launch with no document to open does the same. The configuration window shows the machine, its model and ROM, its window size, its hardware and its media, and the command line. Every change is checked with MAME, and an option the machine no longer has is removed. When MAME rejects the driver itself, no option is removed. When MAME rejects the command line, the window shows MAME's error text and Run is not available. MAME's warnings are shown too, and do not stop a run. A media row with a problem shows it in red under the row's name: a file the machine needs and does not have, a file that is not found (the row shows its full path), or an SD card image that MAME's SD card cannot use. MAME takes SD cards of up to 1 GiB, and SDHC cards of up to 32 GiB that are a multiple of 512 KiB. A CHD is not checked. Choose refuses such an SD card image and says why, and a configuration that holds one cannot run. Each media row shows the file extensions MAME lists for the device, but any file can be chosen, because MAME also opens others, such as `.img` SD card images.
 
 ## The machine list
 
@@ -34,7 +35,7 @@ The library reports each slot with a kind, so the app can tell these apart: `mem
 
 ## Running
 
-Machine > Run (⌘R) runs the front configuration in its own window, and Machine > Run with Debugger (⌥⌘R) adds `-debug`. The window takes the size and shape MAME asks for. One machine runs at a time; while it runs, configurations cannot be changed, and a configuration opened then waits for the run to end. Machine > Stop (⌘.) or closing the window stops the machine, also while it is still starting. Machine > Reset resets the running machine and keeps its RAM, as MAME's F3 does; Machine > Hard Reset starts it again from power-on, as Shift+F3 does. These menu items work also on keyboards with no Scroll Lock key, which MAME needs to turn on its own UI keys. When MAME stops with an error, an alert shows MAME's error lines.
+Machine > Run (⌘R) runs the front configuration in its own window, and Machine > Run with Debugger (⌥⌘R) adds `-debug`. One machine runs at a time; while it runs, configurations cannot be changed, and a configuration opened then waits for the run to end. Machine > Stop (⌘.) or closing the window stops the machine, also while it is still starting. Machine > Reset resets the running machine and keeps its RAM, as MAME's F3 does; Machine > Hard Reset starts it again from power-on, as Shift+F3 does. These menu items work also on keyboards with no Scroll Lock key, which MAME needs to turn on its own UI keys. When MAME stops with an error, an alert shows MAME's error lines.
 
 Settings:
 
@@ -42,6 +43,14 @@ Settings:
 - Debugger: MAME's debugger windows, or the GDB remote stub (`-debugger gdbstub -debugger_port <port>`, port 23946 by default, from 1 to 65535).
 
 Machine > Copy Command Line copies the headless command for the configuration, quoted for zsh. Headless mode adds the paths below itself.
+
+## The machine window
+
+MAME renders each frame in software at a fixed size: the visible area of the machine's first screen times a whole number on each axis, so each machine pixel is the same number of frame pixels wide and high. Of the multiples that fit in 800 x 900, it takes the one whose shape is closest to MAME's view of the machine, and of equal ones the smaller (the rule of Holub's emame). On the Next, 720 x 288 becomes 720 x 576, a multiple of 1 across and 2 down. The picture fills the frame, as with MAME's `-nokeepaspect`, so no machine pixel is squeezed to MAME's 4:3 view. MAME's video options menu can still turn Keep Aspect on for the run.
+
+The frame size is in device pixels. The window's content is the frame times a whole number, divided by the screen's pixels per point, so at 1x one frame pixel is one device pixel. The configuration's window size chooses the number: Fit to screen, the default, takes the largest that fits the screen's usable area below the title bar; 1x to 4x take that one, or the largest that fits when it does not. When even 1x does not fit, the window is the largest size of the frame's shape that fits. The window takes this size when the machine starts and again when the frame's size changes, as with a new screen mode. A machine window in headless mode uses Fit to screen. On a screen whose pixels per point is not a whole number, the window can be one device pixel off a whole multiple; the picture is then smoothed.
+
+The window keeps the frame's shape when it is resized. Where the view's shape differs, as in full screen, the frame is drawn at its own shape, centred, with black bars. It is sharp (nearest-neighbour) where the drawn size is a whole multiple of the frame, and smoothed at any other size.
 
 ## Headless
 

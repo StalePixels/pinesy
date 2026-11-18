@@ -4,11 +4,12 @@
 //
 //  document.cpp - .pinesy files
 //
-//  A .pinesy file is a JSON object with three keys: format
+//  A .pinesy file is a JSON object with four keys: format
 //  (the file format version), machine (the driver that stands
-//  for the machine in the machine list) and arguments (the
-//  MAME command line, as an array of strings). Other keys are
-//  ignored when reading.
+//  for the machine in the machine list), arguments (the MAME
+//  command line, as an array of strings) and windowSize (0 for
+//  fit, else the magnification of the machine window). Other
+//  keys are ignored when reading.
 //
 //============================================================
 
@@ -18,6 +19,27 @@
 #include <cmath>
 
 namespace pinesy::core {
+
+namespace {
+
+// A whole number that window::is_window_size() takes; anything else,
+// or no value, is window::fit.
+int read_window_size(const json::Value *value)
+{
+	try
+	{
+		if (!value) return window::fit;
+		const double size = value->number();
+		if (size != std::floor(size) || size < window::fit || size > window::max_magnification) return window::fit;
+		return int(size);
+	}
+	catch (const json::Error &)
+	{
+		return window::fit;
+	}
+}
+
+} // anonymous namespace
 
 std::optional<Document> Document::read(std::string_view text)
 {
@@ -34,6 +56,7 @@ std::optional<Document> Document::read(std::string_view text)
 		document.machine = machine->string();
 		document.arguments = encode::to_strings(*arguments);
 		if (version > format_version || document.arguments.empty()) return std::nullopt;
+		document.window_size = read_window_size(root.find("windowSize"));
 		return document;
 	}
 	catch (const json::Error &)
@@ -47,7 +70,8 @@ std::string Document::write() const
 	return json::write_pretty_sorted(json::Object{
 		{ "format", format_version },
 		{ "machine", machine },
-		{ "arguments", encode::strings(arguments) } });
+		{ "arguments", encode::strings(arguments) },
+		{ "windowSize", window::is_window_size(window_size) ? window_size : window::fit } });
 }
 
 } // namespace pinesy::core

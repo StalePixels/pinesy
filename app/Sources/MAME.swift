@@ -8,8 +8,8 @@ import CPinesy
 enum MAME {
     /// Calls body with the host a run gives MAME. `view` shows the first
     /// screen; nil means MAME draws nowhere and no host is passed, as in
-    /// headless mode. `host` receives MAME's error lines and the window
-    /// shape it asks for.
+    /// headless mode. `host` receives MAME's error lines and the frame's
+    /// size.
     @MainActor
     static func withHost<R>(view: NSView?, receiver: RunHost? = nil, _ body: (UnsafePointer<pinesy_host>?) -> R) -> R {
         guard let view else {
@@ -48,7 +48,7 @@ enum MAME {
 }
 
 /// What MAME tells the app during a run: the error lines it prints, and
-/// the shape it wants for the machine window. MAME calls on the main thread.
+/// the frame's size, which sets the machine window's shape and size. MAME calls on the main thread.
 @MainActor
 final class RunHost {
     /// MAME's osd_output_channel values.
@@ -59,7 +59,7 @@ final class RunHost {
     private(set) var errors: [String] = []
     /// The ratio to keep when the user resizes; nil for any shape.
     var onAspect: (NSSize?) -> Void = { _ in }
-    /// The size MAME wants for the picture, in points.
+    /// The frame's size, in pixels, with the first frame and when it changes.
     var onSize: (NSSize) -> Void = { _ in }
 
     nonisolated var context: UnsafeMutableRawPointer { Unmanaged.passUnretained(self).toOpaque() }

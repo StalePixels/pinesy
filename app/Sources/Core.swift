@@ -104,6 +104,25 @@ enum Core {
         pinesy_core_is_usable_rom_folder(path) != 0
     }
 
+    // MARK: - The machine window
+
+    /// The window size that fits the screen; a magnification is 1 to maxWindowMagnification.
+    nonisolated static let windowFit = Int(PINESY_CORE_WINDOW_FIT)
+    nonisolated static let maxWindowMagnification = Int(PINESY_CORE_MAX_WINDOW_MAGNIFICATION)
+
+    /// The machine window's content size, in points, for a frame of
+    /// `frame` pixels: the core's rule, from the configuration's window
+    /// size, the screen's pixels per point and the room the content has
+    /// on the screen, in points (zero when the screen is not known).
+    nonisolated static func windowContentSize(frame: NSSize, windowSize: Int, pixelRatio: CGFloat, usable: NSSize) -> NSSize? {
+        var width: Int32 = 0
+        var height: Int32 = 0
+        let multiple = pinesy_core_window_size(Int32(frame.width), Int32(frame.height), Int32(windowSize), Double(pixelRatio),
+                                               Int32(usable.width), Int32(usable.height), &width, &height)
+        guard multiple >= 0 else { return nil }
+        return NSSize(width: Int(width), height: Int(height))
+    }
+
     // MARK: - Runs
 
     /// Runs a configuration with MAME's fixed options and, with debug,
