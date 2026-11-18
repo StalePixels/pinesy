@@ -13,25 +13,33 @@ set(PINESY_CORE_TESTS OFF CACHE BOOL "Build the core's tests")
 set(PINESY_ENGINE_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/../mame/libmame_pinesy_qt.so" CACHE FILEPATH "The engine library, libmame_pinesy_qt")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../core" core)
 
-# CMake calls the package "ECM"; distributions name it extra-cmake-modules
-find_package(ECM 6.0 QUIET NO_MODULE)
-if(NOT ECM_FOUND)
-	message(FATAL_ERROR "extra-cmake-modules (ECM) 6.0 or later is not installed. Install the extra-cmake-modules package of your distribution.")
+# Every package the app needs, by its CMake name, each looked for on its
+# own, so one configure lists every package that is missing.
+set(_missing "")
+foreach(_package IN ITEMS ECM:6.0
+		Qt6Core:6.8 Qt6Gui:6.8 Qt6Qml:6.8 Qt6Quick:6.8 Qt6QuickControls2:6.8 Qt6Widgets:6.8
+		KF6Kirigami:6.8 KF6Config:6.8 KF6CoreAddons:6.8 KF6I18n:6.8)
+	string(REPLACE ":" ";" _package "${_package}")
+	list(GET _package 0 _name)
+	list(GET _package 1 _version)
+	find_package(${_name} ${_version} QUIET CONFIG)
+	if(NOT ${_name}_FOUND)
+		list(APPEND _missing "${_name} ${_version}")
+	endif()
+endforeach()
+if(_missing)
+	list(JOIN _missing "\n  " _missing)
+	message(FATAL_ERROR "These packages are missing, or older than the version shown:\n  ${_missing}")
 endif()
+
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 include(KDEInstallDirs)
 include(KDECMakeSettings)
 include(KDECompilerSettings NO_POLICY_SCOPE)
-
-# Distributions split Qt into its modules: Core, Gui and Widgets are in
-# qtbase, Qml, Quick and QuickControls2 in qtdeclarative
-find_package(Qt6 6.8 QUIET COMPONENTS Core Gui Qml Quick QuickControls2 Widgets)
-if(NOT Qt6_FOUND)
-	message(FATAL_ERROR "Qt 6.8 or later is not installed with all the parts this app needs. Install the development packages of your distribution for the Qt modules qtbase (Core, Gui, Widgets) and qtdeclarative (Qml, Quick, QuickControls2).")
-endif()
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Widgets)
+find_package(KF6 6.8 REQUIRED COMPONENTS Kirigami Config CoreAddons I18n)
 qt_standard_project_setup(REQUIRES 6.8)
 qt_policy(SET QTP0004 NEW)
-find_package(KF6 6.8 REQUIRED COMPONENTS Kirigami Config CoreAddons I18n)
 
 # The resources folder the core reads: the bundled ROM sets in "roms" and
 # MAME's search folders. For a run from the build folder it is made here,
