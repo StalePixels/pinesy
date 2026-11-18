@@ -1,5 +1,5 @@
 // The configuration window: the machine, its hardware, its media and
-// its command line. Everything shown comes from MAME's description of
+// its command line. Everything shown comes from the core's summary of
 // the document's command line, asked again after every change.
 
 import AppKit
@@ -35,8 +35,6 @@ struct ConfigurationView: View {
     /// The configuration changed while a machine ran; MAME is asked about
     /// it when the run ends.
     @State private var refreshWaiting = false
-
-    private var catalogue: Catalogue { Catalogue.shared }
 
     private var title: String {
         fileURL?.deletingPathExtension().lastPathComponent
@@ -80,11 +78,11 @@ struct ConfigurationView: View {
                                                 copyCommandLine: copyCommandLine))
         .background(WindowReader { window = $0 })
         .sheet(isPresented: $choosingMachine) {
-            MachinePicker(catalogue: catalogue,
+            MachinePicker(catalogue: Catalogue.shared,
                           canChoose: runner.running == nil,
                           onChoose: { machine in
                               document.machine = machine.id
-                              document.arguments = ConfigurationEditor.newConfiguration(machine, catalogue: catalogue)
+                              document.arguments = Core.newConfiguration(machine.id)
                               choosingMachine = false
                           },
                           onCancel: {
@@ -96,10 +94,10 @@ struct ConfigurationView: View {
         // list for the device leaves out, such as .img SD card images.
         .fileImporter(isPresented: $choosingMedia, allowedContentTypes: [.data]) { result in
             if case .success(let url) = result, let media = mediaToChoose {
-                if media.interface == "sdcard", let problem = SDCardImage.problem(path: url.path) {
+                if media.interface == "sdcard", let problem = Core.sdCardProblem(url.path) {
                     refusedFile = problem
                 } else {
-                    document.arguments = ConfigurationEditor.setMedia(document.arguments, media: media, path: url.path)
+                    document.arguments = Core.setMedia(document.arguments, media: media.name, path: url.path)
                 }
             }
             mediaToChoose = nil
@@ -136,12 +134,9 @@ struct ConfigurationView: View {
             return
         }
         refreshWaiting = false
-        let summary = ConfigurationSummary(arguments: document.arguments,
-                                           description: MAME.describe(document.arguments),
-                                           catalogue: catalogue,
-                                           machineHint: document.machine)
+        let summary = Core.summary(document.arguments, machineHint: document.machine)
         self.summary = summary
-        if let machine = summary.machine?.id, document.machine != machine {
+        if let machine = summary?.machine?.id, document.machine != machine {
             document.machine = machine
         }
     }
@@ -198,7 +193,7 @@ struct ConfigurationView: View {
             }
 
             Section {
-                Text(RunOptions.commandLine(document.arguments))
+                Text(Core.copyCommandLine(document.arguments))
                     .font(.system(.callout, design: .monospaced))
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -235,7 +230,7 @@ struct ConfigurationView: View {
             if summary.models.count > 1 {
                 Picker("Model", selection: Binding(
                     get: { summary.driver },
-                    set: { document.arguments = ConfigurationEditor.setDriver(document.arguments, to: $0, catalogue: catalogue) })) {
+                    set: { document.arguments = Core.setDriver(document.arguments, to: $0) })) {
                     ForEach(summary.models, id: \.driver) { model in
                         Text(model.year.contains("?") ? model.label : "\(model.label) (\(model.year))")
                             .tag(model.driver)
@@ -249,8 +244,7 @@ struct ConfigurationView: View {
                     get: { summary.currentROM },
                     set: { choice in
                         guard let choice else { return }
-                        document.arguments = ConfigurationEditor.setROM(document.arguments, driver: choice.driver,
-                                                                        bios: choice.bios, catalogue: catalogue)
+                        document.arguments = Core.setROM(document.arguments, driver: choice.driver, bios: choice.bios)
                     })) {
                     ForEach(summary.roms, id: \.self) { rom in
                         Text(rom.label).tag(Optional(rom))
@@ -278,7 +272,7 @@ struct ConfigurationView: View {
         } else {
             Picker(selection: Binding(
                 get: { row.slot.current },
-                set: { document.arguments = ConfigurationEditor.setSlot(document.arguments, slot: row.slot, card: $0, catalogue: catalogue) })) {
+                set: { document.arguments = Core.setSlot(document.arguments, slot: row.slot.tag, card: $0) })) {
                 ForEach(row.choices, id: \.value) { choice in
                     Text(choice.label).tag(choice.value)
                 }
@@ -300,7 +294,7 @@ struct ConfigurationView: View {
         if !row.roms.isEmpty {
             Picker(selection: Binding(
                 get: { row.currentROM },
-                set: { document.arguments = ConfigurationEditor.setCardROM(document.arguments, slot: row.slot, bios: $0, catalogue: catalogue) })) {
+                set: { document.arguments = Core.setCardROM(document.arguments, slot: row.slot.tag, bios: $0) })) {
                 ForEach(row.roms, id: \.value) { rom in
                     Text(rom.label).tag(rom.value)
                 }
@@ -331,7 +325,7 @@ struct ConfigurationView: View {
                 Button("Choose…") { mediaToChoose = media; choosingMedia = true }
                 if !media.current.isEmpty {
                     Button("Eject", systemImage: "eject") {
-                        document.arguments = ConfigurationEditor.setMedia(document.arguments, media: media, path: nil)
+                        document.arguments = Core.setMedia(document.arguments, media: media.name, path: nil)
                     }
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
@@ -367,7 +361,7 @@ struct ConfigurationView: View {
     private func copyCommandLine() {
         guard !document.arguments.isEmpty else { return }
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(RunOptions.commandLine(document.arguments), forType: .string)
+        NSPasteboard.general.setString(Core.copyCommandLine(document.arguments), forType: .string)
     }
 }
 

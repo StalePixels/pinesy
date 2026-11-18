@@ -1,50 +1,29 @@
-// Swift wrappers around the pinesy C interface (pinesy.h).
+// Swift wrappers around the engine's C interface (pinesy.h): a run's
+// host, and the calls into a running machine. Runs start through the
+// core (Core.swift).
 
 import AppKit
 import CPinesy
 
 enum MAME {
-    /// Every driver in the library, as pinesy_list_machines() reports it.
-    static func listMachines() -> [DriverInfo] {
-        let text = TextReceiver()
-        _ = pinesy_list_machines(TextReceiver.callback, text.context)
-        return (try? JSONDecoder().decode([DriverInfo].self, from: Data(text.value.utf8))) ?? []
-    }
-
-    /// The machine a command line describes: its slots, ROMs and media,
-    /// or MAME's error text. MAME reads the command line with the app's
-    /// own paths, as for a run.
-    static func describe(_ arguments: [String]) -> MachineDescription {
-        let text = TextReceiver()
-        withCStrings(MAMEPaths.options() + arguments) { argc, argv in
-            _ = pinesy_describe(argc, argv, TextReceiver.callback, text.context)
-        }
-        if let description = try? JSONDecoder().decode(MachineDescription.self, from: Data(text.value.utf8)) {
-            return description
-        }
-        return MachineDescription(errors: "The emulator gave no description of this configuration.")
-    }
-
-    /// Runs MAME on the main thread with a command line (no program name)
-    /// and returns MAME's exit code. `view` shows the first screen; nil
-    /// means MAME draws nowhere and no host is passed, as in headless mode.
-    /// `host` receives MAME's error lines and the window shape it asks for.
+    /// Calls body with the host a run gives MAME. `view` shows the first
+    /// screen; nil means MAME draws nowhere and no host is passed, as in
+    /// headless mode. `host` receives MAME's error lines and the window
+    /// shape it asks for.
     @MainActor
-    static func run(_ arguments: [String], view: NSView?, host receiver: RunHost? = nil) -> Int32 {
-        withCStrings(arguments) { argc, argv in
-            guard let view else {
-                return pinesy_run(argc, argv, nil)
-            }
-            var host = pinesy_host()
-            host.view = Unmanaged.passUnretained(view).toOpaque()
-            if let receiver {
-                host.output = RunHost.outputCallback
-                host.aspect = RunHost.aspectCallback
-                host.size = RunHost.sizeCallback
-                host.context = receiver.context
-            }
-            return withUnsafePointer(to: &host) { pinesy_run(argc, argv, $0) }
+    static func withHost<R>(view: NSView?, receiver: RunHost? = nil, _ body: (UnsafePointer<pinesy_host>?) -> R) -> R {
+        guard let view else {
+            return body(nil)
         }
+        var host = pinesy_host()
+        host.view = Unmanaged.passUnretained(view).toOpaque()
+        if let receiver {
+            host.output = RunHost.outputCallback
+            host.aspect = RunHost.aspectCallback
+            host.size = RunHost.sizeCallback
+            host.context = receiver.context
+        }
+        return withUnsafePointer(to: &host) { body($0) }
     }
 
     /// Asks the running machine to exit; a machine still starting exits
@@ -65,24 +44,6 @@ enum MAME {
 
     static func character(_ scalar: UInt32) {
         pinesy_char(scalar)
-    }
-
-    private static func withCStrings<R>(_ strings: [String], _ body: (Int32, UnsafePointer<UnsafePointer<CChar>?>?) -> R) -> R {
-        let cStrings = strings.map { strdup($0) }
-        defer { cStrings.forEach { free($0) } }
-        let argv: [UnsafePointer<CChar>?] = cStrings.map { UnsafePointer($0) }
-        return argv.withUnsafeBufferPointer { body(Int32($0.count), $0.baseAddress) }
-    }
-}
-
-/// Collects the JSON text a pinesy call passes to its callback.
-private final class TextReceiver {
-    var value = ""
-    var context: UnsafeMutableRawPointer { Unmanaged.passUnretained(self).toOpaque() }
-
-    static let callback: pinesy_text_fn = { context, text in
-        guard let context, let text else { return }
-        Unmanaged<TextReceiver>.fromOpaque(context).takeUnretainedValue().value = String(cString: text)
     }
 }
 

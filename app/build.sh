@@ -7,10 +7,13 @@
 # (default: mame/libmame_pinesy.dylib in this repo). It must be named
 # libmame_pinesy.dylib: the app links -lmame_pinesy from its folder.
 #
+# The core, libpinesy.dylib, is compiled from ../core/src into
+# <output-dir>/core, linked against the engine library.
+#
 # The bundle carries the app icon (Pinesy.icns), the ROM sets in ../roms in Contents/Resources/roms,
 # MAME's plugins, hash, bgfx, artwork and language folders in
 # Contents/Resources, and libmame_pinesy.dylib and every library it needs outside /usr/lib
-# and /System in Contents/Frameworks. Their install
+# and /System in Contents/Frameworks, with libpinesy.dylib. Their install
 # names are rewritten to @rpath, which the executable points at
 # Contents/Frameworks. The bundle is signed ad hoc.
 
@@ -72,14 +75,27 @@ else
 	mkdir -p "$contents/Resources/roms"
 fi
 
-# MAME's own support files, in the folders MAMEPaths.swift points at
+# MAME's own support files, in the folders the core's fixed options point at
 for folder in plugins hash bgfx artwork language; do
 	cp -R "$here/../mame/$folder" "$contents/Resources/$folder"
 done
 
+# The core: the rules the app shares with the GNOME and KDE apps
+core=$here/../core
+core_lib=$out/core/libpinesy.dylib
+mkdir -p "$out/core"
+clang++ -std=c++20 -O2 -Wall -Wextra \
+	-target arm64-apple-macos26.0 \
+	-dynamiclib -install_name @rpath/libpinesy.dylib \
+	-I "$core/include" -I "$core/src" -I "$here/../engine/include" \
+	-L "$(dirname "$mame_lib")" -lmame_pinesy \
+	-o "$core_lib" "$core"/src/*.cpp
+
 swiftc -swift-version 6 -O \
 	-target arm64-apple-macos26.0 \
 	-I "$here/Sources/CPinesy" \
+	-Xcc -I"$here/../engine/include" \
+	-L "$out/core" -lpinesy \
 	-L "$(dirname "$mame_lib")" -lmame_pinesy \
 	-Xlinker -rpath -Xlinker @executable_path/../Frameworks \
 	-o "$contents/MacOS/Pinesy" \
@@ -102,11 +118,11 @@ is_system() {
 	esac
 }
 
-cp "$mame_lib" "$frameworks/"
-chmod u+w "$frameworks/$(basename "$mame_lib")"
+cp "$mame_lib" "$core_lib" "$frameworks/"
+chmod u+w "$frameworks/$(basename "$mame_lib")" "$frameworks/libpinesy.dylib"
 
 # Copy each library's own dependencies until none are left to copy.
-pending="$frameworks/$(basename "$mame_lib")"
+pending="$frameworks/$(basename "$mame_lib") $frameworks/libpinesy.dylib"
 while [ -n "$pending" ]; do
 	next=""
 	for lib in $pending; do

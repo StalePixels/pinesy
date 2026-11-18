@@ -1,7 +1,9 @@
-// A configuration document: a .pinesy file, a small JSON document.
+// A configuration document: a .pinesy file. The core reads and writes
+// its text (pinesy_core_read_document(), pinesy_core_write_document()).
 
 import SwiftUI
 import UniformTypeIdentifiers
+import CPinesy
 
 extension UTType {
     static let pinesyConfiguration = UTType(exportedAs: "com.stalepixels.pinesy.configuration", conformingTo: .data)
@@ -9,7 +11,6 @@ extension UTType {
 
 struct ConfigurationDocument: FileDocument {
     static let readableContentTypes: [UTType] = [.pinesyConfiguration]
-    static let formatVersion = 1
 
     /// The machine's driver, as the catalogue names the machine; empty
     /// until the user has chosen a machine.
@@ -23,18 +24,16 @@ struct ConfigurationDocument: FileDocument {
         arguments = []
     }
 
-    private struct Contents: Codable {
-        var format: Int
+    private struct Contents: Decodable {
         var machine: String
         var arguments: [String]
     }
 
     init(configuration: ReadConfiguration) throws {
-        guard let data = configuration.file.regularFileContents else {
-            throw CocoaError(.fileReadCorruptFile)
-        }
-        let contents = try JSONDecoder().decode(Contents.self, from: data)
-        guard contents.format <= Self.formatVersion, !contents.arguments.isEmpty else {
+        guard let data = configuration.file.regularFileContents,
+              let text = String(data: data, encoding: .utf8),
+              let contents: Contents = Core.decode(pinesy_core_read_document(text))
+        else {
             throw CocoaError(.fileReadCorruptFile)
         }
         machine = contents.machine
@@ -42,9 +41,9 @@ struct ConfigurationDocument: FileDocument {
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        let data = try encoder.encode(Contents(format: Self.formatVersion, machine: machine, arguments: arguments))
-        return FileWrapper(regularFileWithContents: data)
+        guard let text = Core.take(pinesy_core_write_document(machine, Core.encode(arguments))) else {
+            throw CocoaError(.fileWriteUnknown)
+        }
+        return FileWrapper(regularFileWithContents: Data(text.utf8))
     }
 }

@@ -1,6 +1,6 @@
 # Pinesy.app
 
-The macOS app for Pi/Ne-Sy. It is a SwiftUI document app that links `libmame_pinesy.dylib`, the MAME library built from `../mame` with the `pinesy` OSD in `../engine`. The C interface is `../engine/include/pinesy.h`.
+The macOS app for Pi/Ne-Sy. It is a SwiftUI document app. It links `libpinesy.dylib`, the core in `../core`, and `libmame_pinesy.dylib`, the MAME library built from `../mame` with the `pinesy` OSD in `../engine`. The core holds every rule this README describes, the same rules for the GNOME and KDE apps; the Swift code holds only the user interface. Swift imports the core's C interface, `../core/include/pinesy_core.h`, and the engine's, `../engine/include/pinesy.h`, through the module map in `Sources/CPinesy`.
 
 To build it, see [docs/build-macos.md](../docs/build-macos.md).
 
@@ -16,11 +16,11 @@ File > New (⌘N) opens a window and asks for the machine. A launch with no docu
 
 ## The machine list
 
-The list is built from MAME's own data at launch (`pinesy_list_machines()`). The app names no driver:
+The core builds the list from MAME's own data (`pinesy_list_machines()`) the first time the app asks for it. No driver is named in the rules:
 
 - An unofficial driver (an after-market change to a released machine, such as the +3e ROMs) is a ROM choice of its machine. Its machine is the driver's parent, or the official driver in the same source file with the same devices.
 - A driver and its clones that share one name before a colon, such as "ZX Spectrum Next: KS1", are one machine with a model choice. The parent of that set is MAME's reference for the models and is not offered as a model; on the Next it is the machine that reports the emulator machine ID, which headless runs can still use as `tbblue`. A new configuration uses the newest model.
-- Machines are grouped by their first maker. A clone joins its parent's group when they share a maker. Makers with one product are listed under "Other makers".
+- Machines are grouped by their first maker. A clone joins its parent's group when they share a maker. Makers with one product are listed under "Other makers". Byte (`sinclair/byte.cpp`) has its own entry.
 
 Search finds machines by name, maker, model or ROM variant name.
 
@@ -61,6 +61,6 @@ Pinesy is not MAME: it reads no `mame.ini` and uses nothing in `~/.mame`. Every 
 - The folders MAME writes, in the data folder from Settings: `ini` (`inipath`), `home` (`homepath`), `cfg`, `nvram`, `inp`, `sta`, `snap`, `diff`, `comments` and `share`.
 - `-skip_gameinfo`: MAME does not show its machine information screen at start, because the machine was chosen in the app.
 
-`build.sh` copies the app icon, `Pinesy.icns`, and the icon of `.pinesy` files, `PinesyDocument.icns`, into `Contents/Resources`. The `.pinesy` type conforms to `public.data`, not `public.json`: Finder shows a JSON type's Quick Look text preview in place of its icon. It copies `../roms` into the bundle. Each entry there must be a ROM set: a zip, a 7z or a folder of ROM dumps. The script stops on anything else, and on a disk image (SD card, hard disk or floppy) loose in a folder or inside a zip. It cannot list a 7z, so it does not check what one holds. It also copies MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders from `../mame`; the other search paths have no folder in the bundle.
+`build.sh` compiles the core's sources in `../core/src` with `clang++` into `libpinesy.dylib`, and puts it in `Contents/Frameworks` with `libmame_pinesy.dylib` and the libraries that one needs. It copies the app icon, `Pinesy.icns`, and the icon of `.pinesy` files, `PinesyDocument.icns`, into `Contents/Resources`. The `.pinesy` type conforms to `public.data`, not `public.json`: Finder shows a JSON type's Quick Look text preview in place of its icon. It copies `../roms` into the bundle. Each entry there must be a ROM set: a zip, a 7z or a folder of ROM dumps. The script stops on anything else, and on a disk image (SD card, hard disk or floppy) loose in a folder or inside a zip. It cannot list a 7z, so it does not check what one holds. It also copies MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders from `../mame`; the other search paths have no folder in the bundle.
 
 `Pinesy -- -showconfig` prints every path a run uses.

@@ -1,9 +1,11 @@
-// App settings: what is the same for every machine. They are added to
-// the command line at run time and are not stored in configurations.
+// App settings: what is the same for every machine. They are stored in
+// UserDefaults and given to the core (Core.swift), which adds them to
+// the command line at run time; they are not stored in configurations.
 
 import SwiftUI
+import CPinesy
 
-struct AppSettings {
+enum AppSettings {
     enum Debugger: String, CaseIterable, Identifiable {
         case windows, gdbStub
         var id: String { rawValue }
@@ -23,27 +25,13 @@ struct AppSettings {
         static let gdbPort = "gdbPort"
     }
 
-    static let defaultGDBPort = 23946
-    static let gdbPorts = 1...65535
+    static let defaultGDBPort = Int(PINESY_CORE_DEFAULT_GDB_PORT)
+    static let gdbPorts = Int(PINESY_CORE_MIN_GDB_PORT)...Int(PINESY_CORE_MAX_GDB_PORT)
 
+    /// Where MAME's files go when Settings names no folder.
     static var defaultDataFolder: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Pinesy", isDirectory: true)
-    }
-
-    var romFolders: [String]
-    var dataFolder: URL
-    var debugger: Debugger
-    var gdbPort: Int
-
-    static var current: AppSettings {
-        let defaults = UserDefaults.standard
-        let folder = defaults.string(forKey: Key.dataFolder).flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
-        let port = defaults.integer(forKey: Key.gdbPort)
-        return AppSettings(romFolders: defaults.stringArray(forKey: Key.romFolders) ?? [],
-                           dataFolder: folder ?? defaultDataFolder,
-                           debugger: Debugger(rawValue: defaults.string(forKey: Key.debugger) ?? "") ?? .windows,
-                           gdbPort: gdbPorts.contains(port) ? port : defaultGDBPort)
     }
 }
 
@@ -68,10 +56,6 @@ private struct GeneralSettings: View {
     @State private var choosingROMFolder = false
     @State private var choosingDataFolder = false
     @State private var rejectedFolder: String?
-
-    private var dataFolderURL: URL {
-        dataFolder.isEmpty ? AppSettings.defaultDataFolder : URL(fileURLWithPath: dataFolder)
-    }
 
     var body: some View {
         Form {
@@ -118,7 +102,7 @@ private struct GeneralSettings: View {
         .fixedSize(horizontal: false, vertical: true)
         .fileImporter(isPresented: $choosingROMFolder, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result, !romFolders.contains(url.path) {
-                if MAMEPaths.isUsableROMFolder(url.path) {
+                if Core.isUsableROMFolder(url.path) {
                     romFolders.append(url.path)
                     save()
                 } else {

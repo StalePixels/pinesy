@@ -257,7 +257,8 @@ char *pinesy_core_normalise(pinesy_core *core, const char *arguments);
 //                fitted card's ROMs when it has more than one) and
 //                currentROM
 //   media        one row per media device: media (MAME's media
-//                object) and label
+//                object, with extensionList: its extensions as an
+//                array, without dots) and label
 //   errors       MAME's error text; "" when there is none
 //   warnings     MAME's warning text, which does not stop a run
 //   missingMedia labels of media MAME needs that have no file

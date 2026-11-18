@@ -1,4 +1,5 @@
 module CPinesy {
     header "../../../engine/include/pinesy.h"
+    header "../../../core/include/pinesy_core.h"
     export *
 }

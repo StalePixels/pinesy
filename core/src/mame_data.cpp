@@ -215,7 +215,8 @@ Value media(const Media &m)
 		{ "name", m.name }, { "instance", m.instance }, { "brief", m.brief }, { "typename", m.type_name },
 		{ "owner", json::Object{ { "tag", m.owner.tag }, { "description", m.owner.description },
 				{ "slot", m.owner.slot }, { "partof", m.owner.partof } } },
-		{ "extensions", m.extensions }, { "interface", m.interface }, { "mandatory", m.mandatory },
+		{ "extensions", m.extensions }, { "extensionList", strings(m.extension_list()) },
+		{ "interface", m.interface }, { "mandatory", m.mandatory },
 		{ "current", m.current } };
 }
 

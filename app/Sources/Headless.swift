@@ -1,5 +1,6 @@
 // Command-line mode: MAME runs with the given command line, as `mame`
-// would. The app's own paths come first, so the caller's options
+// would, through the core's headless mode (pinesy_core_headless()),
+// which puts the app's own paths first, so the caller's options
 // override them. With -video none there is no window at all; otherwise
 // the machine gets its own window, and closing it stops the machine.
 
@@ -10,16 +11,14 @@ enum Headless {
     static func run(_ arguments: [String]) -> Int32 {
         // MAME pumps AppKit events while it runs, so NSApp must exist.
         let app = NSApplication.shared
-        MAMEPaths.createFolders()
-        let commandLine = MAMEPaths.options() + arguments
 
-        if videoNone(arguments) {
+        if Core.videoNone(arguments) {
             // The prohibited policy keeps the process out of the Dock and
             // stops it taking focus. A process with that policy cannot show
             // windows, so a run with MAME's debugger windows is a regular app.
-            app.setActivationPolicy(opensDebuggerWindows(arguments) ? .regular : .prohibited)
+            app.setActivationPolicy(Core.opensDebuggerWindows(arguments) ? .regular : .prohibited)
             app.finishLaunching()
-            return MAME.run(commandLine, view: nil)
+            return Core.headless(arguments, host: nil)
         }
 
         app.setActivationPolicy(.regular)
@@ -55,31 +54,9 @@ enum Headless {
             }
         }
         // the OSD prints MAME's output itself, as usual
-        let code = MAME.run(commandLine, view: view, host: host)
+        let code = MAME.withHost(view: view, receiver: host) { Core.headless(arguments, host: $0) }
         withExtendedLifetime(closer) {}
         return code
-    }
-
-    /// True when the last -video option is "none", as in MAME.
-    static func videoNone(_ arguments: [String]) -> Bool {
-        var video = ""
-        for (index, argument) in arguments.enumerated() where argument == "-video" && index + 1 < arguments.count {
-            video = arguments[index + 1]
-        }
-        return video == "none"
-    }
-
-    /// True when the command line asks for the debugger and does not pick
-    /// one without windows (none, or the GDB stub). The last -debugger wins,
-    /// as in MAME.
-    static func opensDebuggerWindows(_ arguments: [String]) -> Bool {
-        let debug = arguments.contains { $0 == "-debug" || $0 == "-d" }
-        guard debug else { return false }
-        var debugger = "auto"
-        for (index, argument) in arguments.enumerated() where argument == "-debugger" && index + 1 < arguments.count {
-            debugger = arguments[index + 1]
-        }
-        return debugger != "none" && debugger != "gdbstub"
     }
 }
 

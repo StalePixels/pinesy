@@ -173,7 +173,8 @@ std::vector<std::string> set_card_rom(const std::vector<std::string> &arguments,
 		const std::string &bios, const Catalogue &catalogue, const Describer &describe)
 {
 	Arguments args = Arguments::parse(arguments);
-	const BiosSet *set = default_set(slot.biossets.value_or(std::vector<BiosSet>{}));
+	const std::vector<BiosSet> sets = slot.biossets.value_or(std::vector<BiosSet>{});
+	const BiosSet *set = default_set(sets);
 	bool is_default = set && set->name == bios;
 	std::string choice_bios = is_default ? std::string() : bios;
 	bool starts_empty = Arguments::parse(catalogue.starting_arguments(args.driver)).get(slot.tag) == std::string();

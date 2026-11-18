@@ -5,8 +5,8 @@
 //  internal.hpp - JSON encoding of the core's types, for the
 //  C interface
 //
-//  Field names are MAME's for MAME's data, and the Swift
-//  app's for the core's own types.
+//  Field names are MAME's for MAME's data, and camelCase for
+//  the core's own types.
 //
 //============================================================
 

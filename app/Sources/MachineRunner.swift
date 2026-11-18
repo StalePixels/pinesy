@@ -14,8 +14,8 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
     private var window: NSWindow?
     private var quitAfterRun = false
 
-    /// Starts a configuration. `arguments` is its command line; the
-    /// app's paths and the debugger options are added here.
+    /// Starts a configuration. `arguments` is its command line; the core
+    /// adds the app's paths and the debugger options.
     func start(title: String, arguments: [String], debug: Bool) {
         guard running == nil else { return }
         running = title
@@ -34,9 +34,6 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(view)
         self.window = window
-
-        MAMEPaths.createFolders()
-        let commandLine = MAMEPaths.options() + arguments + RunOptions.debugArguments(debug)
 
         // pinesy_run() keeps its own loop and pumps AppKit events. Start it
         // from a run loop block, not from the main dispatch queue: a nested
@@ -63,7 +60,9 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
                         window.center()
                     }
                 }
-                let code = MAME.run(commandLine, view: view, host: host)
+                let code = MAME.withHost(view: view, receiver: host) {
+                    Core.run(arguments, debug: debug, host: $0)
+                }
                 self.finish(code: code, errors: host.errors)
             }
         }

@@ -13,7 +13,12 @@ libpinesy is the core library of the Pi/Ne-Sy front ends. It holds every rule th
 
 The rules are the ones `../app/README.md` describes. The core calls the engine, `libmame_pinesy`, through its C interface `../engine/include/pinesy.h`. It opens no windows.
 
-The core is C++20. Its C interface is `include/pinesy_core.h`, so Swift can import it. That interface wraps the C++ interface in `include/pinesy_core.hpp`.
+The core is C++20. Its C interface is `include/pinesy_core.h`. That interface wraps the C++ interface in `include/pinesy_core.hpp`.
+
+Every front end uses the core:
+
+- The macOS app (`../app`) imports `pinesy_core.h` into Swift. `../app/build.sh` compiles the core's sources with `clang++` into `libpinesy.dylib` and bundles it in `Contents/Frameworks`, next to the engine.
+- The GNOME app (`../gtk`) uses the C++ interface, and the KDE app (`../kde`) the C interface. Their CMake builds build the core from `CMakeLists.txt`.
 
 To build it and run its tests, see [docs/build-macos.md](../docs/build-macos.md) or [docs/build-linux.md](../docs/build-linux.md).
 
