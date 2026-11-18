@@ -13,13 +13,22 @@ set(PINESY_CORE_TESTS OFF CACHE BOOL "Build the core's tests")
 set(PINESY_ENGINE_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/../mame/libmame_pinesy_qt.so" CACHE FILEPATH "The engine library, libmame_pinesy_qt")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../core" core)
 
-find_package(ECM 6.0 REQUIRED NO_MODULE)
+# CMake calls the package "ECM"; distributions name it extra-cmake-modules
+find_package(ECM 6.0 QUIET NO_MODULE)
+if(NOT ECM_FOUND)
+	message(FATAL_ERROR "extra-cmake-modules (ECM) 6.0 or later is not installed. Install the extra-cmake-modules package of your distribution.")
+endif()
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 include(KDEInstallDirs)
 include(KDECMakeSettings)
 include(KDECompilerSettings NO_POLICY_SCOPE)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Widgets)
+# Distributions split Qt into its modules: Core, Gui and Widgets are in
+# qtbase, Qml, Quick and QuickControls2 in qtdeclarative
+find_package(Qt6 6.8 QUIET COMPONENTS Core Gui Qml Quick QuickControls2 Widgets)
+if(NOT Qt6_FOUND)
+	message(FATAL_ERROR "Qt 6.8 or later is not installed with all the parts this app needs. Install the development packages of your distribution for the Qt modules qtbase (Core, Gui, Widgets) and qtdeclarative (Qml, Quick, QuickControls2).")
+endif()
 qt_standard_project_setup(REQUIRES 6.8)
 qt_policy(SET QTP0004 NEW)
 find_package(KF6 6.8 REQUIRED COMPONENTS Kirigami Config CoreAddons I18n)

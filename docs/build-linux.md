@@ -18,8 +18,8 @@ For the GNOME app:
 
 For the KDE app:
 
-- Qt 6.8 or later, with Core, Gui, Qml, Quick, QuickControls2 and Widgets, and `qmake6` on the `PATH`
-- extra-cmake-modules
+- Qt 6.8 or later: the development files for the Qt modules qtbase (Core, Gui, Widgets) and qtdeclarative (Qml, Quick, QuickControls2), and `qmake6` on the `PATH`
+- extra-cmake-modules (CMake calls it ECM)
 - KDE Frameworks 6.8 or later: Kirigami, KConfig, KCoreAddons and KI18n
 
 ## Get the source
@@ -34,9 +34,7 @@ The first build downloads the submodules before it compiles, and prints nothing 
 ## Build the GNOME app
 
 ```sh
-./build-mame.sh --gtk
-cmake -S gtk -B build/gtk
-cmake --build build/gtk
+./build.sh gtk
 ```
 
 Run it:
@@ -48,12 +46,16 @@ GSETTINGS_SCHEMA_DIR=build/gtk/schemas build/gtk/pinesy
 ## Build the KDE app
 
 ```sh
-./build-mame.sh --qt
+./build.sh kde
+```
+
+If your Qt has no `qmake6`, build in steps and give Qt's install prefix:
+
+```sh
+./build-mame.sh --qt QT_HOME=<prefix>
 cmake -S kde -B build/kde
 cmake --build build/kde
 ```
-
-If your Qt has no `qmake6`, give its install prefix: `./build-mame.sh --qt QT_HOME=<prefix>`.
 
 Run it:
 
@@ -67,7 +69,7 @@ build/kde/bin/pinesy-kde
 git pull
 ```
 
-Then run the same build commands again.
+Then run the same build command again.
 
 ## Run the core tests
 

@@ -12,11 +12,10 @@
 ```sh
 git clone https://github.com/StalePixels/pinesy.git
 cd pinesy
-./build-mame.sh
-app/build.sh
+./build.sh
 ```
 
-The first `./build-mame.sh` downloads the submodules before it compiles, and prints nothing while it does. Later builds get only what changed.
+The first build downloads the submodules before it compiles, and prints nothing while it does. Later builds get only what changed.
 
 The app is `app/build/Pinesy.app`. To install it, copy it to `/Applications`.
 
@@ -24,8 +23,7 @@ The app is `app/build/Pinesy.app`. To install it, copy it to `/Applications`.
 
 ```sh
 git pull
-./build-mame.sh
-app/build.sh
+./build.sh
 ```
 
 ## Run the core tests

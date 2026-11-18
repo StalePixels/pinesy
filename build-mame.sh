@@ -3,7 +3,10 @@
 # Build libmame_pinesy (.dylib on macOS, .so on Linux) with the machines
 # listed in build-mame.conf.
 #
-# Usage: build-mame.sh [--qt | --gtk] [extra make arguments]
+# Usage: build-mame.sh [--qt | --gtk] [NAME=value ...]
+#
+# Each NAME=value goes to make (for example QT_HOME=/usr). Anything
+# else is refused.
 #
 # --qt (Linux only) builds libmame_pinesy_qt.so instead: the same engine
 # with MAME's Qt debugger, for the KDE front end. It has its own build
@@ -55,6 +58,20 @@ elif [ "$1" = "--gtk" ]; then
 	shift
 fi
 unset PINESY_DEBUG_GTK
+
+# The rest goes to make, so only NAME=value is allowed: make would take
+# a mistyped option such as -qt as its own -q -t, which touches the
+# targets instead of building them and leaves the build folder damaged.
+for arg in "$@"; do
+	case "$arg" in
+		[A-Za-z_]*=*) ;;
+		*)
+			echo "build-mame: unknown argument: $arg" >&2
+			echo "usage: build-mame.sh [--qt | --gtk] [NAME=value ...]" >&2
+			exit 1
+			;;
+	esac
+done
 
 # every object goes into a shared library, so on Linux all code is PIC
 extra=()
