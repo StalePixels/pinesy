@@ -50,6 +50,8 @@ int s_view_pixel_height = 0;
 
 // in pinesymain.cpp
 void pinesy_retry_exit();
+void pinesy_render_size(void *wincontroller, int &width, int &height);
+void pinesy_release_keys();
 
 void pinesy_attach_host(const pinesy_host *host)
 {
@@ -71,6 +73,9 @@ extern "C" void pinesy_view_size(int width, int height, int pixel_width, int pix
 
 extern "C" void pinesy_focus(int focused)
 {
+	// keys let go in another window never reach MAME
+	if (s_focused && !focused)
+		pinesy_release_keys();
 	s_focused = focused != 0;
 }
 
@@ -135,6 +140,7 @@ void MacWindowGetSizePixels(void *wincontroller, int *width, int *height)
 	{
 		*width = s_view_pixel_width;
 		*height = s_view_pixel_height;
+		pinesy_render_size(wincontroller, *width, *height);
 		return;
 	}
 

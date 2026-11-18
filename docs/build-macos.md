@@ -1,0 +1,37 @@
+# Build Pinesy on macOS
+
+## You need
+
+- An Apple silicon Mac with macOS 26 or later.
+- Xcode, or Xcode's command line tools, version 26 or later.
+- From Homebrew: `python`, `ccache`, `ninja`, `glib` and `pkgconf`.
+- Network access on the first build.
+
+## Build
+
+```sh
+git clone https://github.com/StalePixels/pinesy.git
+cd pinesy
+./build-mame.sh
+app/build.sh
+```
+
+The first `./build-mame.sh` downloads the submodules before it compiles, and prints nothing while it does. Later builds get only what changed.
+
+The app is `app/build/Pinesy.app`. To install it, copy it to `/Applications`.
+
+## Update
+
+```sh
+git pull
+./build-mame.sh
+app/build.sh
+```
+
+## Run the core tests
+
+```sh
+cmake -S core -B build/core
+cmake --build build/core
+ctest --test-dir build/core --output-on-failure
+```

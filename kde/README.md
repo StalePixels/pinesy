@@ -4,24 +4,7 @@ The KDE Plasma front end for Pi/Ne-Sy. It is a Qt 6 and KDE Frameworks 6 app wit
 
 The app holds only the user interface. Every rule (the machine list, configurations, `.pinesy` files, MAME's paths, the settings, the copied command line and headless mode) comes from the core. `../app/README.md` describes those rules.
 
-## Build
-
-Build the engine first, from the repository root:
-
-```sh
-./build-mame.sh --qt
-```
-
-This builds `../mame/libmame_pinesy_qt.so` in its own build folder, `../mame/build-qt`. `./build-mame.sh` without `--qt` builds `libmame_pinesy.so`, the engine without Qt, and `./build-mame.sh --gtk` builds `libmame_pinesy_gtk.so`, the engine with the GTK debugger that the GNOME front end uses. The builds do not share objects. Then:
-
-```sh
-cmake -S kde -B <build-dir>
-cmake --build <build-dir>
-```
-
-The build needs CMake 3.20 or later, a C++20 compiler, Qt 6.5 or later (Core, Gui, Qml, Quick, QuickControls2, Widgets), extra-cmake-modules, and KDE Frameworks 6: Kirigami, KConfig, KCoreAddons and KI18n. The core is built as part of the same build, without its tests. The core's cache variables (`PINESY_ENGINE_LIBRARY`, `PINESY_ENGINE_INCLUDE_DIR`) apply here too. Here `PINESY_ENGINE_LIBRARY` defaults to `../mame/libmame_pinesy_qt.so`.
-
-The executable is `<build-dir>/bin/pinesy-kde`.
+To build and run it, see [docs/build-linux.md](../docs/build-linux.md).
 
 ## The resources folder
 
@@ -31,26 +14,7 @@ The core needs a resources folder. It holds the bundled ROM sets in `roms`, and 
 
 ## Flatpak
 
-`flatpak/com.stalepixels.pinesy.kde.yml` builds the app as a Flatpak on the KDE 6.11 runtime (`org.kde.Platform`). It builds what is checked out in this repository: QEMU and the engine with MAME's Qt debugger (with `../build-mame.sh --qt QT_HOME=/usr`, because the SDK has `qmake` and not `qmake6`), then the core and the app. The engine is compiled with clang from the SDK extension `org.freedesktop.Sdk.Extension.llvm22`, without the SDK's default compiler flags.
-
-The build needs `flatpak`, `flatpak-builder` and the Flathub remote. From the repository root:
-
-```sh
-flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak-builder --user --install --install-deps-from=flathub --force-clean --ccache \
-    --state-dir=<state-dir> <build-dir> kde/flatpak/com.stalepixels.pinesy.kde.yml
-```
-
-Put `<state-dir>` and `<build-dir>` outside the repository, because the manifest copies the repository folder into the build. The copy leaves out git and MAME's build folders and engine libraries.
-
-`build-mame.sh` compiles the engine with `-march=native`, so the Flatpak runs only on processors that have the instruction set of the machine that built it.
-
-Then:
-
-```sh
-flatpak run com.stalepixels.pinesy.kde
-flatpak run com.stalepixels.pinesy.kde -- tbblue -video none -sound none -seconds_to_run 10
-```
+To build the package, see [docs/build-linux.md](../docs/build-linux.md). `flatpak/com.stalepixels.pinesy.kde.yml` builds it on the KDE 6.11 runtime.
 
 In the Flatpak:
 
@@ -68,10 +32,6 @@ The permissions:
 
 ## Run
 
-```sh
-<build-dir>/bin/pinesy-kde
-```
-
 With no arguments the app starts and asks for a machine. With any arguments it runs headless (see below).
 
 ## How it maps to the macOS app
@@ -87,6 +47,7 @@ With no arguments the app starts and asks for a machine. With any arguments it r
 | Machine > Run (Cmd+R) | Machine > Run (Ctrl+R), also in the page's toolbar |
 | Machine > Run with Debugger (Opt+Cmd+R) | Machine > Run with Debugger (Ctrl+Shift+R), also in the page's toolbar |
 | Machine > Stop (Cmd+.) | Machine > Stop (Ctrl+.) |
+| Machine > Reset, Machine > Hard Reset | Machine > Reset, Machine > Hard Reset |
 | Machine > Copy Command Line | Machine > Copy Command Line, and a button under the command line |
 | Settings window | Settings > Configure Pi/Ne-Sy: a window with a General page and a Debugger page |
 | Settings in UserDefaults | Settings in KConfig, in `pinesyrc` |

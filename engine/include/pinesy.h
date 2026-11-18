@@ -42,13 +42,16 @@ typedef void (*pinesy_pump_fn)(void *context);
 
 typedef struct pinesy_host
 {
-	// macOS: the NSView that shows the first screen. MAME renders at
-	// the view's backing size and sets the frame as the contents of
-	// its layer. The host keeps the view alive for the whole run.
+	// macOS: the NSView that shows the first screen. MAME sets the
+	// frame as the contents of its layer, which scales it to the view.
+	// The host keeps the view alive for the whole run.
 	// Linux: any non-null value says that the host shows the first
-	// screen; MAME renders at the size from pinesy_view_size() and
-	// the host draws each frame it gets. May be null: then MAME
-	// renders at its own size and only calls frame.
+	// screen; the host scales each frame it gets to its view. With a
+	// view, MAME renders at the shape of the view's pixel size (the
+	// backing size on macOS, pinesy_view_size() on Linux), made only as
+	// big as the smallest size that shows every pixel of the machine's
+	// picture. May be null: then MAME renders at its own size and only
+	// calls frame.
 	void *view;
 
 	pinesy_frame_fn frame;
@@ -87,6 +90,13 @@ int pinesy_run(int argc, const char *const argv[], const pinesy_host *host);
 // machine exits as soon as it has.
 int pinesy_request_exit(void);
 
+// Resets the running machine, as MAME's F3 (soft) and Shift+F3 (hard)
+// do. A soft reset (hard 0) resets the machine's devices and keeps
+// RAM. A hard reset (hard 1) starts the machine again from power-on,
+// with the same command line. Returns 1 if a machine took the request,
+// 0 if none is running or it has not started yet.
+int pinesy_reset(int hard);
+
 // Keyboard input. keycode is the key's position, not its character:
 // on macOS a virtual key code (NSEvent keyCode, kVK_* in Carbon), on
 // Linux an XKB keycode, the evdev code plus 8 (GTK
@@ -105,6 +115,7 @@ void pinesy_view_size(int width, int height, int pixel_width, int pixel_height);
 
 // Linux: whether the host's window has the keyboard focus (1) or not
 // (0). Without -background_input MAME ignores input while it has not.
+// When the window loses the focus, MAME takes every key as released.
 // Each run starts as focused. macOS asks NSApp and has no such
 // function.
 void pinesy_focus(int focused);

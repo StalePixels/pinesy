@@ -54,7 +54,7 @@ function maintargetosdoptions(_target,_subtarget)
 
 	-- nothing inside MAME calls the C interface, so name each function
 	-- to keep the linker from leaving pinesymain.o out of the archive
-	local exports = { "run", "request_exit", "key", "char", "list_machines", "describe" }
+	local exports = { "run", "request_exit", "reset", "key", "char", "list_machines", "describe" }
 
 	if PINESY_MACOS then
 		targetextension ".dylib"

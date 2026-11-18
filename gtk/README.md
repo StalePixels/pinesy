@@ -4,38 +4,7 @@ The GNOME app for Pi/Ne-Sy. It is a GTK 4 and libadwaita app, written in C++ wit
 
 What the app does is described in `../app/README.md`, the README of the macOS app. This README describes how the GNOME app differs.
 
-## Build
-
-The build needs CMake 3.20 or later, a C++20 compiler, gtkmm 4.10 or later (`gtkmm-4.0`), libadwaita 1.6 or later and `glib-compile-schemas`. Build the engine first, from the repository root:
-
-```sh
-./build-mame.sh --gtk
-```
-
-This builds `../mame/libmame_pinesy_gtk.so` in its own build folder, `../mame/build-gtk`. It is the MAME engine with the GTK debugger from `../debuggers/gtk`, a port of MAME's Qt debugger to GTK 4. Then:
-
-```sh
-cmake -S gtk -B <build-dir>
-cmake --build <build-dir>
-```
-
-The build also builds the core from `../core`, without its tests. It makes these in the build folder:
-
-- `pinesy`: the app.
-- `schemas/gschemas.compiled`: the compiled settings schema.
-- `resources`: the resources folder the app gives the core. It holds links to `../roms` (as `roms`) and to MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders in `../mame`.
-
-The cache variable `PINESY_RESOURCES_DIR` sets a different resources folder. The core's cache variables, such as `PINESY_ENGINE_LIBRARY`, also apply. Here `PINESY_ENGINE_LIBRARY` defaults to `../mame/libmame_pinesy_gtk.so`.
-
-## Run
-
-GLib must find the settings schema. To run from the build folder:
-
-```sh
-GSETTINGS_SCHEMA_DIR=<build-dir>/schemas <build-dir>/pinesy
-```
-
-When GLib cannot find the schema, `pinesy` prints how to set `GSETTINGS_SCHEMA_DIR` and exits with code 1. This applies to headless mode too, because headless mode also uses the settings.
+To build and run it, see [docs/build-linux.md](../docs/build-linux.md).
 
 The data folder is `$XDG_DATA_HOME/pinesy` (by default `~/.local/share/pinesy`) unless Preferences sets a different one.
 
@@ -54,26 +23,7 @@ The CMake build does not install these files; the Flatpak does. The desktop entr
 
 ## Flatpak
 
-`flatpak/com.stalepixels.Pinesy.yml` builds the app as a Flatpak on the GNOME 51 runtime (`org.gnome.Platform`). It builds what is checked out in this repository: QEMU and the engine with the GTK debugger (with `../build-mame.sh --gtk`), then the core and the app. The GNOME SDK has no gtkmm, so the manifest also builds gtkmm and the C++ libraries under it from their release archives. The engine is compiled with clang from the SDK extension `org.freedesktop.Sdk.Extension.llvm22`, without the SDK's default compiler flags.
-
-The build needs `flatpak`, `flatpak-builder` and the Flathub remote. From the repository root:
-
-```sh
-flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak-builder --user --install --install-deps-from=flathub --force-clean --ccache \
-    --state-dir=<state-dir> <build-dir> gtk/flatpak/com.stalepixels.Pinesy.yml
-```
-
-Put `<state-dir>` and `<build-dir>` outside the repository, because the manifest copies the repository folder into the build. The copy leaves out git and MAME's build folders and engine libraries.
-
-`build-mame.sh` compiles the engine with `-march=native`, so the Flatpak runs only on processors that have the instruction set of the machine that built it.
-
-Then:
-
-```sh
-flatpak run com.stalepixels.Pinesy
-flatpak run com.stalepixels.Pinesy -- tbblue -video none -sound none -seconds_to_run 10
-```
+To build the package, see [docs/build-linux.md](../docs/build-linux.md). `flatpak/com.stalepixels.Pinesy.yml` builds it on the GNOME 51 runtime.
 
 In the Flatpak:
 
@@ -102,6 +52,7 @@ The permissions:
 | Machine > Run (⌘R) | The Run button (Ctrl+R) |
 | Machine > Run with Debugger (⌥⌘R) | Run with Debugger in the Run button's menu (Ctrl+Shift+R) |
 | Machine > Stop (⌘.) | The Stop button, shown while a machine runs (Ctrl+.) |
+| Machine > Reset, Machine > Hard Reset | Reset and Hard Reset in the main menu, enabled while a machine runs |
 | Machine > Copy Command Line | Copy Command Line in the main menu (Ctrl+Shift+C), and the copy button by the command line |
 | Settings (UserDefaults) | Preferences in the main menu (Ctrl+,), stored with GSettings |
 | Debugger windows | MAME's GTK debugger |

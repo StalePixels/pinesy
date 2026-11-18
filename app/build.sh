@@ -4,7 +4,8 @@
 #   app/build.sh [output-dir]      (default: app/build)
 #
 # MAME_LIB overrides the library to bundle
-# (default: mame/libmame_pinesy.dylib in this repo).
+# (default: mame/libmame_pinesy.dylib in this repo). It must be named
+# libmame_pinesy.dylib: the app links -lmame_pinesy from its folder.
 #
 # The bundle carries the app icon (Pinesy.icns), the ROM sets in ../roms in Contents/Resources/roms,
 # MAME's plugins, hash, bgfx, artwork and language folders in

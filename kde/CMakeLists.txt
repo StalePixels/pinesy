@@ -19,10 +19,10 @@ include(KDEInstallDirs)
 include(KDECMakeSettings)
 include(KDECompilerSettings NO_POLICY_SCOPE)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Widgets)
-qt_standard_project_setup(REQUIRES 6.5)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Widgets)
+qt_standard_project_setup(REQUIRES 6.8)
 qt_policy(SET QTP0004 NEW)
-find_package(KF6 6.0 REQUIRED COMPONENTS Kirigami Config CoreAddons I18n)
+find_package(KF6 6.8 REQUIRED COMPONENTS Kirigami Config CoreAddons I18n)
 
 # The resources folder the core reads: the bundled ROM sets in "roms" and
 # MAME's search folders. For a run from the build folder it is made here,

@@ -15,11 +15,16 @@
 // MAME headers
 #include "emu.h"
 #include "main.h"
+#include "render.h"
 
 // OSD headers
 #include "osdmac.h"
+#include "window.h"
+#include "modules/osdwindow.h"
 #include "modules/diagnostics/diagnostics_module.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <memory>
 #include <string>
@@ -133,6 +138,79 @@ void pinesy_retry_exit()
 {
 	if (s_exit_pending && MacRequestMachineExit())
 		s_exit_pending = false;
+}
+
+
+//============================================================
+//  render size
+//============================================================
+
+// MAME's software renderer draws every pixel it is given on the CPU, so
+// drawing at a view's full size costs more the bigger the view and the
+// denser the screen. This takes a view's pixel size down, keeping its
+// shape, to the smallest size that still shows every pixel of the
+// machine's picture. The host scales that frame to the view on the GPU.
+void pinesy_render_size(void *wincontroller, int &width, int &height)
+{
+	if ((width <= 0) || (height <= 0))
+		return;
+
+	for (const auto &w : osd_common_t::window_list())
+	{
+		auto &win = static_cast<mac_window_info &>(*w);
+		if (win.platform_window() != wincontroller)
+			continue;
+
+		s32 minwidth = 0, minheight = 0;
+		win.target()->compute_minimum_size(minwidth, minheight);
+		if ((minwidth <= 0) || (minheight <= 0))
+			return;
+
+		const double scale = std::max(double(minwidth) / width, double(minheight) / height);
+		if (scale < 1.0)
+		{
+			width = std::max(1, int(std::lround(width * scale)));
+			height = std::max(1, int(std::lround(height * scale)));
+		}
+		return;
+	}
+}
+
+
+//============================================================
+//  pinesy_release_keys
+//============================================================
+
+// A key let go while another window or app has the keyboard sends its
+// key-up there, so MAME would hold the key down from then on. On the
+// Next a held key also blocks the ROM's key scan, which then ignores
+// every other key. The hosts call this when the machine's view loses
+// the keyboard, and MAME sees every key as up.
+void pinesy_release_keys()
+{
+	if (osd_common_t::window_list().empty())
+		return;
+
+	downcast<mac_osd_interface &>(osd_common_t::window_list().front()->machine().osd()).release_keys();
+}
+
+
+//============================================================
+//  pinesy_reset
+//============================================================
+
+extern "C" int pinesy_reset(int hard)
+{
+	// the machine has windows from its start to its exit
+	if (!s_running || osd_common_t::window_list().empty())
+		return 0;
+
+	running_machine &machine = osd_common_t::window_list().front()->machine();
+	if (hard)
+		machine.schedule_hard_reset();
+	else
+		machine.schedule_soft_reset();
+	return 1;
 }
 
 

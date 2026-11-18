@@ -2,17 +2,7 @@
 
 The macOS app for Pi/Ne-Sy. It is a SwiftUI document app that links `libmame_pinesy.dylib`, the MAME library built from `../mame` with the `pinesy` OSD in `../engine`. The C interface is `../engine/include/pinesy.h`.
 
-## Build
-
-Build `../mame/libmame_pinesy.dylib` first, then:
-
-```sh
-app/build.sh [output-dir]
-```
-
-The default output directory is `app/build`. `MAME_LIB=<path>` bundles a different library. The script needs Xcode's command line tools (`swiftc`, `install_name_tool`, `codesign`) and nothing else.
-
-The script copies the MAME library and every library it loads from outside `/usr/lib` and `/System` (from Homebrew: glib, libintl and pcre2) into `Contents/Frameworks`. It rewrites their install names to `@rpath/<name>` and removes their search paths. The executable searches `@executable_path/../Frameworks`. The build fails if a binary in the bundle still loads a library from outside it. The bundle is signed ad hoc.
+To build it, see [docs/build-macos.md](../docs/build-macos.md).
 
 ## Configurations
 
@@ -44,7 +34,7 @@ The library reports each slot with a kind, so the app can tell these apart: `mem
 
 ## Running
 
-Machine > Run (⌘R) runs the front configuration in its own window, and Machine > Run with Debugger (⌥⌘R) adds `-debug`. The window takes the size and shape MAME asks for. One machine runs at a time; while it runs, configurations cannot be changed, and a configuration opened then waits for the run to end. Machine > Stop (⌘.) or closing the window stops the machine, also while it is still starting. When MAME stops with an error, an alert shows MAME's error lines.
+Machine > Run (⌘R) runs the front configuration in its own window, and Machine > Run with Debugger (⌥⌘R) adds `-debug`. The window takes the size and shape MAME asks for. One machine runs at a time; while it runs, configurations cannot be changed, and a configuration opened then waits for the run to end. Machine > Stop (⌘.) or closing the window stops the machine, also while it is still starting. Machine > Reset resets the running machine and keeps its RAM, as MAME's F3 does; Machine > Hard Reset starts it again from power-on, as Shift+F3 does. These menu items work also on keyboards with no Scroll Lock key, which MAME needs to turn on its own UI keys. When MAME stops with an error, an alert shows MAME's error lines.
 
 Settings:
 

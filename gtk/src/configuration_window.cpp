@@ -126,6 +126,10 @@ ConfigurationWindow::ConfigurationWindow(Application &app) : m_app(app)
 	saving->append("_Save", "win.save");
 	saving->append("Save _As…", "win.save-as");
 	menu->append_section(saving);
+	auto running = Gio::Menu::create();
+	running->append("_Reset", "app.reset");
+	running->append("_Hard Reset", "app.hard-reset");
+	menu->append_section(running);
 	auto machine = Gio::Menu::create();
 	machine->append("_Copy Command Line", "win.copy-command-line");
 	menu->append_section(machine);

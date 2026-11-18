@@ -108,6 +108,10 @@ public:
 	// Asks the running machine to stop. Its window closes when it has.
 	void stop();
 
+	// Resets the running machine. A hard reset starts it again from
+	// power-on.
+	void reset(bool hard);
+
 	// Emitted when a run starts and when it ends.
 	sigc::signal<void()> &signal_changed() { return m_changed; }
 

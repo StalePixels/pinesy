@@ -32,6 +32,10 @@ public:
 	// Asks the running machine to stop. Its window closes when it has.
 	Q_INVOKABLE void stop();
 
+	// Resets the running machine. A hard reset starts it again from
+	// power-on.
+	Q_INVOKABLE void reset(bool hard);
+
 	// Asks the running machine to exit and quits the app when it has.
 	// Returns false when no machine runs.
 	Q_INVOKABLE bool quitWhenStopped();

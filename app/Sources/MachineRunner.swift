@@ -109,6 +109,11 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
         _ = MAME.requestExit()
     }
 
+    /// Resets the running machine. A hard reset starts it again from power-on.
+    func reset(hard: Bool) {
+        _ = MAME.reset(hard: hard)
+    }
+
     /// Asks the running machine to exit and quits when it has.
     /// Returns false if no machine is running.
     func quitWhenStopped() -> Bool {

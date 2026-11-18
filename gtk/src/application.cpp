@@ -50,8 +50,16 @@ void Application::on_startup()
 		present_settings_dialog(window ? GTK_WIDGET(window->gobj()) : nullptr, m_settings);
 	});
 	auto stop = add_action("stop", [this] { m_runner.stop(); });
+	auto reset = add_action("reset", [this] { m_runner.reset(false); });
+	auto hard_reset = add_action("hard-reset", [this] { m_runner.reset(true); });
 	stop->set_enabled(false);
-	m_runner.signal_changed().connect([this, stop] { stop->set_enabled(m_runner.running()); });
+	reset->set_enabled(false);
+	hard_reset->set_enabled(false);
+	m_runner.signal_changed().connect([this, stop, reset, hard_reset] {
+		stop->set_enabled(m_runner.running());
+		reset->set_enabled(m_runner.running());
+		hard_reset->set_enabled(m_runner.running());
+	});
 	add_action("quit", [this] { quit_app(); });
 
 	set_accel_for_action("app.new", "<Control>n");

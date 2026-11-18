@@ -120,6 +120,10 @@ modules:
       ldflags: ''
       ldflags-override: true
     build-commands:
+      # meson applies a subproject's packagefiles overlay only when it
+      # fetches the subproject itself, so the manifest applies them
+      - cp -r qemu/subprojects/packagefiles/berkeley-softfloat-3/. qemu/subprojects/berkeley-softfloat-3/
+      - cp -r qemu/subprojects/packagefiles/berkeley-testfloat-3/. qemu/subprojects/berkeley-testfloat-3/
       - ./build-mame.sh --gtk
       - install -Dm755 mame/libmame_pinesy_gtk.so /app/lib/libmame_pinesy_gtk.so
       - flatpak/install-resources.sh /app/share/pinesy/resources
@@ -128,6 +132,7 @@ modules:
         path: ../..
         skip:
           - .git
+          - build
           - app
           - gtk
           - kde
@@ -143,12 +148,29 @@ modules:
           - mame/3rdparty/genie/build/gmake.linux/obj
           - qemu/.git
           - qemu/roms
-      # QEMU's dtc subproject (qemu/subprojects/dtc.wrap). Meson cannot
-      # fetch it in the build sandbox, so the manifest does.
+          # a native build fetches these; the sources below put them in place
+          - qemu/subprojects/dtc
+          - qemu/subprojects/keycodemapdb
+          - qemu/subprojects/berkeley-softfloat-3
+          - qemu/subprojects/berkeley-testfloat-3
+      # QEMU's subprojects, at the revisions in qemu/subprojects/*.wrap.
+      # Meson cannot fetch them in the build sandbox, so the manifest does.
       - type: git
         url: https://gitlab.com/qemu-project/dtc.git
         commit: b6910bec11614980a21e46fbccc35934b671bd81
         dest: qemu/subprojects/dtc
+      - type: git
+        url: https://gitlab.com/qemu-project/keycodemapdb.git
+        commit: f5772a62ec52591ff6870b7e8ef32482371f22c6
+        dest: qemu/subprojects/keycodemapdb
+      - type: git
+        url: https://gitlab.com/qemu-project/berkeley-softfloat-3.git
+        commit: b64af41c3276f97f0e181920400ee056b9c88037
+        dest: qemu/subprojects/berkeley-softfloat-3
+      - type: git
+        url: https://gitlab.com/qemu-project/berkeley-testfloat-3.git
+        commit: e7af9751d9f9fd3b47911f51a5cfd08af256a9ab
+        dest: qemu/subprojects/berkeley-testfloat-3
 
   # the core and the app
   - name: pinesy
@@ -171,6 +193,7 @@ modules:
         path: ../..
         skip:
           - .git
+          - build
           - app
           - kde
           - mame

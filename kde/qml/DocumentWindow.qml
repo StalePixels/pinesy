@@ -114,6 +114,18 @@ Kirigami.ApplicationWindow {
                 enabled: window.running
                 onTriggered: MachineRunner.stop()
             }
+            QQC2.Action {
+                text: i18nc("@action", "Reset")
+                icon.name: "view-refresh"
+                enabled: window.running
+                onTriggered: MachineRunner.reset(false)
+            }
+            QQC2.Action {
+                text: i18nc("@action", "Hard Reset")
+                icon.name: "system-reboot"
+                enabled: window.running
+                onTriggered: MachineRunner.reset(true)
+            }
             QQC2.MenuSeparator {}
             QQC2.Action {
                 text: i18nc("@action", "Copy Command Line")

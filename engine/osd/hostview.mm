@@ -43,10 +43,15 @@ struct host_surface
 pinesy_host s_host = {};
 bool s_view_in_use = false;
 
+// the host's view had the keyboard at the last event pump
+bool s_had_keyboard = false;
+
 } // anonymous namespace
 
 // in pinesymain.cpp
 void pinesy_retry_exit();
+void pinesy_render_size(void *wincontroller, int &width, int &height);
+void pinesy_release_keys();
 
 void pinesy_attach_host(const pinesy_host *host)
 {
@@ -55,6 +60,7 @@ void pinesy_attach_host(const pinesy_host *host)
 	else
 		s_host = pinesy_host{};
 	s_view_in_use = false;
+	s_had_keyboard = false;
 }
 
 void *CreateMAMEWindow(const char *title, int x, int y, int w, int h, bool isFullscreen, uint32_t displayID, bool headless)
@@ -128,6 +134,7 @@ void MacWindowGetSizePixels(void *wincontroller, int *width, int *height)
 	NSRect backing = [surface->view convertRectToBacking:[surface->view bounds]];
 	*width = (int)backing.size.width;
 	*height = (int)backing.size.height;
+	pinesy_render_size(wincontroller, *width, *height);
 }
 
 
@@ -165,7 +172,9 @@ void MacBlitVideoFrame(void *wincontroller, const void *bits, int width, int hei
 		[CATransaction begin];
 		[CATransaction setDisableActions:YES];
 		CALayer *layer = [view layer];
+		// the frame is at the machine's size; the GPU scales it to the view
 		[layer setContentsGravity:kCAGravityResize];
+		[layer setMagnificationFilter:kCAFilterLinear];
 		[layer setContentsScale:([view window] != nil) ? [[view window] backingScaleFactor] : 1.0];
 		[layer setContents:(id)image];
 		[CATransaction commit];
@@ -199,6 +208,13 @@ void MacPollInputs()
 	}
 
 	[NSApp updateWindows];
+
+	// the view has the keyboard while the app is active and its window is key
+	NSWindow *window = (s_host.view != nullptr) ? [(NSView *)s_host.view window] : nil;
+	const bool has_keyboard = [NSApp isActive] && (window != nil) && [window isKeyWindow];
+	if (s_had_keyboard && !has_keyboard)
+		pinesy_release_keys();
+	s_had_keyboard = has_keyboard;
 
 	pinesy_retry_exit();
 }

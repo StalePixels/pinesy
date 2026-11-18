@@ -68,6 +68,11 @@ void MachineRunner::stop()
 	pinesy_request_exit();
 }
 
+void MachineRunner::reset(bool hard)
+{
+	pinesy_reset(hard ? 1 : 0);
+}
+
 bool MachineRunner::quitWhenStopped()
 {
 	if (m_running.isEmpty())

@@ -65,6 +65,8 @@ QSGNode *MachineView::updatePaintNode(QSGNode *node, UpdatePaintNodeData *)
 		texture->setTexture(window()->createTextureFromImage(m_frame));
 		m_frameChanged = false;
 	}
+	// the frame is at the machine's size; the GPU scales it to the view
+	texture->setFiltering(QSGTexture::Linear);
 	texture->setRect(boundingRect());
 	return texture;
 }

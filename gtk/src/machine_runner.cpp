@@ -46,7 +46,7 @@ void MachineView::snapshot_vfunc(const Glib::RefPtr<Gtk::Snapshot> &snapshot)
 		return;
 	}
 	// MAME renders at the view's pixel size, so the frame fills the view
-	gtk_snapshot_append_scaled_texture(snap, m_texture, GSK_SCALING_FILTER_NEAREST, &bounds);
+	gtk_snapshot_append_scaled_texture(snap, m_texture, GSK_SCALING_FILTER_LINEAR, &bounds);
 }
 
 void MachineView::size_allocate_vfunc(int width, int height, int)
@@ -284,6 +284,12 @@ void MachineRunner::stop()
 {
 	if (m_running)
 		pinesy_request_exit();
+}
+
+void MachineRunner::reset(bool hard)
+{
+	if (m_running)
+		pinesy_reset(hard ? 1 : 0);
 }
 
 //------------------------------------------------------------

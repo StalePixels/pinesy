@@ -53,6 +53,12 @@ enum MAME {
         pinesy_request_exit() != 0
     }
 
+    /// Resets the running machine: soft keeps RAM, hard starts again
+    /// from power-on. Returns true if a machine took the request.
+    static func reset(hard: Bool) -> Bool {
+        pinesy_reset(hard ? 1 : 0) != 0
+    }
+
     static func key(_ keyCode: UInt16, down: Bool) {
         pinesy_key(Int32(keyCode), down ? 1 : 0)
     }

@@ -44,6 +44,10 @@ struct MachineCommands: Commands {
             Button("Stop") { runner.stop() }
                 .keyboardShortcut(".")
                 .disabled(runner.running == nil)
+            Button("Reset") { runner.reset(hard: false) }
+                .disabled(runner.running == nil)
+            Button("Hard Reset") { runner.reset(hard: true) }
+                .disabled(runner.running == nil)
             Divider()
             Button("Copy Command Line") { actions?.copyCommandLine() }
                 .disabled(actions == nil)

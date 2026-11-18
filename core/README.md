@@ -15,36 +15,7 @@ The rules are the ones `../app/README.md` describes. The core calls the engine, 
 
 The core is C++20. Its C interface is `include/pinesy_core.h`, so Swift can import it. That interface wraps the C++ interface in `include/pinesy_core.hpp`.
 
-## Build
-
-Build the engine first (`../mame/libmame_pinesy.so` on Linux, `../mame/libmame_pinesy.dylib` on macOS). Then, from the repository root:
-
-```sh
-cmake -S core -B <build-dir>
-cmake --build <build-dir>
-```
-
-This needs CMake 3.20 or later and a C++20 compiler. The result is `libpinesy` in the build folder.
-
-The cache variables are:
-
-- `PINESY_ENGINE_LIBRARY`: the engine library. The default is `../mame/libmame_pinesy.so`, or `.dylib` on macOS.
-- `PINESY_ENGINE_INCLUDE_DIR`: the folder with `pinesy.h`. The default is `../engine/include`.
-- `PINESY_CORE_TESTS`: build the tests. On by default.
-- `PINESY_TEST_RESOURCES`: the resources folder the tests use. The default is the repository root, so the ROM sets in `../roms` are the bundled ROMs.
-
-## Test
-
-```sh
-ctest --test-dir <build-dir> --output-on-failure
-```
-
-The tests run the rules against the real engine:
-
-- `rules` checks the catalogue, new configurations, `.pinesy` files, checking with the engine, the fixed options, settings and the copied command line.
-- `headless` runs `tbblue` in headless mode with `-video none -sound none -seconds_to_run 2`.
-
-Each check prints `ok` or `FAIL` and names the line of `../app/README.md` or of the Swift sources that its expected value comes from. MAME writes only in `testdata` in the build folder, which is the tests' data folder. When `timeout` (or `gtimeout` on macOS) is installed, each test runs under it.
+To build it and run its tests, see [docs/build-macos.md](../docs/build-macos.md) or [docs/build-linux.md](../docs/build-linux.md).
 
 ## The interface
 
