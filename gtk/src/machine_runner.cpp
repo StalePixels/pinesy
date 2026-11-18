@@ -45,8 +45,20 @@ void MachineView::snapshot_vfunc(const Glib::RefPtr<Gtk::Snapshot> &snapshot)
 		gtk_snapshot_append_color(snap, &black, &bounds);
 		return;
 	}
-	// MAME renders at the view's pixel size, so the frame fills the view
-	gtk_snapshot_append_scaled_texture(snap, m_texture, GSK_SCALING_FILTER_LINEAR, &bounds);
+	// The frame is a whole multiple of the machine's pixels, and the GPU
+	// scales it to the view: sharp when the view is a whole multiple of
+	// the frame, smoothed at any other size, which would make uneven pixels.
+	double scale = get_scale_factor();
+	if (GtkNative *native = gtk_widget_get_native(GTK_WIDGET(gobj())))
+		if (GdkSurface *surface = gtk_native_get_surface(native))
+			scale = gdk_surface_get_scale(surface);
+	const int view_width = int(std::lround(get_width() * scale));
+	const int view_height = int(std::lround(get_height() * scale));
+	const int frame_width = gdk_texture_get_width(m_texture);
+	const int frame_height = gdk_texture_get_height(m_texture);
+	const bool whole = (view_width >= frame_width) && (view_height >= frame_height)
+			&& (view_width % frame_width == 0) && (view_height % frame_height == 0);
+	gtk_snapshot_append_scaled_texture(snap, m_texture, whole ? GSK_SCALING_FILTER_NEAREST : GSK_SCALING_FILTER_LINEAR, &bounds);
 }
 
 void MachineView::size_allocate_vfunc(int width, int height, int)

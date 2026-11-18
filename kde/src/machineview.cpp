@@ -65,8 +65,14 @@ QSGNode *MachineView::updatePaintNode(QSGNode *node, UpdatePaintNodeData *)
 		texture->setTexture(window()->createTextureFromImage(m_frame));
 		m_frameChanged = false;
 	}
-	// the frame is at the machine's size; the GPU scales it to the view
-	texture->setFiltering(QSGTexture::Linear);
+	// The frame is a whole multiple of the machine's pixels, and the GPU
+	// scales it to the view: sharp when the view is a whole multiple of
+	// the frame, smoothed at any other size, which would make uneven pixels.
+	const qreal ratio = window() ? window()->effectiveDevicePixelRatio() : 1.0;
+	const int viewWidth = qRound(width() * ratio), viewHeight = qRound(height() * ratio);
+	const bool whole = viewWidth >= m_frame.width() && viewHeight >= m_frame.height()
+		&& viewWidth % m_frame.width() == 0 && viewHeight % m_frame.height() == 0;
+	texture->setFiltering(whole ? QSGTexture::Nearest : QSGTexture::Linear);
 	texture->setRect(boundingRect());
 	return texture;
 }

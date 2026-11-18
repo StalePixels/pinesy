@@ -16,6 +16,8 @@
 #include "emu.h"
 #include "main.h"
 #include "render.h"
+#include "rendlay.h"
+#include "screen.h"
 
 // OSD headers
 #include "osdmac.h"
@@ -145,32 +147,57 @@ void pinesy_retry_exit()
 //  render size
 //============================================================
 
-// MAME's software renderer draws every pixel it is given on the CPU, so
-// drawing at a view's full size costs more the bigger the view and the
-// denser the screen. This takes a view's pixel size down, keeping its
-// shape, to the smallest size that still shows every pixel of the
-// machine's picture. The host scales that frame to the view on the GPU.
+// The size MAME's software renderer draws each frame at. It is the
+// visible area of the machine's first screen times a whole number on
+// each axis, so every machine pixel is the same number of frame pixels
+// wide and high. Of the multipliers that fit in an 800x900 box, it takes
+// the one with the shape closest to the shape of MAME's view, and of
+// equal ones the smaller (the rule of Holub's emame, validate.py). The
+// frame does not follow the window: the host scales it to its view on
+// the GPU, so the CPU work is the same for any window. Leaves width and
+// height as they are when the machine has no screen to measure.
 void pinesy_render_size(void *wincontroller, int &width, int &height)
 {
-	if ((width <= 0) || (height <= 0))
-		return;
-
 	for (const auto &w : osd_common_t::window_list())
 	{
 		auto &win = static_cast<mac_window_info &>(*w);
-		if (win.platform_window() != wincontroller)
+		if ((win.platform_window() != wincontroller) || (win.target() == nullptr))
 			continue;
 
-		s32 minwidth = 0, minheight = 0;
-		win.target()->compute_minimum_size(minwidth, minheight);
-		if ((minwidth <= 0) || (minheight <= 0))
+		screen_device *const screen = screen_device_enumerator(win.machine().root_device()).first();
+		if (screen == nullptr)
 			return;
+		int vw = screen->visible_area().width();
+		int vh = screen->visible_area().height();
+		if ((vw <= 0) || (vh <= 0))
+			return;
+		if ((win.target()->orientation() ^ screen->orientation()) & ORIENTATION_SWAP_XY)
+			std::swap(vw, vh);
 
-		const double scale = std::max(double(minwidth) / width, double(minheight) / height);
-		if (scale < 1.0)
+		const double aspect = win.target()->current_view().effective_aspect();
+		const double target = (aspect > 0.0) ? aspect : 4.0 / 3.0;
+		constexpr int box_width = 800, box_height = 900;
+
+		bool found = false;
+		double best_error = 0.0;
+		long best_area = 0;
+		for (int mx = 1; mx <= std::max(1, box_width / vw); mx++)
 		{
-			width = std::max(1, int(std::lround(width * scale)));
-			height = std::max(1, int(std::lround(height * scale)));
+			for (int my = 1; my <= std::max(1, box_height / vh); my++)
+			{
+				const int fw = vw * mx, fh = vh * my;
+				// errors equal to four places count as equal, as in validate.py
+				const double error = std::round(std::fabs(double(fw) / fh - target) * 10000.0) / 10000.0;
+				const long area = long(fw) * fh;
+				if (!found || (error < best_error) || ((error == best_error) && (area < best_area)))
+				{
+					found = true;
+					best_error = error;
+					best_area = area;
+					width = fw;
+					height = fh;
+				}
+			}
 		}
 		return;
 	}

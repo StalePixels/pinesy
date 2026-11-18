@@ -10,9 +10,10 @@
 //  functions for a host application that owns every window:
 //  the first MAME window draws on the NSView the host passes
 //  to pinesy_run(), and MAME creates no window of its own.
-//  The window shape MAME asks for goes to the host; window
-//  order, fullscreen and the pointer belong to the host, so
-//  those calls do nothing here.
+//  The host's window takes the shape and size of the frame
+//  (pinesy_render_size in pinesymain.cpp), not the window
+//  size MAME asks for. Window order, fullscreen and the
+//  pointer belong to the host, so those calls do nothing here.
 //
 //============================================================
 
@@ -23,6 +24,8 @@
 
 #include "hostmonitor.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 
 
@@ -38,6 +41,8 @@ struct host_surface
 	NSView *view;   // the host's view, or nil
 	int width;      // size used when there is no view
 	int height;
+	int frame_width = 0;    // the frame size the host's window was last fitted to
+	int frame_height = 0;
 };
 
 pinesy_host s_host = {};
@@ -47,6 +52,8 @@ bool s_view_in_use = false;
 bool s_had_keyboard = false;
 
 } // anonymous namespace
+
+static void FitWindowToFrame(host_surface *surface);
 
 // in pinesymain.cpp
 void pinesy_retry_exit();
@@ -67,15 +74,12 @@ void *CreateMAMEWindow(const char *title, int x, int y, int w, int h, bool isFul
 {
 	host_surface *surface = new host_surface{ nil, w, h };
 
-	// the host's view shows the first window that has a picture
+	// the host's view shows the first window that has a picture; the
+	// window gets its size from the first frame (MacWindowGetSizePixels)
 	if (!headless && !s_view_in_use && (s_host.view != nullptr))
 	{
 		surface->view = [(NSView *)s_host.view retain];
 		s_view_in_use = true;
-
-		// the host sizes its window as MAME would size its own
-		if (s_host.size != nullptr)
-			s_host.size(s_host.context, w, h);
 	}
 
 	return surface;
@@ -135,6 +139,48 @@ void MacWindowGetSizePixels(void *wincontroller, int *width, int *height)
 	*width = (int)backing.size.width;
 	*height = (int)backing.size.height;
 	pinesy_render_size(wincontroller, *width, *height);
+
+	// a new frame size (the first frame, a new screen mode) fits the window to it
+	if ((*width != surface->frame_width) || (*height != surface->frame_height))
+	{
+		surface->frame_width = *width;
+		surface->frame_height = *height;
+		FitWindowToFrame(surface);
+	}
+}
+
+
+//============================================================
+//  window size
+//============================================================
+
+// Gives the host's window the frame's shape, and a size that is the
+// largest whole multiple of the frame that fits on the screen, so each
+// frame pixel covers the same number of screen pixels.
+static void FitWindowToFrame(host_surface *surface)
+{
+	const int fw = surface->frame_width, fh = surface->frame_height;
+	if ((fw <= 0) || (fh <= 0))
+		return;
+
+	if (s_host.aspect != nullptr)
+		s_host.aspect(s_host.context, fw, fh);
+	if (s_host.size == nullptr)
+		return;
+
+	NSWindow *window = [surface->view window];
+	NSScreen *screen = ((window != nil) && ([window screen] != nil)) ? [window screen] : [NSScreen mainScreen];
+	const CGFloat scale = (window != nil) ? [window backingScaleFactor] : ((screen != nil) ? [screen backingScaleFactor] : 1.0);
+	int multiple = 1;
+	if (screen != nil)
+	{
+		const NSRect visible = [screen visibleFrame];
+		const CGFloat chrome = (window != nil) ? (NSHeight([window frame]) - NSHeight([window contentLayoutRect])) : 28.0;
+		const int across = int(std::floor(NSWidth(visible) * scale / fw));
+		const int down = int(std::floor((NSHeight(visible) - chrome) * scale / fh));
+		multiple = std::max(1, std::min(across, down));
+	}
+	s_host.size(s_host.context, int(std::lround(fw * multiple / scale)), int(std::lround(fh * multiple / scale)));
 }
 
 
@@ -174,7 +220,12 @@ void MacBlitVideoFrame(void *wincontroller, const void *bits, int width, int hei
 		CALayer *layer = [view layer];
 		// the frame is at the machine's size; the GPU scales it to the view
 		[layer setContentsGravity:kCAGravityResize];
-		[layer setMagnificationFilter:kCAFilterLinear];
+		// sharp when the view is a whole multiple of the frame; any other
+		// size would make uneven pixels, so it is smoothed instead
+		const NSRect bounds = [view convertRectToBacking:[view bounds]];
+		const int bw = int(std::lround(NSWidth(bounds))), bh = int(std::lround(NSHeight(bounds)));
+		const bool whole = (bw >= width) && (bh >= height) && (bw % width == 0) && (bh % height == 0);
+		[layer setMagnificationFilter:whole ? kCAFilterNearest : kCAFilterLinear];
 		[layer setContentsScale:([view window] != nil) ? [[view window] backingScaleFactor] : 1.0];
 		[layer setContents:(id)image];
 		[CATransaction commit];
@@ -293,20 +344,14 @@ bool host_display_area(osd_rect &area, osd_rect &work)
 
 
 //============================================================
-//  window shape: passed to the host for the view's window
+//  window shape: decided by the frame, not by MAME
 //============================================================
 
-void MacSetWindowAspectRatio(void *wincontroller, int width, int height)
-{
-	if ((((host_surface *)wincontroller)->view != nil) && (s_host.aspect != nullptr))
-		s_host.aspect(s_host.context, width, height);
-}
+// The window's shape and size come from the frame (FitWindowToFrame), so
+// MAME's own requests are not passed on.
+void MacSetWindowAspectRatio(void *wincontroller, int width, int height) { }
 
-void MacSetWindowContentSize(void *wincontroller, int width, int height)
-{
-	if ((((host_surface *)wincontroller)->view != nil) && (s_host.size != nullptr))
-		s_host.size(s_host.context, width, height);
-}
+void MacSetWindowContentSize(void *wincontroller, int width, int height) { }
 
 
 //============================================================
