@@ -18,31 +18,43 @@ add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../core" core)
 # its minimum version, and the name of its project, which is the name
 # distributions give their packages.
 set(_missing "")
+set(_old "")
 foreach(_package IN ITEMS
-		"ECM|6.0|KDE: extra-cmake-modules"
-		"Qt6Core|6.8|Qt: qtbase"
-		"Qt6Gui|6.8|Qt: qtbase"
-		"Qt6Widgets|6.8|Qt: qtbase"
-		"Qt6Qml|6.8|Qt: qtdeclarative"
-		"Qt6Quick|6.8|Qt: qtdeclarative"
-		"Qt6QuickControls2|6.8|Qt: qtdeclarative"
-		"KF6Kirigami|6.8|KDE Frameworks: Kirigami"
-		"KF6Config|6.8|KDE Frameworks: KConfig"
-		"KF6CoreAddons|6.8|KDE Frameworks: KCoreAddons"
-		"KF6I18n|6.8|KDE Frameworks: KI18n")
+		"ECM|6.0|extra-cmake-modules (KDE)"
+		"Qt6Core|6.8|qtbase (Qt)"
+		"Qt6Gui|6.8|qtbase (Qt)"
+		"Qt6Widgets|6.8|qtbase (Qt)"
+		"Qt6Qml|6.8|qtdeclarative (Qt)"
+		"Qt6Quick|6.8|qtdeclarative (Qt)"
+		"Qt6QuickControls2|6.8|qtdeclarative (Qt)"
+		"KF6Kirigami|6.8|Kirigami (KDE Frameworks)"
+		"KF6Config|6.8|KConfig (KDE Frameworks)"
+		"KF6CoreAddons|6.8|KCoreAddons (KDE Frameworks)"
+		"KF6I18n|6.8|KI18n (KDE Frameworks)")
 	string(REPLACE "|" ";" _package "${_package}")
 	list(GET _package 0 _name)
 	list(GET _package 1 _version)
 	list(GET _package 2 _project)
-	find_package(${_name} ${_version} QUIET CONFIG)
+	find_package(${_name} QUIET CONFIG)
 	if(NOT ${_name}_FOUND)
-		list(APPEND _missing "${_project} ${_version} or later")
+		list(APPEND _missing "${_project}: not installed")
+	elseif(${_name}_VERSION VERSION_LESS _version)
+		list(APPEND _old "${_project}: ${${_name}_VERSION} is installed, ${_version} or later is needed")
 	endif()
 endforeach()
 list(REMOVE_DUPLICATES _missing)
+list(REMOVE_DUPLICATES _old)
+set(_message "")
 if(_missing)
-	list(JOIN _missing "\n  " _missing)
-	message(FATAL_ERROR "Install these from your distribution, with their development files:\n  ${_missing}")
+	list(JOIN _missing "\n  " _list)
+	string(APPEND _message "Install these from your distribution, with their development files:\n  ${_list}\n")
+endif()
+if(_old)
+	list(JOIN _old "\n  " _list)
+	string(APPEND _message "These are too old. Your distribution does not have the versions this app needs:\n  ${_list}\n")
+endif()
+if(_message)
+	message(FATAL_ERROR "${_message}")
 endif()
 
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
