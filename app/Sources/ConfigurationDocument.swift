@@ -18,8 +18,8 @@ struct ConfigurationDocument: FileDocument {
     /// The MAME command line: the driver to run, then options. Only
     /// options that differ from the starting configuration are written.
     var arguments: [String]
-    /// The machine window's size: Core.windowFit, or a magnification of
-    /// the frame (pinesy_core_window_size()).
+    /// The machine window's size: Core.windowFullScreen, Core.windowFit,
+    /// or a magnification of the frame (pinesy_core_window_size()).
     var windowSize: Int
 
     init() {
@@ -47,7 +47,7 @@ struct ConfigurationDocument: FileDocument {
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        guard let text = Core.take(pinesy_core_write_document(machine, Core.encode(arguments), Int32(windowSize))) else {
+        guard let text = Core.take(pinesy_core_write_document(machine, Core.encode(arguments), Int32(clamping: windowSize))) else {
             throw CocoaError(.fileWriteUnknown)
         }
         return FileWrapper(regularFileWithContents: Data(text.utf8))

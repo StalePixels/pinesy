@@ -273,11 +273,45 @@ char *pinesy_core_summary(pinesy_core *core, const char *arguments, const char *
 //  The machine window's size
 //------------------------------------------------------------
 
-// A configuration's window size: PINESY_CORE_WINDOW_FIT, or a
-// whole-number magnification of the frame from 1 to
-// PINESY_CORE_MAX_WINDOW_MAGNIFICATION.
+// A configuration's window size, as a .pinesy file saves it in
+// windowSize: PINESY_CORE_WINDOW_FULL_SCREEN, PINESY_CORE_WINDOW_FIT,
+// or a whole-number magnification of the frame, 1 or more.
+#define PINESY_CORE_WINDOW_FULL_SCREEN (-1)
 #define PINESY_CORE_WINDOW_FIT 0
-#define PINESY_CORE_MAX_WINDOW_MAGNIFICATION 4
+
+// The configuration window's choices for the window size: Fit to
+// screen, Full screen, each magnification from 1x to
+// PINESY_CORE_WINDOW_LISTED_MAGNIFICATIONS by name, and Custom for
+// any other magnification. PINESY_CORE_WINDOW_CUSTOM stands for
+// Custom; it is a choice, never a window size.
+#define PINESY_CORE_WINDOW_LISTED_MAGNIFICATIONS 4
+#define PINESY_CORE_WINDOW_CUSTOM (-2)
+
+// 1 when window_size is a window size a configuration can have, 0
+// when it is not.
+int pinesy_core_is_window_size(int window_size);
+
+// The choice that shows a window size: the window size itself for
+// full screen, fit and a magnification from 1 to
+// PINESY_CORE_WINDOW_LISTED_MAGNIFICATIONS; PINESY_CORE_WINDOW_CUSTOM
+// for a larger magnification; PINESY_CORE_WINDOW_FIT for a value
+// that is not a window size. With custom_chosen not 0 (the user has
+// chosen Custom in this window), every magnification shows as
+// Custom, so its number field stays while the user enters a number
+// from 1 to PINESY_CORE_WINDOW_LISTED_MAGNIFICATIONS in it.
+int pinesy_core_window_choice(int window_size, int custom_chosen);
+
+// The window size a choice gives, from the configuration's current
+// window size. Full screen, fit and a listed magnification give
+// themselves. PINESY_CORE_WINDOW_CUSTOM keeps window_size when it is
+// a magnification, and gives 1 when it is not; a number the user
+// enters for Custom goes in as window_size. Any other choice gives
+// PINESY_CORE_WINDOW_FIT.
+int pinesy_core_window_size_for_choice(int choice, int window_size);
+
+// 1 when the machine window opens in full screen for this window
+// size, 0 when it opens at the size pinesy_core_window_size() gives.
+int pinesy_core_window_full_screen(int window_size);
 
 // The size of the machine window's content, in logical units, for a
 // frame of frame_width x frame_height device pixels, as the engine's
@@ -292,7 +326,9 @@ char *pinesy_core_summary(pinesy_core *core, const char *arguments, const char *
 // does not. When even 1x does not fit, the content is the largest
 // size of the frame's shape that fits. A usable size of 0 or less is
 // a screen of unknown size: fit is then 1x, and a magnification is
-// used as it is. A window_size of 0 or less is fit.
+// used as it is. A window_size of 0 or less is fit, so
+// PINESY_CORE_WINDOW_FULL_SCREEN gives the size the window has when
+// the user leaves full screen.
 //
 // Sets width and height. Returns the multiple used, 0 when even 1x
 // does not fit, or -1 (with width and height 0) when a frame size is
@@ -309,14 +345,14 @@ int pinesy_core_window_size(int frame_width, int frame_height, int window_size, 
 // configuration this core reads: not a JSON object with format (a
 // whole number), machine (a string) and arguments (an array of
 // strings), a format newer than 1, or empty arguments. windowSize is
-// PINESY_CORE_WINDOW_FIT or a magnification, as
-// pinesy_core_window_size() takes it; a file without it, or with a
-// value outside that range, reads as PINESY_CORE_WINDOW_FIT.
+// a window size (pinesy_core_is_window_size()); a file without it, or
+// with a value that is not a window size, reads as
+// PINESY_CORE_WINDOW_FIT.
 char *pinesy_core_read_document(const char *text);
 
 // The text of a .pinesy file: a JSON object with format 1, the
 // machine, the arguments and the window size, keys in order,
-// indented. A window size outside the range is written as
+// indented. A value that is not a window size is written as
 // PINESY_CORE_WINDOW_FIT.
 char *pinesy_core_write_document(const char *machine, const char *arguments, int window_size);
 

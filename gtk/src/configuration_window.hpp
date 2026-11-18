@@ -69,6 +69,9 @@ private:
 	Glib::RefPtr<Gio::File> m_file;
 	bool m_modified = false;
 	bool m_close_confirmed = false;
+	// Custom was chosen for the window size, so the magnification row
+	// stays while the user enters a listed magnification in it.
+	bool m_custom_window_size = false;
 	std::optional<core::Summary> m_summary;
 	// The configuration changed while a machine ran; the engine is asked
 	// about it when the run ends.

@@ -4,10 +4,13 @@
 
 #pragma once
 
+#include "pinesy_core.h"
+
 #include <QObject>
 #include <QQmlEngine>
 #include <QStringList>
 #include <QUrl>
+#include <QVariantList>
 #include <QVariantMap>
 
 class ConfigurationDocument : public QObject
@@ -30,10 +33,18 @@ class ConfigurationDocument : public QObject
 	Q_PROPERTY(bool canRun READ canRun NOTIFY canRunChanged)
 	// The headless command, as Copy Command Line gives it.
 	Q_PROPERTY(QString commandLine READ commandLine NOTIFY changed)
-	// The machine window's size: PINESY_CORE_WINDOW_FIT (0), or a
-	// magnification of the frame from 1 to maxWindowMagnification.
+	// The machine window's size, as pinesy_core_window_size() takes it:
+	// full screen, fit, or a magnification of the frame, 1 or more.
 	Q_PROPERTY(int windowSize READ windowSize WRITE setWindowSize NOTIFY windowSizeChanged)
-	Q_PROPERTY(int maxWindowMagnification READ maxWindowMagnification CONSTANT)
+	// The window size picker: its choices in order, the one that shows
+	// windowSize (pinesy_core_window_choice()), and the values of fit,
+	// full screen and Custom among the choices. Every other choice is
+	// a magnification.
+	Q_PROPERTY(QVariantList windowChoices READ windowChoices CONSTANT)
+	Q_PROPERTY(int windowChoice READ windowChoice NOTIFY windowSizeChanged)
+	Q_PROPERTY(int windowFit READ windowFit CONSTANT)
+	Q_PROPERTY(int windowFullScreen READ windowFullScreen CONSTANT)
+	Q_PROPERTY(int windowCustom READ windowCustom CONSTANT)
 
 public:
 	explicit ConfigurationDocument(QObject *parent = nullptr);
@@ -50,7 +61,17 @@ public:
 	QString commandLine() const;
 	int windowSize() const { return m_windowSize; }
 	void setWindowSize(int windowSize);
-	int maxWindowMagnification() const;
+	QVariantList windowChoices() const;
+	int windowChoice() const;
+	int windowFit() const { return PINESY_CORE_WINDOW_FIT; }
+	int windowFullScreen() const { return PINESY_CORE_WINDOW_FULL_SCREEN; }
+	int windowCustom() const { return PINESY_CORE_WINDOW_CUSTOM; }
+
+	// Takes a choice of the window size picker. Custom keeps a
+	// magnification and shows the magnification field.
+	Q_INVOKABLE void chooseWindowSize(int choice);
+	// Takes the number entered in the magnification field.
+	Q_INVOKABLE void setCustomWindowSize(int magnification);
 
 	// Starts a new configuration for a machine of the catalogue.
 	Q_INVOKABLE void choose(const QString &machine);
@@ -89,7 +110,10 @@ private:
 
 	QString m_machine;
 	QStringList m_arguments;
-	int m_windowSize = 0;
+	int m_windowSize = PINESY_CORE_WINDOW_FIT;
+	// Custom was chosen for the window size, so the magnification field
+	// stays while the user enters a listed magnification in it.
+	bool m_customWindowSize = false;
 	QUrl m_url;
 	bool m_modified = false;
 	QVariantMap m_summary;

@@ -106,9 +106,29 @@ enum Core {
 
     // MARK: - The machine window
 
-    /// The window size that fits the screen; a magnification is 1 to maxWindowMagnification.
+    /// Window sizes: full screen, fit to the screen, or a magnification of 1 or more.
+    nonisolated static let windowFullScreen = Int(PINESY_CORE_WINDOW_FULL_SCREEN)
     nonisolated static let windowFit = Int(PINESY_CORE_WINDOW_FIT)
-    nonisolated static let maxWindowMagnification = Int(PINESY_CORE_MAX_WINDOW_MAGNIFICATION)
+    /// The picker names the magnifications from 1 to this; Custom stands for any other.
+    nonisolated static let listedWindowMagnifications = Int(PINESY_CORE_WINDOW_LISTED_MAGNIFICATIONS)
+    nonisolated static let windowCustom = Int(PINESY_CORE_WINDOW_CUSTOM)
+
+    /// The picker choice that shows a window size; with `customChosen`,
+    /// every magnification shows as Custom.
+    nonisolated static func windowChoice(_ windowSize: Int, customChosen: Bool) -> Int {
+        Int(pinesy_core_window_choice(Int32(clamping: windowSize), customChosen ? 1 : 0))
+    }
+
+    /// The window size a picker choice gives, from the current window
+    /// size; for Custom, the current size is the number the user entered.
+    nonisolated static func windowSize(choice: Int, current: Int) -> Int {
+        Int(pinesy_core_window_size_for_choice(Int32(clamping: choice), Int32(clamping: current)))
+    }
+
+    /// Whether the machine window opens in full screen.
+    nonisolated static func windowOpensFullScreen(_ windowSize: Int) -> Bool {
+        pinesy_core_window_full_screen(Int32(clamping: windowSize)) != 0
+    }
 
     /// The machine window's content size, in points, for a frame of
     /// `frame` pixels: the core's rule, from the configuration's window
@@ -117,7 +137,7 @@ enum Core {
     nonisolated static func windowContentSize(frame: NSSize, windowSize: Int, pixelRatio: CGFloat, usable: NSSize) -> NSSize? {
         var width: Int32 = 0
         var height: Int32 = 0
-        let multiple = pinesy_core_window_size(Int32(frame.width), Int32(frame.height), Int32(windowSize), Double(pixelRatio),
+        let multiple = pinesy_core_window_size(Int32(frame.width), Int32(frame.height), Int32(clamping: windowSize), Double(pixelRatio),
                                                Int32(usable.width), Int32(usable.height), &width, &height)
         guard multiple >= 0 else { return nil }
         return NSSize(width: Int(width), height: Int(height))

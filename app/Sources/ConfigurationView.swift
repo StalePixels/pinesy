@@ -24,6 +24,9 @@ struct ConfigurationView: View {
     @ObservedObject private var runner = MachineRunner.shared
     @State private var summary: ConfigurationSummary?
     @State private var choosingMachine = false
+    /// Custom was chosen for the window size, so the magnification field
+    /// stays while the user enters a listed magnification in it.
+    @State private var customWindowSize = false
     @State private var window: NSWindow?
     /// The media device the file chooser is for. The chooser has its own
     /// flag, so closing the chooser does not clear the device before the
@@ -208,6 +211,11 @@ struct ConfigurationView: View {
         .formStyle(.grouped)
     }
 
+    /// The window size picker's choice.
+    private var windowChoice: Int {
+        Core.windowChoice(document.windowSize, customChosen: customWindowSize)
+    }
+
     @ViewBuilder
     private func machineSection(_ summary: ConfigurationSummary) -> some View {
         Section {
@@ -258,11 +266,24 @@ struct ConfigurationView: View {
                 }
             }
 
-            Picker("Window size", selection: $document.windowSize) {
+            Picker("Window size", selection: Binding(
+                get: { windowChoice },
+                set: { choice in
+                    customWindowSize = choice == Core.windowCustom
+                    document.windowSize = Core.windowSize(choice: choice, current: document.windowSize)
+                })) {
                 Text("Fit to screen").tag(Core.windowFit)
-                ForEach(1...Core.maxWindowMagnification, id: \.self) { magnification in
+                Text("Full screen").tag(Core.windowFullScreen)
+                ForEach(1...Core.listedWindowMagnifications, id: \.self) { magnification in
                     Text("\(magnification)×").tag(magnification)
                 }
+                Text("Custom").tag(Core.windowCustom)
+            }
+            if windowChoice == Core.windowCustom {
+                TextField("Magnification", value: Binding(
+                    get: { document.windowSize },
+                    set: { document.windowSize = Core.windowSize(choice: Core.windowCustom, current: $0) }),
+                    format: .number.grouping(.never))
             }
         }
     }

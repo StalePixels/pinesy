@@ -310,7 +310,29 @@ char *pinesy_core_write_document(const char *machine, const char *arguments, int
 //  The machine window's size
 //------------------------------------------------------------
 
-static_assert(PINESY_CORE_WINDOW_FIT == window::fit && PINESY_CORE_MAX_WINDOW_MAGNIFICATION == window::max_magnification);
+static_assert(PINESY_CORE_WINDOW_FULL_SCREEN == window::full_screen && PINESY_CORE_WINDOW_FIT == window::fit
+		&& PINESY_CORE_WINDOW_LISTED_MAGNIFICATIONS == window::listed_magnifications
+		&& PINESY_CORE_WINDOW_CUSTOM == window::custom);
+
+int pinesy_core_is_window_size(int window_size)
+{
+	return window::is_window_size(window_size) ? 1 : 0;
+}
+
+int pinesy_core_window_choice(int window_size, int custom_chosen)
+{
+	return window::choice(window_size, custom_chosen != 0);
+}
+
+int pinesy_core_window_size_for_choice(int choice, int window_size)
+{
+	return window::size_for_choice(choice, window_size);
+}
+
+int pinesy_core_window_full_screen(int window_size)
+{
+	return window::opens_full_screen(window_size) ? 1 : 0;
+}
 
 int pinesy_core_window_size(int frame_width, int frame_height, int window_size, double pixel_ratio,
 		int usable_width, int usable_height, int *width, int *height)

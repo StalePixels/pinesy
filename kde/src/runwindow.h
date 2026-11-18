@@ -46,4 +46,8 @@ private:
 	pinesy_host m_host = {};
 	QStringList m_errors;
 	bool m_sized = false;
+	// the last frame size MAME gave, to size the window again when it
+	// leaves full screen
+	QSize m_frame;
+	bool m_fullScreen = false;
 };

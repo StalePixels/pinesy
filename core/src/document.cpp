@@ -7,9 +7,9 @@
 //  A .pinesy file is a JSON object with four keys: format
 //  (the file format version), machine (the driver that stands
 //  for the machine in the machine list), arguments (the MAME
-//  command line, as an array of strings) and windowSize (0 for
-//  fit, else the magnification of the machine window). Other
-//  keys are ignored when reading.
+//  command line, as an array of strings) and windowSize (-1 for
+//  full screen, 0 for fit, else the magnification of the
+//  machine window). Other keys are ignored when reading.
 //
 //============================================================
 
@@ -17,6 +17,7 @@
 #include "internal.hpp"
 
 #include <cmath>
+#include <limits>
 
 namespace pinesy::core {
 
@@ -30,7 +31,9 @@ int read_window_size(const json::Value *value)
 	{
 		if (!value) return window::fit;
 		const double size = value->number();
-		if (size != std::floor(size) || size < window::fit || size > window::max_magnification) return window::fit;
+		if (size != std::floor(size) || size < double(std::numeric_limits<int>::min())
+				|| size > double(std::numeric_limits<int>::max()) || !window::is_window_size(int(size)))
+			return window::fit;
 		return int(size);
 	}
 	catch (const json::Error &)

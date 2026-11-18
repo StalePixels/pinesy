@@ -18,6 +18,12 @@ RunWindow::RunWindow(int windowSize)
 	connect(this, &QWindow::widthChanged, this, [this](int w) { m_view->setWidth(w); });
 	connect(this, &QWindow::heightChanged, this, [this](int h) { m_view->setHeight(h); });
 	connect(this, &QWindow::activeChanged, this, [this] { pinesy_focus(isActive() ? 1 : 0); });
+	connect(this, &QWindow::windowStateChanged, this, [this](Qt::WindowState state) {
+		const bool left = m_fullScreen && state != Qt::WindowFullScreen;
+		m_fullScreen = state == Qt::WindowFullScreen;
+		if (left && m_frame.isValid())
+			resizeForFrame(m_frame.width(), m_frame.height());
+	});
 
 	m_host.view = this;
 	m_host.frame = onFrame;
@@ -64,9 +70,14 @@ void RunWindow::onPump(void *)
 
 // Takes the size the core gives for a frame of frameWidth x frameHeight
 // pixels, the window size and the screen. The window starts centred at
-// its first size.
+// its first size, and goes to full screen from there when the window
+// size says so. A window in full screen keeps the screen's size until
+// it leaves full screen.
 void RunWindow::resizeForFrame(int frameWidth, int frameHeight)
 {
+	m_frame = QSize(frameWidth, frameHeight);
+	if (windowState() == Qt::WindowFullScreen)
+		return;
 	QSize usable;
 	if (QScreen *s = screen()) {
 		const QMargins frame = frameMargins();
@@ -82,5 +93,7 @@ void RunWindow::resizeForFrame(int frameWidth, int frameHeight)
 		m_sized = true;
 		if (QScreen *s = screen())
 			setPosition(s->availableGeometry().center() - QPoint(wanted.width() / 2, wanted.height() / 2));
+		if (pinesy_core_window_full_screen(m_windowSize))
+			showFullScreen();
 	}
 }

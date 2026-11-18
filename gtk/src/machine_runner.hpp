@@ -80,7 +80,11 @@ private:
 	GtkWidget *m_header = nullptr;
 	MachineView *m_view = nullptr;
 	int m_window_size = core::window::fit;
+	// the window goes to full screen with the first frame, when its
+	// window size says so
+	bool m_sized = false;
 	gulong m_active_handler = 0;
+	gulong m_fullscreened_handler = 0;
 	std::set<unsigned> m_keys_down;
 	std::string m_errors;
 	bool m_running = false;

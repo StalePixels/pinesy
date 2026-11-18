@@ -55,16 +55,42 @@ QString ConfigurationDocument::commandLine() const
 
 void ConfigurationDocument::setWindowSize(int windowSize)
 {
-	if (windowSize == m_windowSize || windowSize < PINESY_CORE_WINDOW_FIT || windowSize > PINESY_CORE_MAX_WINDOW_MAGNIFICATION)
+	if (windowSize == m_windowSize || !pinesy_core_is_window_size(windowSize))
 		return;
 	m_windowSize = windowSize;
 	setModified(true);
 	Q_EMIT windowSizeChanged();
 }
 
-int ConfigurationDocument::maxWindowMagnification() const
+QVariantList ConfigurationDocument::windowChoices() const
 {
-	return PINESY_CORE_MAX_WINDOW_MAGNIFICATION;
+	QVariantList choices{ PINESY_CORE_WINDOW_FIT, PINESY_CORE_WINDOW_FULL_SCREEN };
+	for (int magnification = 1; magnification <= PINESY_CORE_WINDOW_LISTED_MAGNIFICATIONS; magnification++)
+		choices.append(magnification);
+	choices.append(PINESY_CORE_WINDOW_CUSTOM);
+	return choices;
+}
+
+int ConfigurationDocument::windowChoice() const
+{
+	return pinesy_core_window_choice(m_windowSize, m_customWindowSize ? 1 : 0);
+}
+
+void ConfigurationDocument::chooseWindowSize(int choice)
+{
+	const bool custom = choice == PINESY_CORE_WINDOW_CUSTOM;
+	const bool shown = custom != m_customWindowSize;
+	m_customWindowSize = custom;
+	const int windowSize = pinesy_core_window_size_for_choice(choice, m_windowSize);
+	if (windowSize != m_windowSize)
+		setWindowSize(windowSize);
+	else if (shown)
+		Q_EMIT windowSizeChanged();
+}
+
+void ConfigurationDocument::setCustomWindowSize(int magnification)
+{
+	setWindowSize(pinesy_core_window_size_for_choice(PINESY_CORE_WINDOW_CUSTOM, magnification));
 }
 
 void ConfigurationDocument::setArguments(const QStringList &arguments)
@@ -166,6 +192,7 @@ QString ConfigurationDocument::load(const QUrl &url)
 	m_machine = machine;
 	m_arguments = arguments;
 	m_windowSize = windowSize;
+	m_customWindowSize = false;
 	m_url = url;
 	setModified(false);
 	Q_EMIT changed();

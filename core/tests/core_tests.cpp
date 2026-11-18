@@ -322,24 +322,37 @@ void test_documents()
 			&& member(read, "windowSize") && member(read, "windowSize")->number() == 3,
 			"a .pinesy file reads back as it was written");
 
-	// the window size: fit (0) or a magnification from 1 to 4
+	// the window size: full screen (-1), fit (0) or a magnification of 1 or more
 	auto window_size_of = [](const char *file) {
 		json::Value document = parse(pinesy_core_read_document(file));
 		const json::Value *size = document.is_object() ? member(document, "windowSize") : nullptr;
-		return size ? int(size->number()) : -1;
+		return size ? int(size->number()) : -3;
 	};
 	check(window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"]})") == PINESY_CORE_WINDOW_FIT,
 			"a file without windowSize opens as fit");
 	check(window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":4})") == 4,
 			"a file with windowSize 4 opens as 4x");
-	check(window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":5})") == PINESY_CORE_WINDOW_FIT
-			&& window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":-1})") == PINESY_CORE_WINDOW_FIT
+	check(window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":-1})") == PINESY_CORE_WINDOW_FULL_SCREEN,
+			"a file with windowSize -1 opens as full screen");
+	check(window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":5})") == 5
+			&& window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":100})") == 100,
+			"a file with a magnification above 4 keeps it");
+	check(window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":-2})") == PINESY_CORE_WINDOW_FIT
 			&& window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":1.5})") == PINESY_CORE_WINDOW_FIT
-			&& window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":"2"})") == PINESY_CORE_WINDOW_FIT,
-			"a windowSize that is not 0 to 4 opens as fit");
-	json::Value too_big = parse(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), 9));
-	check(member(too_big, "windowSize") && member(too_big, "windowSize")->number() == PINESY_CORE_WINDOW_FIT,
-			"a window size outside 0 to 4 is written as fit");
+			&& window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":"2"})") == PINESY_CORE_WINDOW_FIT
+			&& window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":3000000000})") == PINESY_CORE_WINDOW_FIT,
+			"a windowSize that is not -1 or a whole number from 0 to the largest int opens as fit");
+	auto written_size = [](int window_size) {
+		json::Value written = parse(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), window_size));
+		const json::Value *size = written.is_object() ? member(written, "windowSize") : nullptr;
+		return size ? int(size->number()) : -3;
+	};
+	check(written_size(PINESY_CORE_WINDOW_FULL_SCREEN) == PINESY_CORE_WINDOW_FULL_SCREEN && written_size(9) == 9,
+			"full screen and a magnification above 4 are written as they are");
+	check(written_size(PINESY_CORE_WINDOW_CUSTOM) == PINESY_CORE_WINDOW_FIT && written_size(-7) == PINESY_CORE_WINDOW_FIT,
+			"a value that is not a window size is written as fit");
+	std::string custom_text = take(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), 12));
+	check(window_size_of(custom_text.c_str()) == 12, "a custom magnification reads back as it was written");
 
 	// a newer format, or empty arguments,
 	// is not read.

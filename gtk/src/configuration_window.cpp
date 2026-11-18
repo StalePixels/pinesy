@@ -491,17 +491,53 @@ AdwPreferencesGroup *ConfigurationWindow::machine_group(const core::Summary &sum
 		}));
 	}
 
-	// the window size: index 0 is fit, then each magnification
-	std::vector<std::string> sizes{ "Fit to screen" };
-	for (int magnification = 1; magnification <= core::window::max_magnification; magnification++)
+	// the window size: the core's choices, and a magnification row for Custom
+	std::vector<int> choices{ core::window::fit, core::window::full_screen };
+	std::vector<std::string> sizes{ "Fit to screen", "Full screen" };
+	for (int magnification = 1; magnification <= core::window::listed_magnifications; magnification++)
+	{
+		choices.push_back(magnification);
 		sizes.push_back(std::to_string(magnification) + "×");
-	adw_preferences_group_add(group, combo_row("Window size", sizes, guint(m_document.window_size), [this](guint index) {
-		if (int(index) == m_document.window_size || !core::window::is_window_size(int(index)))
+	}
+	choices.push_back(core::window::custom);
+	sizes.push_back("Custom");
+	const int chosen = core::window::choice(m_document.window_size, m_custom_window_size);
+	const auto found = std::find(choices.begin(), choices.end(), chosen);
+
+	GtkWidget *magnification = adw_spin_row_new_with_range(1, G_MAXINT, 1);
+	plain_row(magnification);
+	adw_preferences_row_set_title(ADW_PREFERENCES_ROW(magnification), "Magnification");
+	adw_spin_row_set_digits(ADW_SPIN_ROW(magnification), 0);
+	adw_spin_row_set_numeric(ADW_SPIN_ROW(magnification), TRUE);
+	adw_spin_row_set_value(ADW_SPIN_ROW(magnification),
+			core::window::size_for_choice(core::window::custom, m_document.window_size));
+	gtk_widget_set_visible(magnification, chosen == core::window::custom);
+
+	auto set_window_size = [this](int window_size) {
+		if (window_size == m_document.window_size)
 			return;
-		m_document.window_size = int(index);
+		m_document.window_size = window_size;
 		m_modified = true;
 		update_title();
+	};
+	adw_preferences_group_add(group, combo_row("Window size", sizes, guint(found - choices.begin()),
+			[this, choices, magnification, set_window_size](guint index) {
+		if (index >= choices.size())
+			return;
+		const int choice = choices[index];
+		m_custom_window_size = choice == core::window::custom;
+		set_window_size(core::window::size_for_choice(choice, m_document.window_size));
+		if (m_custom_window_size)
+			adw_spin_row_set_value(ADW_SPIN_ROW(magnification), m_document.window_size);
+		gtk_widget_set_visible(magnification, m_custom_window_size);
 	}));
+	connect_notify(magnification, "value", [this, magnification, set_window_size] {
+		if (core::window::choice(m_document.window_size, m_custom_window_size) != core::window::custom)
+			return;
+		set_window_size(core::window::size_for_choice(core::window::custom,
+				int(adw_spin_row_get_value(ADW_SPIN_ROW(magnification)))));
+	});
+	adw_preferences_group_add(group, magnification);
 	return group;
 }
 

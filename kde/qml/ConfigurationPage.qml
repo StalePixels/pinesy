@@ -150,18 +150,27 @@ Kirigami.Page {
                     onActivated: index => page.document.setRom(roms[index].driver, roms[index].bios)
                 }
 
-                // index 0 is fit, then each magnification
+                // the core's choices, and a magnification field for Custom
                 QQC2.ComboBox {
                     Kirigami.FormData.label: i18nc("@label:listbox", "Window size:")
                     Layout.minimumWidth: Kirigami.Units.gridUnit * 14
-                    model: {
-                        const sizes = [i18nc("@item:inlistbox window size", "Fit to screen")]
-                        for (let magnification = 1; magnification <= page.document.maxWindowMagnification; magnification++)
-                            sizes.push(i18nc("@item:inlistbox window magnification", "%1×", magnification))
-                        return sizes
-                    }
-                    currentIndex: page.document.windowSize
-                    onActivated: index => page.document.windowSize = index
+                    model: page.document.windowChoices.map(choice =>
+                        choice === page.document.windowFit ? i18nc("@item:inlistbox window size", "Fit to screen")
+                        : choice === page.document.windowFullScreen ? i18nc("@item:inlistbox window size", "Full screen")
+                        : choice === page.document.windowCustom ? i18nc("@item:inlistbox window size", "Custom")
+                        : i18nc("@item:inlistbox window magnification", "%1×", choice))
+                    currentIndex: page.document.windowChoices.indexOf(page.document.windowChoice)
+                    onActivated: index => page.document.chooseWindowSize(page.document.windowChoices[index])
+                }
+
+                QQC2.SpinBox {
+                    Kirigami.FormData.label: i18nc("@label:spinbox", "Magnification:")
+                    visible: page.document.windowChoice === page.document.windowCustom
+                    editable: true
+                    from: 1
+                    to: 2147483647
+                    value: page.document.windowSize
+                    onValueModified: page.document.setCustomWindowSize(value)
                 }
 
             }

@@ -13,6 +13,10 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
 
     private var window: NSWindow?
     private var quitAfterRun = false
+    /// The running configuration's window size, and the last frame size
+    /// MAME gave, to size the window again when it leaves full screen.
+    private var windowSize = Core.windowFit
+    private var frame: NSSize?
 
     /// Starts a configuration. `arguments` is its command line; the core
     /// adds the app's paths and the debugger options. `windowSize` is
@@ -20,6 +24,8 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
     func start(title: String, arguments: [String], debug: Bool, windowSize: Int) {
         guard running == nil else { return }
         running = title
+        self.windowSize = windowSize
+        frame = nil
 
         // the window takes its size and shape from the first frame
         let view = MachineView(frame: NSRect(x: 0, y: 0, width: 640, height: 480))
@@ -54,11 +60,16 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
                 }
                 var sized = false
                 host.onSize = { frame in
+                    self.frame = frame
                     Self.fit(window, frame: frame, windowSize: windowSize)
-                    // the window starts centred at its first size
+                    // the window starts centred at its first size, and
+                    // goes to full screen from there when the size says so
                     if !sized {
                         sized = true
                         window.center()
+                        if Core.windowOpensFullScreen(windowSize) {
+                            window.toggleFullScreen(nil)
+                        }
                     }
                 }
                 let code = MAME.withHost(view: view, receiver: host) {
@@ -71,8 +82,10 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
 
     /// Gives the window the content size the core decides for a frame of
     /// `frame` pixels and the window size, on the window's screen,
-    /// keeping its top-left corner where it is.
+    /// keeping its top-left corner where it is. A window in full screen
+    /// keeps the screen's size.
     static func fit(_ window: NSWindow, frame: NSSize, windowSize: Int) {
+        guard !window.styleMask.contains(.fullScreen) else { return }
         var usable = NSSize.zero
         if let visible = (window.screen ?? NSScreen.main)?.visibleFrame {
             let chrome = window.frame.height - window.contentLayoutRect.height
@@ -123,6 +136,12 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
         quitAfterRun = true
         _ = MAME.requestExit()
         return true
+    }
+
+    // A window that leaves full screen takes the size for the last frame.
+    func windowDidExitFullScreen(_ notification: Notification) {
+        guard let window, let frame else { return }
+        Self.fit(window, frame: frame, windowSize: windowSize)
     }
 
     // The window closes when MAME has exited.

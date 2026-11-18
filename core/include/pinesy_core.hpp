@@ -386,13 +386,37 @@ struct Summary
 
 namespace window {
 
-// A configuration's window size: fit, or a whole-number
-// magnification of the frame from 1 to max_magnification.
+// A configuration's window size, as a .pinesy file saves it:
+// full_screen, fit, or a whole-number magnification of the frame, 1
+// or more.
+constexpr int full_screen = -1;
 constexpr int fit = 0;
-constexpr int max_magnification = 4;
 
-// True for fit and for 1 to max_magnification.
+// The configuration window's choices: fit, full_screen, each
+// magnification from 1 to listed_magnifications by name, and custom
+// for any other magnification. custom is a choice, never a window
+// size.
+constexpr int listed_magnifications = 4;
+constexpr int custom = -2;
+
+// True for full_screen, fit and a magnification.
 bool is_window_size(int window_size);
+
+// The choice that shows a window size: the window size itself, or
+// custom for a magnification above listed_magnifications, or fit
+// for a value that is not a window size. With custom_chosen, every
+// magnification shows as custom.
+int choice(int window_size, bool custom_chosen = false);
+
+// The window size a choice gives, from the current window size.
+// full_screen, fit and a listed magnification give themselves.
+// custom keeps window_size when it is a magnification, and gives 1
+// when it is not; a number the user enters for custom goes in as
+// window_size. Any other choice gives fit.
+int size_for_choice(int choice, int window_size);
+
+// True when the machine window opens in full screen.
+bool opens_full_screen(int window_size);
 
 struct ContentSize
 {
@@ -411,8 +435,9 @@ struct ContentSize
 // not. When even 1x does not fit, the content is the largest size of
 // the frame's shape that fits, and multiple is 0. A usable size of 0
 // or less is a screen of unknown size: fit is then 1x, and a
-// magnification is used as it is. A window_size of 0 or less is fit.
-// The content is 0 x 0 when the frame size is 0 or less or
+// magnification is used as it is. A window_size of 0 or less is fit,
+// so full_screen gives the size the window has when the user leaves
+// full screen. The content is 0 x 0 when the frame size is 0 or less or
 // pixel_ratio is not more than 0.
 ContentSize content_size(int frame_width, int frame_height, int window_size, double pixel_ratio,
 		int usable_width, int usable_height);

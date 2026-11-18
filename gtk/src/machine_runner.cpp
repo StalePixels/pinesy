@@ -117,6 +117,14 @@ MachineWindow::MachineWindow(const std::string &title, int window_size) : m_wind
 
 	m_view = Gtk::make_managed<MachineView>();
 	m_header = adw_header_bar_new();
+	// in full screen the header bar has a button to leave it, as keys
+	// go to the machine
+	GtkWidget *leave = gtk_button_new_from_icon_name("view-restore-symbolic");
+	gtk_widget_set_tooltip_text(leave, "Leave Full Screen");
+	gtk_widget_set_focusable(leave, FALSE);
+	gtk_widget_set_visible(leave, FALSE);
+	g_signal_connect_swapped(leave, "clicked", G_CALLBACK(gtk_window_unfullscreen), m_window);
+	adw_header_bar_pack_end(ADW_HEADER_BAR(m_header), leave);
 	GtkWidget *toolbar = adw_toolbar_view_new();
 	adw_toolbar_view_add_top_bar(ADW_TOOLBAR_VIEW(toolbar), m_header);
 	adw_toolbar_view_set_content(ADW_TOOLBAR_VIEW(toolbar), GTK_WIDGET(m_view->gobj()));
@@ -131,6 +139,9 @@ MachineWindow::MachineWindow(const std::string &title, int window_size) : m_wind
 	gtk_widget_add_controller(GTK_WIDGET(m_window), keys);
 
 	m_active_handler = connect_notify(m_window, "is-active", [this] { on_active_changed(); });
+	m_fullscreened_handler = connect_notify(m_window, "fullscreened", [this, leave] {
+		gtk_widget_set_visible(leave, gtk_window_is_fullscreen(GTK_WINDOW(m_window)));
+	});
 	g_signal_connect(m_window, "close-request", G_CALLBACK(+[](GtkWindow *, gpointer data) -> gboolean {
 		auto self = static_cast<MachineWindow *>(data);
 		self->m_closed = true;
@@ -144,6 +155,7 @@ MachineWindow::~MachineWindow()
 {
 	g_signal_handlers_disconnect_by_data(m_window, this);
 	g_signal_handler_disconnect(m_window, m_active_handler);
+	g_signal_handler_disconnect(m_window, m_fullscreened_handler);
 	gtk_window_destroy(GTK_WINDOW(m_window));
 	g_object_unref(m_window);
 	// let GTK finish with the window before the caller goes on
@@ -194,7 +206,8 @@ void MachineWindow::on_size(void *context, int width, int height)
 
 	// The size is the frame's, in pixels. The core gives the view's size
 	// from it, the window size and the monitor the window is on; the
-	// header bar comes on top of the view.
+	// header bar comes on top of the view. In full screen this is the
+	// size the window takes when it leaves full screen.
 	int header = 0;
 	gtk_widget_measure(self->m_header, GTK_ORIENTATION_VERTICAL, -1, nullptr, &header, nullptr, nullptr);
 
@@ -210,6 +223,12 @@ void MachineWindow::on_size(void *context, int width, int height)
 	if (view.width <= 0)
 		return;
 	gtk_window_set_default_size(GTK_WINDOW(self->m_window), view.width, view.height + header);
+	if (!self->m_sized)
+	{
+		self->m_sized = true;
+		if (core::window::opens_full_screen(self->m_window_size))
+			gtk_window_fullscreen(GTK_WINDOW(self->m_window));
+	}
 }
 
 void MachineWindow::on_pump(void *)
