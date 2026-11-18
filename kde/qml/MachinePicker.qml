@@ -69,7 +69,6 @@ Kirigami.Dialog {
 
     ColumnLayout {
         spacing: 0
-        implicitHeight: Kirigami.Units.gridUnit * 22
 
         Kirigami.SearchField {
             id: searchField
@@ -88,10 +87,14 @@ Kirigami.Dialog {
 
         Kirigami.Separator { Layout.fillWidth: true }
 
+        // The lists get a fixed height and scroll inside it. Under some
+        // styles (not Plasma's) a ScrollView's own height is the whole
+        // length of its list, so without this the lists would not scroll.
         RowLayout {
             spacing: 0
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.preferredHeight: Kirigami.Units.gridUnit * 22
 
             QQC2.ScrollView {
                 Layout.preferredWidth: Kirigami.Units.gridUnit * 12
