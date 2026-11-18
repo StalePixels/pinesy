@@ -13,23 +13,48 @@ set(PINESY_CORE_TESTS OFF CACHE BOOL "Build the core's tests")
 set(PINESY_ENGINE_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/../mame/libmame_pinesy_qt.so" CACHE FILEPATH "The engine library, libmame_pinesy_qt")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../core" core)
 
-# Every package the app needs, by its CMake name, each looked for on its
-# own, so one configure lists every package that is missing.
-set(_missing "")
-foreach(_package IN ITEMS ECM:6.0
-		Qt6Core:6.8 Qt6Gui:6.8 Qt6Qml:6.8 Qt6Quick:6.8 Qt6QuickControls2:6.8 Qt6Widgets:6.8
-		KF6Kirigami:6.8 KF6Config:6.8 KF6CoreAddons:6.8 KF6I18n:6.8)
-	string(REPLACE ":" ";" _package "${_package}")
+# Every package the app needs, each looked for on its own, so one
+# configure lists every package that is missing. Each has its CMake name,
+# its minimum version, and the name of the project it comes from, which
+# is the name distributions give their packages.
+set(_projects "")
+foreach(_package IN ITEMS
+		"ECM|6.0|KDE: extra-cmake-modules"
+		"Qt6Core|6.8|Qt: qtbase"
+		"Qt6Gui|6.8|Qt: qtbase"
+		"Qt6Widgets|6.8|Qt: qtbase"
+		"Qt6Qml|6.8|Qt: qtdeclarative"
+		"Qt6Quick|6.8|Qt: qtdeclarative"
+		"Qt6QuickControls2|6.8|Qt: qtdeclarative"
+		"KF6Kirigami|6.8|KDE Frameworks: Kirigami"
+		"KF6Config|6.8|KDE Frameworks: KConfig"
+		"KF6CoreAddons|6.8|KDE Frameworks: KCoreAddons"
+		"KF6I18n|6.8|KDE Frameworks: KI18n")
+	string(REPLACE "|" ";" _package "${_package}")
 	list(GET _package 0 _name)
 	list(GET _package 1 _version)
+	list(GET _package 2 _project)
 	find_package(${_name} ${_version} QUIET CONFIG)
 	if(NOT ${_name}_FOUND)
-		list(APPEND _missing "${_name} ${_version}")
+		string(MAKE_C_IDENTIFIER "${_project}" _key)
+		if(NOT DEFINED _cmake_${_key})
+			list(APPEND _projects "${_project}|${_version}")
+		endif()
+		list(APPEND _cmake_${_key} ${_name})
 	endif()
+endforeach()
+set(_missing "")
+foreach(_entry IN LISTS _projects)
+	string(REPLACE "|" ";" _entry "${_entry}")
+	list(GET _entry 0 _project)
+	list(GET _entry 1 _version)
+	string(MAKE_C_IDENTIFIER "${_project}" _key)
+	list(JOIN _cmake_${_key} ", " _names)
+	list(APPEND _missing "${_project} ${_version} or later (CMake: ${_names})")
 endforeach()
 if(_missing)
 	list(JOIN _missing "\n  " _missing)
-	message(FATAL_ERROR "These packages are missing, or older than the version shown:\n  ${_missing}")
+	message(FATAL_ERROR "Install these from your distribution, with their development files:\n  ${_missing}")
 endif()
 
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
