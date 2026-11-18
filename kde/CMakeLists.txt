@@ -6,17 +6,11 @@ project(pinesy_kde VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# The core, with the engine it links. It is added before the KDE compiler
-# settings, which turn off C++ exceptions, so it builds with its own flags.
-set(PINESY_CORE_TESTS OFF CACHE BOOL "Build the core's tests")
-# The engine with MAME's Qt debugger, built by ../build-mame.sh --qt.
-set(PINESY_ENGINE_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/../mame/libmame_pinesy_qt.so" CACHE FILEPATH "The engine library, libmame_pinesy_qt")
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../core" core)
-
 # Every package the app needs, each looked for on its own, so one
-# configure lists every package that is missing. Each has its CMake name,
-# its minimum version, and the name of its project, which is the name
-# distributions give their packages.
+# configure lists every package that is missing, with the package of this
+# system that has it. Each has its CMake name, its minimum version, and
+# the name of its project.
+include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/PinesyPackages.cmake")
 set(_missing "")
 set(_old "")
 foreach(_package IN ITEMS
@@ -37,25 +31,24 @@ foreach(_package IN ITEMS
 	list(GET _package 2 _project)
 	find_package(${_name} QUIET CONFIG)
 	if(NOT ${_name}_FOUND)
-		list(APPEND _missing "${_project}: not installed")
+		list(APPEND _missing "${_project}|${_name}Config.cmake|${_version}")
 	elseif(${_name}_VERSION VERSION_LESS _version)
 		list(APPEND _old "${_project}: ${${_name}_VERSION} is installed, ${_version} or later is needed")
 	endif()
 endforeach()
-list(REMOVE_DUPLICATES _missing)
-list(REMOVE_DUPLICATES _old)
-set(_message "")
-if(_missing)
-	list(JOIN _missing "\n  " _list)
-	string(APPEND _message "Install these from your distribution, with their development files:\n  ${_list}\n")
-endif()
-if(_old)
-	list(JOIN _old "\n  " _list)
-	string(APPEND _message "These are too old. Your distribution does not have the versions this app needs:\n  ${_list}\n")
-endif()
-if(_message)
+if(_missing OR _old)
+	list(REMOVE_DUPLICATES _old)
+	set(PINESY_TOO_OLD ${_old})
+	pinesy_missing_message(_message "KDE app" ${_missing})
 	message(FATAL_ERROR "${_message}")
 endif()
+
+# The core, with the engine it links. It is added before the KDE compiler
+# settings, which turn off C++ exceptions, so it builds with its own flags.
+set(PINESY_CORE_TESTS OFF CACHE BOOL "Build the core's tests")
+# The engine with MAME's Qt debugger, built by ../build-mame.sh --qt.
+set(PINESY_ENGINE_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/../mame/libmame_pinesy_qt.so" CACHE FILEPATH "The engine library, libmame_pinesy_qt")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../core" core)
 
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 include(KDEInstallDirs)
