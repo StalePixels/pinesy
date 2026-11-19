@@ -204,7 +204,7 @@ QString ConfigurationDocument::load(const QUrl &url)
 	QString machine;
 	QStringList arguments;
 	int windowSize = PINESY_CORE_WINDOW_FIT;
-	bool mouse = false;
+	bool mouse = true;
 	if (!Core::readDocument(file.readAll(), &machine, &arguments, &windowSize, &mouse))
 		return i18n("This file is not a Pinesy configuration, or it is from a newer version of Pinesy.");
 	m_machine = machine;

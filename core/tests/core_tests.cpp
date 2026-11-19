@@ -324,21 +324,23 @@ void test_documents()
 			&& member(read, "mouse") && member(read, "mouse")->boolean(),
 			"a .pinesy file reads back as it was written");
 
-	// the mouse setting: true or false; anything else, or none, is false
+	// the mouse setting: true or false; anything else, or none, is the
+	// default, on
 	auto mouse_of = [](const char *file) {
 		json::Value document = parse(pinesy_core_read_document(file));
 		const json::Value *mouse = document.is_object() ? member(document, "mouse") : nullptr;
 		if (!mouse) return -1;
 		try { return mouse->boolean() ? 1 : 0; } catch (const json::Error &) { return -1; }
 	};
-	check(mouse_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"]})") == 0,
-			"a file without mouse opens with the mouse setting off");
+	check(mouse_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"]})") == 1,
+			"a file without mouse opens with the mouse setting on");
 	check(mouse_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"mouse":true})") == 1
 			&& mouse_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"mouse":false})") == 0,
 			"a file with mouse true or false opens with it");
-	check(mouse_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"mouse":1})") == 0
-			&& mouse_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"mouse":"true"})") == 0,
-			"a mouse that is not true or false opens as off");
+	check(mouse_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"mouse":0})") == 1
+			&& mouse_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"mouse":"false"})") == 1,
+			"a mouse that is not true or false opens as on");
+	check(pinesy::core::Document{}.mouse, "a new configuration starts with the mouse setting on");
 	json::Value off = parse(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), 0, 0));
 	check(off.is_object() && member(off, "mouse") && !member(off, "mouse")->boolean(), "the mouse setting off is written as false");
 

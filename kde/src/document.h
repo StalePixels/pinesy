@@ -123,7 +123,7 @@ private:
 	// Custom was chosen for the window size, so the magnification field
 	// stays while the user enters a listed magnification in it.
 	bool m_customWindowSize = false;
-	bool m_mouse = false;
+	bool m_mouse = true;
 	QUrl m_url;
 	bool m_modified = false;
 	QVariantMap m_summary;

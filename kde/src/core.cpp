@@ -191,7 +191,7 @@ bool Core::readDocument(const QByteArray &text, QString *machine, QStringList *a
 	for (const QJsonValue &value : object.value(QLatin1String("arguments")).toArray())
 		arguments->append(value.toString());
 	*windowSize = object.value(QLatin1String("windowSize")).toInt(PINESY_CORE_WINDOW_FIT);
-	*mouse = object.value(QLatin1String("mouse")).toBool(false);
+	*mouse = object.value(QLatin1String("mouse")).toBool(true);
 	return true;
 }
 

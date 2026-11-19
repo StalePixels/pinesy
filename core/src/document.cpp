@@ -9,8 +9,8 @@
 //  for the machine in the machine list), arguments (the MAME
 //  command line, as an array of strings), windowSize (-1 for
 //  full screen, 0 for fit, else the magnification of the
-//  machine window) and mouse (true when runs give MAME the
-//  host's mouse). Other keys are ignored when reading.
+//  machine window) and mouse (the mouse setting, true for on,
+//  the default). Other keys are ignored when reading.
 //
 //============================================================
 
@@ -43,16 +43,16 @@ int read_window_size(const json::Value *value)
 	}
 }
 
-// true or false; anything else, or no value, is false.
+// true or false; anything else, or no value, is the default, on.
 bool read_mouse(const json::Value *value)
 {
 	try
 	{
-		return value && value->boolean();
+		return !value || value->boolean();
 	}
 	catch (const json::Error &)
 	{
-		return false;
+		return true;
 	}
 }
 

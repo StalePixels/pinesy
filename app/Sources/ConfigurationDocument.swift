@@ -29,7 +29,7 @@ struct ConfigurationDocument: FileDocument {
         machine = ""
         arguments = []
         windowSize = Core.windowFit
-        mouse = false
+        mouse = true
     }
 
     private struct Contents: Decodable {

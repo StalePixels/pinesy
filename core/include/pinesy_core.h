@@ -353,7 +353,8 @@ int pinesy_core_window_size(int frame_width, int frame_height, int window_size, 
 // a window size (pinesy_core_is_window_size()); a file without it, or
 // with a value that is not a window size, reads as
 // PINESY_CORE_WINDOW_FIT. mouse is the mouse setting, true or false;
-// a file without it, or with another value, reads as false.
+// a file without it, or with another value, reads as true, the
+// default.
 char *pinesy_core_read_document(const char *text);
 
 // The text of a .pinesy file: a JSON object with format 1, the

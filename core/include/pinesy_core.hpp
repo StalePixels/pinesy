@@ -457,14 +457,14 @@ struct Document
 	std::string machine;                 // the machine's driver; empty until chosen
 	std::vector<std::string> arguments;  // the MAME command line
 	int window_size = window::fit;       // the machine window's size (window::content_size)
-	bool mouse = false;                  // the mouse setting: turns the machine's mouse on or off
+	bool mouse = true;                   // the mouse setting: turns the machine's mouse on or off
 
 	// Reads a .pinesy file's text. nullopt when it is not JSON with
 	// format, machine and arguments, its format is newer than this
 	// core reads, or its arguments are empty. A file without
 	// windowSize, or with a value window::is_window_size() refuses,
 	// reads as window::fit. A file without mouse, or with a value that
-	// is not true or false, reads as false.
+	// is not true or false, reads as true, the default.
 	static std::optional<Document> read(std::string_view text);
 
 	// The file's text.
