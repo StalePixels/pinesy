@@ -53,12 +53,12 @@ QString ConfigurationDocument::commandLine() const
 {
 	if (m_arguments.isEmpty())
 		return {};
-	return Core::instance()->copyCommandLine(m_arguments, false, usesMouse());
+	return Core::instance()->copyCommandLine(m_arguments, false, takesMouse(), m_mouse);
 }
 
-bool ConfigurationDocument::usesMouse() const
+bool ConfigurationDocument::takesMouse() const
 {
-	return m_mouse && m_summary.value(QStringLiteral("mouse")).toBool();
+	return m_summary.value(QStringLiteral("mouse")).toBool();
 }
 
 void ConfigurationDocument::setMouse(bool mouse)
@@ -242,7 +242,7 @@ void ConfigurationDocument::run(bool debug)
 {
 	if (!canRun())
 		return;
-	m_runningThis = MachineRunner::instance()->start(title(), m_arguments, debug, m_windowSize, usesMouse());
+	m_runningThis = MachineRunner::instance()->start(title(), m_arguments, debug, m_windowSize, takesMouse(), m_mouse);
 }
 
 void ConfigurationDocument::copyCommandLine()

@@ -119,10 +119,11 @@ public:
 
 	// Runs a configuration in its own window, starting from the main
 	// loop once the current event has been handled. window_size is the
-	// configuration's window size. With mouse, the run gives MAME the
-	// mouse (-mouse). Does nothing while a machine runs.
+	// configuration's window size. takes_mouse is the summary's mouse
+	// and mouse the configuration's mouse setting. Does nothing while a
+	// machine runs.
 	void start(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-			bool debug, int window_size, bool mouse);
+			bool debug, int window_size, bool takes_mouse, bool mouse);
 
 	// Asks the running machine to stop. Its window closes when it has.
 	void stop();
@@ -145,7 +146,7 @@ private:
 	sigc::signal<void(const std::string &, int, const std::string &)> m_failed;
 
 	void run(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-			bool debug, int window_size, bool mouse);
+			bool debug, int window_size, bool takes_mouse, bool mouse);
 };
 
 // Headless mode with a window: runs the arguments in a machine window

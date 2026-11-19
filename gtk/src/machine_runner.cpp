@@ -377,7 +377,7 @@ void MachineWindow::release_keys()
 //------------------------------------------------------------
 
 void MachineRunner::start(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-		bool debug, int window_size, bool mouse)
+		bool debug, int window_size, bool takes_mouse, bool mouse)
 {
 	if (m_running)
 		return;
@@ -387,13 +387,13 @@ void MachineRunner::start(const core::Core &core, const std::string &title, cons
 
 	// pinesy_run() keeps its own loop. Start it from an idle callback, so
 	// the action or click that asked for the run has been handled first.
-	Glib::signal_idle().connect_once([this, &core, title, arguments, debug, window_size, mouse] {
-		run(core, title, arguments, debug, window_size, mouse);
+	Glib::signal_idle().connect_once([this, &core, title, arguments, debug, window_size, takes_mouse, mouse] {
+		run(core, title, arguments, debug, window_size, takes_mouse, mouse);
 	});
 }
 
 void MachineRunner::run(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-		bool debug, int window_size, bool mouse)
+		bool debug, int window_size, bool takes_mouse, bool mouse)
 {
 	int code = 0;
 	bool ran = false;
@@ -404,7 +404,7 @@ void MachineRunner::run(const core::Core &core, const std::string &title, const 
 		{
 			pinesy_host host = window.host();
 			window.set_running(true);
-			code = core.run(arguments, debug, mouse, &host);
+			code = core.run(arguments, debug, takes_mouse, mouse, &host);
 			window.set_running(false);
 			ran = true;
 		}

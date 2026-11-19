@@ -47,8 +47,9 @@ public:
 	// Why MAME's SD card cannot use the image at path; empty when it can.
 	static QString sdCardProblem(const QString &path);
 	QVariantMap summary(const QStringList &arguments, const QString &machineHint);
-	// mouse adds -mouse, as a run with the mouse has it.
-	QString copyCommandLine(const QStringList &arguments, bool debug, bool mouse);
+	// takesMouse is the summary's mouse and mouse the configuration's
+	// mouse setting; the core turns them into the mouse option.
+	QString copyCommandLine(const QStringList &arguments, bool debug, bool takesMouse, bool mouse);
 
 	// .pinesy files. readDocument returns false when the text is not a
 	// configuration the core reads. windowSize is the machine window's

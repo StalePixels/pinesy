@@ -57,15 +57,13 @@ The window keeps the frame's shape when it is resized. Where the view's shape di
 
 ## The mouse
 
-The configuration window shows a Mouse switch only for a machine that has mouse inputs with the hardware fitted now. The Next has a Kempston mouse built in, so it always has the switch; a ZX Spectrum has it only while the Kempston mouse interface is fitted. The core decides this from MAME's description of the configuration (`mouse` in `pinesy_describe()`: an input of MAME's mouse types), not from a list of machines. With the switch on, a run adds `-mouse` after the configuration, and Copy Command Line does the same. The setting is saved in the `.pinesy` file. It stays saved while hardware without a mouse is fitted, and then has no effect.
+The configuration window shows a Mouse switch only for a machine that has mouse inputs with the hardware fitted now. The Next has a Kempston mouse built in, so it always has the switch; a ZX Spectrum has it only while the Kempston mouse interface is fitted. The core decides this from MAME's description of the configuration (`mouse` in `pinesy_describe()`: an input of MAME's mouse types), not from a list of machines. The switch turns the machine's mouse on or off. On, a run adds `-mouse` after the configuration. Off, it adds `-mouse_device none`, because MAME's `-mouse_device` is `mouse` by default and would otherwise give the machine the mouse anyway. Copy Command Line adds the same option. A machine without mouse inputs gets neither option. The setting is saved in the `.pinesy` file. It stays saved while hardware without a mouse is fitted, and then has no effect.
 
 The machine window sends the mouse over its view to MAME through the engine (`pinesy_mouse_inside()`, `pinesy_mouse_move()`, `pinesy_mouse_button()`, `pinesy_mouse_wheel()`): its movement, the left, right and middle buttons and two more, and the vertical wheel. With natural scrolling on, the wheel is still sent in the direction it turns. MAME puts the mouse in the machine's mouse inputs.
 
-With `-mouse`, MAME hides the pointer while it is over the machine's view, and holds it there: the pointer stays at the view's centre and the mouse's movement still reaches the machine. MAME gives the pointer back when the app loses the focus, when MAME's menu opens, and when the run ends. The engine passes these requests to the app through the host's `pointer` callback.
+With `-mouse`, MAME hides the pointer while it is over the machine's view, and holds it there: the pointer stays at the view's centre and the mouse's movement still reaches the machine. MAME gives the pointer back when the app loses the focus, when MAME's menu opens, and when the run ends. The engine passes these requests to the app through the host's `pointer` callback. With `-mouse_device none`, the machine gets no mouse, and the pointer stays visible and free.
 
-Without `-mouse`, MAME still gives the mouse to a machine with mouse inputs, because its `-mouse_device` option is `mouse` by default: the machine gets the mouse's movement while the pointer is over its view, and the pointer stays visible and free.
-
-A machine window in headless mode sends the mouse the same way, and hides and holds the pointer when the command line has `-mouse`.
+A machine window in headless mode sends the mouse the same way, and MAME's own options decide: with `-mouse` it hides and holds the pointer, and without `-mouse_device none` a machine with mouse inputs gets the mouse.
 
 ## Headless
 

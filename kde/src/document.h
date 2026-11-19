@@ -33,8 +33,8 @@ class ConfigurationDocument : public QObject
 	Q_PROPERTY(bool canRun READ canRun NOTIFY canRunChanged)
 	// The headless command, as Copy Command Line gives it.
 	Q_PROPERTY(QString commandLine READ commandLine NOTIFY commandLineChanged)
-	// The mouse setting: runs of a machine that takes a mouse (the
-	// summary's mouse) give MAME the mouse.
+	// The mouse setting: turns the mouse of a machine that takes one
+	// (the summary's mouse) on or off.
 	Q_PROPERTY(bool mouse READ mouse WRITE setMouse NOTIFY mouseChanged)
 	// The machine window's size, as pinesy_core_window_size() takes it:
 	// full screen, fit, or a magnification of the frame, 1 or more.
@@ -114,8 +114,8 @@ private:
 	void setArguments(const QStringList &arguments);
 	void setModified(bool modified);
 	void refresh();
-	// Runs give MAME the mouse: the setting is on, and the machine takes one.
-	bool usesMouse() const;
+	// The machine takes a mouse, so the mouse setting applies.
+	bool takesMouse() const;
 
 	QString m_machine;
 	QStringList m_arguments;

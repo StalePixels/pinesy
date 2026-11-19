@@ -457,7 +457,7 @@ struct Document
 	std::string machine;                 // the machine's driver; empty until chosen
 	std::vector<std::string> arguments;  // the MAME command line
 	int window_size = window::fit;       // the machine window's size (window::content_size)
-	bool mouse = false;                  // the mouse setting: runs give MAME the host's mouse
+	bool mouse = false;                  // the mouse setting: turns the machine's mouse on or off
 
 	// Reads a .pinesy file's text. nullopt when it is not JSON with
 	// format, machine and arguments, its format is newer than this
@@ -516,9 +516,11 @@ bool is_usable_rom_folder(std::string_view path);
 // "-debug" and the debugger options from the settings; empty without debug.
 std::vector<std::string> debug_arguments(const Settings &settings, bool debug);
 
-// "-mouse" with mouse, else empty. mouse is true when the
-// configuration's mouse setting is on and its summary's mouse is true.
-std::vector<std::string> mouse_arguments(bool mouse);
+// The mouse option of a run. For a machine that takes a mouse (the
+// summary's mouse), "-mouse" with the mouse setting on, and
+// "-mouse_device none" with it off, so the machine gets no mouse. For
+// any other machine, nothing.
+std::vector<std::string> mouse_arguments(bool takes_mouse, bool mouse);
 
 // A string quoted for zsh; plain strings stay as they are.
 std::string shell_quoted(std::string_view text);
@@ -570,15 +572,17 @@ public:
 	// The full command line of a run: fixed options, the
 	// configuration, the mouse option (mouse_arguments) and the
 	// debugger options.
-	std::vector<std::string> run_command_line(const std::vector<std::string> &arguments, bool debug, bool mouse) const;
+	std::vector<std::string> run_command_line(const std::vector<std::string> &arguments, bool debug, bool takes_mouse,
+			bool mouse) const;
 
 	// Creates the folders and runs a configuration. Returns MAME's exit code.
-	int run(const std::vector<std::string> &arguments, bool debug, bool mouse, const pinesy_host *host) const;
+	int run(const std::vector<std::string> &arguments, bool debug, bool takes_mouse, bool mouse,
+			const pinesy_host *host) const;
 
 	// The headless command for a configuration, quoted for zsh, with the
 	// mouse option as a run has it.
 	std::string copy_command_line(const std::string &executable, const std::vector<std::string> &arguments, bool debug,
-			bool mouse) const;
+			bool takes_mouse, bool mouse) const;
 
 	// Headless mode: the executable's arguments, without its own name.
 	// A leading "--" is dropped. Creates the folders and runs MAME with

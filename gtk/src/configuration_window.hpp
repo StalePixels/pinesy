@@ -99,8 +99,8 @@ private:
 	AdwPreferencesGroup *hardware_group(const core::Summary &summary);
 	AdwPreferencesGroup *media_group(const core::Summary &summary);
 	AdwPreferencesGroup *command_line_group();
-	// Runs give MAME the mouse: the setting is on, and the machine takes one.
-	bool uses_mouse() const;
+	// The machine takes a mouse, so the mouse setting applies.
+	bool takes_mouse() const;
 	std::string command_line();
 	void choose_media(const core::Media &media);
 

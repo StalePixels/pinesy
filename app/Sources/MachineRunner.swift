@@ -20,9 +20,9 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
 
     /// Starts a configuration. `arguments` is its command line; the core
     /// adds the app's paths and the debugger options. `windowSize` is
-    /// the configuration's window size. With `mouse`, the run gives MAME
-    /// the Mac's mouse (-mouse).
-    func start(title: String, arguments: [String], debug: Bool, windowSize: Int, mouse: Bool) {
+    /// the configuration's window size. `takesMouse` is the summary's
+    /// mouse and `mouse` the configuration's mouse setting.
+    func start(title: String, arguments: [String], debug: Bool, windowSize: Int, takesMouse: Bool, mouse: Bool) {
         guard running == nil else { return }
         running = title
         self.windowSize = windowSize
@@ -77,7 +77,7 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
                     view.setPointer(hide: hide, capture: capture)
                 }
                 let code = MAME.withHost(view: view, receiver: host) {
-                    Core.run(arguments, debug: debug, mouse: mouse, host: $0)
+                    Core.run(arguments, debug: debug, takesMouse: takesMouse, mouse: mouse, host: $0)
                 }
                 self.finish(code: code, errors: host.errors)
             }

@@ -262,7 +262,8 @@ char *pinesy_core_normalise(pinesy_core *core, const char *arguments);
 //   mouse        true when the machine with this hardware has mouse
 //                inputs (pinesy_describe() in pinesy.h). The
 //                configuration window shows the mouse setting only
-//                then, and only then does the setting reach a run.
+//                then, and only then does a run get a mouse option
+//                (pinesy_core_run_command_line()).
 //   errors       MAME's error text; "" when there is none
 //   warnings     MAME's warning text, which does not stop a run
 //   missingMedia labels of media MAME needs that have no file
@@ -371,29 +372,33 @@ char *pinesy_core_write_document(const char *machine, const char *arguments, int
 char *pinesy_core_debug_arguments(const pinesy_core *core, int debug);
 
 // The whole command line a run gives MAME, as a JSON array: the
-// fixed options, the configuration, "-mouse" when mouse is not 0,
-// then the debugger options when debug is not 0. The front end passes
-// a mouse that is not 0 when the configuration's mouse setting is on
-// and its summary's mouse is true.
-char *pinesy_core_run_command_line(const pinesy_core *core, const char *arguments, int debug, int mouse);
+// fixed options, the configuration, the mouse option, then the
+// debugger options when debug is not 0. takes_mouse is the summary's
+// mouse, and mouse the configuration's mouse setting. For a machine
+// that takes a mouse, the mouse option is "-mouse" with the setting on
+// and "-mouse_device none" with it off, so the setting turns the
+// machine's mouse on and off. For any other machine there is none.
+char *pinesy_core_run_command_line(const pinesy_core *core, const char *arguments, int debug, int takes_mouse,
+		int mouse);
 
 // Creates the folders and runs a configuration with
 // pinesy_run(), with the command line pinesy_core_run_command_line()
 // gives. host is passed to pinesy_run() and may be NULL. Returns
 // MAME's exit code, or -1 when arguments is not a JSON array of
 // strings. Main thread only.
-int pinesy_core_run(const pinesy_core *core, const char *arguments, int debug, int mouse, const pinesy_host *host);
+int pinesy_core_run(const pinesy_core *core, const char *arguments, int debug, int takes_mouse, int mouse,
+		const pinesy_host *host);
 
 // The headless command for a configuration, quoted for zsh, as
 // Copy Command Line gives it: the executable, "--", the
-// configuration, "-mouse" when mouse is not 0, then the debugger
-// options when debug is not 0. mouse is as for
+// configuration, the mouse option, then the debugger options when
+// debug is not 0. takes_mouse and mouse are as for
 // pinesy_core_run_command_line(). Headless mode adds the fixed
 // options itself. A string of letters, digits and "-_./:=,+@%" stays
 // as it is; any other string, the empty string included, is put in
 // single quotes.
 char *pinesy_core_copy_command_line(const pinesy_core *core, const char *executable, const char *arguments, int debug,
-		int mouse);
+		int takes_mouse, int mouse);
 
 //------------------------------------------------------------
 //  Headless mode

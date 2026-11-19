@@ -734,14 +734,15 @@ AdwPreferencesGroup *ConfigurationWindow::command_line_group()
 	return group;
 }
 
-bool ConfigurationWindow::uses_mouse() const
+bool ConfigurationWindow::takes_mouse() const
 {
-	return m_document.mouse && m_summary && m_summary->mouse;
+	return m_summary && m_summary->mouse;
 }
 
 std::string ConfigurationWindow::command_line()
 {
-	return m_app.core().copy_command_line(executable_path(), m_document.arguments, false, uses_mouse());
+	return m_app.core().copy_command_line(executable_path(), m_document.arguments, false, takes_mouse(),
+			m_document.mouse);
 }
 
 void ConfigurationWindow::choose_media(const core::Media &media)
@@ -801,7 +802,8 @@ void ConfigurationWindow::run(bool debug)
 {
 	if (m_app.runner().running() || !m_summary || !m_summary->can_run() || m_refresh_waiting)
 		return;
-	m_app.runner().start(m_app.core(), title(), m_document.arguments, debug, m_document.window_size, uses_mouse());
+	m_app.runner().start(m_app.core(), title(), m_document.arguments, debug, m_document.window_size,
+			takes_mouse(), m_document.mouse);
 }
 
 void ConfigurationWindow::copy_command_line()

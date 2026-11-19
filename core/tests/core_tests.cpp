@@ -587,19 +587,28 @@ void test_paths(pinesy_core *core)
 
 	// Copy Command Line gives
 	// the headless command, quoted for zsh.
-	std::string line = take(pinesy_core_copy_command_line(core, "/opt/Pinesy", args_json({ "tbblue", "-rs232_rpi", "", "-pi", "/a b/it's.img" }).c_str(), 0, 0));
+	std::string line = take(pinesy_core_copy_command_line(core, "/opt/Pinesy", args_json({ "tbblue", "-rs232_rpi", "", "-pi", "/a b/it's.img" }).c_str(), 0, 0, 0));
 	check(line == "/opt/Pinesy -- tbblue -rs232_rpi '' -pi '/a b/it'\\''s.img'", "the copied command line is quoted for zsh: " + line);
 
-	// the mouse setting adds -mouse after the configuration, before the
-	// debugger options.
-	std::string with_mouse = take(pinesy_core_copy_command_line(core, "/opt/Pinesy", args_json({ "tbblue" }).c_str(), 1, 1));
+	// for a machine that takes a mouse, the mouse setting adds -mouse
+	// when on and -mouse_device none when off, after the configuration
+	// and before the debugger options; any other machine gets neither.
+	std::string with_mouse = take(pinesy_core_copy_command_line(core, "/opt/Pinesy", args_json({ "tbblue" }).c_str(), 1, 1, 1));
 	check(with_mouse == "/opt/Pinesy -- tbblue -mouse -debug -debugger gdbstub -debugger_port 1234",
 			"the copied command line has -mouse before the debugger options: " + with_mouse);
-	Strings run_line = strings(parse(pinesy_core_run_command_line(core, args_json({ "tbblue" }).c_str(), 0, 1)));
-	check(!run_line.empty() && run_line.back() == "-mouse" && run_line[run_line.size() - 2] == "tbblue",
-			"a run with the mouse setting gives MAME -mouse after the configuration: " + show(run_line));
-	Strings run_plain = strings(parse(pinesy_core_run_command_line(core, args_json({ "tbblue" }).c_str(), 0, 0)));
-	check(std::find(run_plain.begin(), run_plain.end(), "-mouse") == run_plain.end(), "a run without the mouse setting has no -mouse");
+	std::string mouse_off = take(pinesy_core_copy_command_line(core, "/opt/Pinesy", args_json({ "tbblue" }).c_str(), 0, 1, 0));
+	check(mouse_off == "/opt/Pinesy -- tbblue -mouse_device none",
+			"the copied command line has -mouse_device none with the setting off: " + mouse_off);
+	auto run_line = [&](int takes_mouse, int mouse) {
+		Strings line = strings(parse(pinesy_core_run_command_line(core, args_json({ "tbblue" }).c_str(), 0, takes_mouse, mouse)));
+		auto driver = std::find(line.begin(), line.end(), "tbblue");
+		return driver == line.end() ? Strings{ "<no driver>" } : Strings(driver + 1, line.end());
+	};
+	check(run_line(1, 1) == Strings{ "-mouse" }, "a run with the mouse setting on gives MAME -mouse: " + show(run_line(1, 1)));
+	check(run_line(1, 0) == Strings{ "-mouse_device", "none" },
+			"a run with the mouse setting off gives MAME -mouse_device none: " + show(run_line(1, 0)));
+	check(run_line(0, 1).empty() && run_line(0, 0).empty(),
+			"a run of a machine that takes no mouse gets no mouse option, whatever the setting");
 	pinesy_core_set_settings(core, "{}");
 
 	// 63-83.

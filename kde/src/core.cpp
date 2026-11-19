@@ -172,11 +172,11 @@ QVariantMap Core::summary(const QStringList &arguments, const QString &machineHi
 		.toMap();
 }
 
-QString Core::copyCommandLine(const QStringList &arguments, bool debug, bool mouse)
+QString Core::copyCommandLine(const QStringList &arguments, bool debug, bool takesMouse, bool mouse)
 {
 	const QByteArray executable = QCoreApplication::applicationFilePath().toUtf8();
 	return QString::fromUtf8(take(pinesy_core_copy_command_line(m_core, executable.constData(),
-			toJson(arguments).constData(), debug ? 1 : 0, mouse ? 1 : 0)));
+			toJson(arguments).constData(), debug ? 1 : 0, takesMouse ? 1 : 0, mouse ? 1 : 0)));
 }
 
 bool Core::readDocument(const QByteArray &text, QString *machine, QStringList *arguments, int *windowSize,

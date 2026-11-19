@@ -50,9 +50,9 @@ struct ConfigurationView: View {
         runner.running == nil && summary?.canRun == true
     }
 
-    /// Runs give MAME the mouse: the setting is on, and the machine takes one.
-    private var usesMouse: Bool {
-        document.mouse && summary?.mouse == true
+    /// The machine takes a mouse, so the mouse setting applies.
+    private var takesMouse: Bool {
+        summary?.mouse == true
     }
 
     var body: some View {
@@ -201,7 +201,7 @@ struct ConfigurationView: View {
             }
 
             Section {
-                Text(Core.copyCommandLine(document.arguments, mouse: usesMouse))
+                Text(Core.copyCommandLine(document.arguments, takesMouse: takesMouse, mouse: document.mouse))
                     .font(.system(.callout, design: .monospaced))
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -393,13 +393,13 @@ struct ConfigurationView: View {
     private func run(debug: Bool) {
         guard canRun else { return }
         runner.start(title: title, arguments: document.arguments, debug: debug, windowSize: document.windowSize,
-                     mouse: usesMouse)
+                     takesMouse: takesMouse, mouse: document.mouse)
     }
 
     private func copyCommandLine() {
         guard !document.arguments.isEmpty else { return }
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(Core.copyCommandLine(document.arguments, mouse: usesMouse), forType: .string)
+        NSPasteboard.general.setString(Core.copyCommandLine(document.arguments, takesMouse: takesMouse, mouse: document.mouse), forType: .string)
     }
 }
 
