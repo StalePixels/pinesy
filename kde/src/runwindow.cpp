@@ -4,6 +4,7 @@
 
 #include <QCloseEvent>
 #include <QCoreApplication>
+#include <QCursor>
 #include <QScreen>
 
 RunWindow::RunWindow(int windowSize)
@@ -30,6 +31,7 @@ RunWindow::RunWindow(int windowSize)
 	m_host.output = onOutput;
 	m_host.size = onSize;
 	m_host.pump = onPump;
+	m_host.pointer = onPointer;
 	m_host.context = this;
 }
 
@@ -66,6 +68,19 @@ void RunWindow::onSize(void *context, int width, int height)
 void RunWindow::onPump(void *)
 {
 	QCoreApplication::processEvents();
+}
+
+// Qt has no call that holds the pointer in a window, so capture is not
+// done: the pointer is hidden over the view, and the machine gets the
+// mouse's movement while the pointer is over the view or a drag that
+// started there goes on.
+void RunWindow::onPointer(void *context, int hide, int)
+{
+	MachineView *view = static_cast<RunWindow *>(context)->m_view;
+	if (hide)
+		view->setCursor(Qt::BlankCursor);
+	else
+		view->unsetCursor();
 }
 
 // Takes the size the core gives for a frame of frameWidth x frameHeight

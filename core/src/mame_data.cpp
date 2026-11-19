@@ -169,6 +169,7 @@ MachineDescription decode_description(std::string_view text)
 			d.media = std::move(list);
 		}
 		d.warnings = optional_str(v, "warnings");
+		if (const Value *mouse = v.find("mouse"); mouse && !mouse->is_null()) d.mouse = mouse->boolean();
 		return d;
 	}
 	catch (const json::Error &)
@@ -308,6 +309,7 @@ Value summary(const Summary &s)
 		{ "variantROMs", rom_choices(s.variant_roms) },
 		{ "currentROM", s.current_rom ? rom_choice(*s.current_rom) : Value() },
 		{ "hardware", std::move(hardware) }, { "media", std::move(media_rows) },
+		{ "mouse", s.mouse },
 		{ "errors", s.errors }, { "warnings", s.warnings },
 		{ "missingMedia", strings(s.missing_media) }, { "missingFiles", std::move(missing_files) },
 		{ "sdCardProblems", std::move(sd_card_problems) },

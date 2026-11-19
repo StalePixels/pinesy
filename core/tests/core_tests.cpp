@@ -303,24 +303,44 @@ void test_documents()
 	check(args.array() == line, "a command line reads back as it was written");
 
 	// a JSON object
-	// with format (now 1), machine, arguments and windowSize.
+	// with format (now 1), machine, arguments, windowSize and mouse.
 	Strings saved{ "specnext_ks3", "-rs232_rpi", "", "-pi", "/tmp/a b/next.img" };
-	std::string text = take(pinesy_core_write_document("tbblue", args_json(saved).c_str(), 3));
+	std::string text = take(pinesy_core_write_document("tbblue", args_json(saved).c_str(), 3, 1));
 	json::Value written;
 	try { written = json::parse(text); } catch (const json::Error &) {}
-	check(written.is_object() && written.object().size() == 4 && member(written, "format") && member(written, "format")->number() == 1
+	check(written.is_object() && written.object().size() == 5 && member(written, "format") && member(written, "format")->number() == 1
 			&& text_of(written, "machine") == "tbblue" && strings(*member(written, "arguments")) == saved
-			&& member(written, "windowSize") && member(written, "windowSize")->number() == 3,
-			"a .pinesy file has format 1, machine, arguments and windowSize");
+			&& member(written, "windowSize") && member(written, "windowSize")->number() == 3
+			&& member(written, "mouse") && member(written, "mouse")->boolean(),
+			"a .pinesy file has format 1, machine, arguments, windowSize and mouse");
 	check(text.find("\"/tmp/a b/next.img\"") != std::string::npos, "slashes are not escaped");
 	check(text.find("\"arguments\"") < text.find("\"format\"") && text.find("\"format\"") < text.find("\"machine\"")
-			&& text.find("\"machine\"") < text.find("\"windowSize\""),
+			&& text.find("\"machine\"") < text.find("\"mouse\"") && text.find("\"mouse\"") < text.find("\"windowSize\""),
 			"keys are written sorted");
 
 	json::Value read = parse(pinesy_core_read_document(text.c_str()));
 	check(text_of(read, "machine") == "tbblue" && member(read, "arguments") && strings(*member(read, "arguments")) == saved
-			&& member(read, "windowSize") && member(read, "windowSize")->number() == 3,
+			&& member(read, "windowSize") && member(read, "windowSize")->number() == 3
+			&& member(read, "mouse") && member(read, "mouse")->boolean(),
 			"a .pinesy file reads back as it was written");
+
+	// the mouse setting: true or false; anything else, or none, is false
+	auto mouse_of = [](const char *file) {
+		json::Value document = parse(pinesy_core_read_document(file));
+		const json::Value *mouse = document.is_object() ? member(document, "mouse") : nullptr;
+		if (!mouse) return -1;
+		try { return mouse->boolean() ? 1 : 0; } catch (const json::Error &) { return -1; }
+	};
+	check(mouse_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"]})") == 0,
+			"a file without mouse opens with the mouse setting off");
+	check(mouse_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"mouse":true})") == 1
+			&& mouse_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"mouse":false})") == 0,
+			"a file with mouse true or false opens with it");
+	check(mouse_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"mouse":1})") == 0
+			&& mouse_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"mouse":"true"})") == 0,
+			"a mouse that is not true or false opens as off");
+	json::Value off = parse(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), 0, 0));
+	check(off.is_object() && member(off, "mouse") && !member(off, "mouse")->boolean(), "the mouse setting off is written as false");
 
 	// the window size: full screen (-1), fit (0) or a magnification of 1 or more
 	auto window_size_of = [](const char *file) {
@@ -343,7 +363,7 @@ void test_documents()
 			&& window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":3000000000})") == PINESY_CORE_WINDOW_FIT,
 			"a windowSize that is not -1 or a whole number from 0 to the largest int opens as fit");
 	auto written_size = [](int window_size) {
-		json::Value written = parse(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), window_size));
+		json::Value written = parse(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), window_size, 0));
 		const json::Value *size = written.is_object() ? member(written, "windowSize") : nullptr;
 		return size ? int(size->number()) : -3;
 	};
@@ -351,7 +371,7 @@ void test_documents()
 			"full screen and a magnification above 4 are written as they are");
 	check(written_size(PINESY_CORE_WINDOW_CUSTOM) == PINESY_CORE_WINDOW_FIT && written_size(-7) == PINESY_CORE_WINDOW_FIT,
 			"a value that is not a window size is written as fit");
-	std::string custom_text = take(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), 12));
+	std::string custom_text = take(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), 12, 0));
 	check(window_size_of(custom_text.c_str()) == 12, "a custom magnification reads back as it was written");
 
 	// a newer format, or empty arguments,
@@ -483,6 +503,18 @@ void test_checking(pinesy_core *core)
 	const json::Value *ram = slot_row(summary, "ram");
 	check(ram && text_of(*ram, "label") == "Memory", "the memory slot's row is labelled \"Memory\"");
 
+	// the summary says whether the machine, with its hardware, has mouse
+	// inputs: the Next has its Kempston mouse built in, a 48K Spectrum
+	// has one only with the Kempston mouse interface fitted.
+	check(member(summary, "mouse") && member(summary, "mouse")->boolean(), "the Next takes a mouse");
+	Strings plain = strings(parse(pinesy_core_starting_arguments(core, "spectrum")));
+	json::Value no_mouse = parse(pinesy_core_summary(core, args_json(plain).c_str(), nullptr));
+	check(member(no_mouse, "mouse") && !member(no_mouse, "mouse")->boolean(), "a 48K Spectrum with no interface takes no mouse");
+	Strings mouse_card = strings(parse(pinesy_core_set_slot(core, args_json(plain).c_str(), "exp", "kempmouse")));
+	json::Value with_card = parse(pinesy_core_summary(core, args_json(mouse_card).c_str(), nullptr));
+	check(member(with_card, "mouse") && member(with_card, "mouse")->boolean(),
+			"a 48K Spectrum with the Kempston mouse interface takes a mouse: " + show(mouse_card));
+
 	// the driver's default ROM removes -bios.
 	Strings rom = strings(parse(pinesy_core_set_rom(core, args_json(start).c_str(), "specnext_ks3", "v30204")));
 	check(!Arguments::parse(rom).get("bios"), "choosing the default ROM names no -bios: " + show(rom));
@@ -555,8 +587,19 @@ void test_paths(pinesy_core *core)
 
 	// Copy Command Line gives
 	// the headless command, quoted for zsh.
-	std::string line = take(pinesy_core_copy_command_line(core, "/opt/Pinesy", args_json({ "tbblue", "-rs232_rpi", "", "-pi", "/a b/it's.img" }).c_str(), 0));
+	std::string line = take(pinesy_core_copy_command_line(core, "/opt/Pinesy", args_json({ "tbblue", "-rs232_rpi", "", "-pi", "/a b/it's.img" }).c_str(), 0, 0));
 	check(line == "/opt/Pinesy -- tbblue -rs232_rpi '' -pi '/a b/it'\\''s.img'", "the copied command line is quoted for zsh: " + line);
+
+	// the mouse setting adds -mouse after the configuration, before the
+	// debugger options.
+	std::string with_mouse = take(pinesy_core_copy_command_line(core, "/opt/Pinesy", args_json({ "tbblue" }).c_str(), 1, 1));
+	check(with_mouse == "/opt/Pinesy -- tbblue -mouse -debug -debugger gdbstub -debugger_port 1234",
+			"the copied command line has -mouse before the debugger options: " + with_mouse);
+	Strings run_line = strings(parse(pinesy_core_run_command_line(core, args_json({ "tbblue" }).c_str(), 0, 1)));
+	check(!run_line.empty() && run_line.back() == "-mouse" && run_line[run_line.size() - 2] == "tbblue",
+			"a run with the mouse setting gives MAME -mouse after the configuration: " + show(run_line));
+	Strings run_plain = strings(parse(pinesy_core_run_command_line(core, args_json({ "tbblue" }).c_str(), 0, 0)));
+	check(std::find(run_plain.begin(), run_plain.end(), "-mouse") == run_plain.end(), "a run without the mouse setting has no -mouse");
 	pinesy_core_set_settings(core, "{}");
 
 	// 63-83.

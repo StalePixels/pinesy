@@ -66,6 +66,8 @@ The machine runs in its own window. MAME draws each frame into a buffer, and the
 
 The window takes the size the core gives for the frame and the configuration's window size (`../app/README.md`, "The machine window"). The room on the screen is the monitor's whole area (`gdk_monitor_get_geometry`) below the header bar, because GTK 4 does not give the work area. The configuration window's Window size row chooses the size, and a Magnification row under it takes the number for Custom. With Full screen, the window calls `gtk_window_fullscreen` when the first frame has sized it. Keys go to the machine, so in full screen the header bar shows a Leave Full Screen button; the window then has the Fit to screen size for the current frame. GTK 4 cannot keep a window's aspect ratio, so a window resized to another shape shows the frame at its own shape, centred, with black bars.
 
+The configuration window has a Mouse switch row under the window size for a machine that takes a mouse (`../app/README.md`, "The mouse"). The view sends the mouse to MAME: its movement, from the view's motion events in logical units, every button press and release (left, right, middle, back and forward), and the wheel's notches. A touchpad's smooth scrolling is not sent. When MAME asks to hide the pointer, the view's cursor is `none`. GTK 4 has no call that holds the pointer in a window, so MAME's request to hold it does nothing here: the machine gets the mouse's movement while the pointer is over the view, and while a drag that started there goes on.
+
 ## Debugger
 
 Run with Debugger adds `-debug`, and with the GDB remote stub also `-debugger gdbstub -debugger_port <port>`.

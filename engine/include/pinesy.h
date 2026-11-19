@@ -40,6 +40,12 @@ typedef void (*pinesy_size_fn)(void *context, int width, int height);
 // Runs the host's pending events once, without waiting.
 typedef void (*pinesy_pump_fn)(void *context);
 
+// What the host does with the system pointer over its view: hide is 1
+// when the pointer is hidden there, capture is 1 when the pointer is
+// held in the view, so that it cannot leave while the host goes on
+// sending its movement.
+typedef void (*pinesy_pointer_fn)(void *context, int hide, int capture);
+
 typedef struct pinesy_host
 {
 	// macOS: the NSView that shows the first screen. MAME sets the
@@ -77,6 +83,15 @@ typedef struct pinesy_host
 	// QCoreApplication::processEvents). macOS ignores it. May be null.
 	pinesy_pump_fn pump;
 
+	// MAME's pointer requests. While the pointer is over the view
+	// (pinesy_mouse_inside), MAME asks to hide it in a run with -mouse
+	// or -lightgun, and to capture it in a run with -mouse. It asks to
+	// show and release it when the app loses the focus, when MAME's
+	// menu opens, and at the end of the run. A call comes only when
+	// either value changes. MAME's debugger, while enabled, makes no
+	// requests. May be null.
+	pinesy_pointer_fn pointer;
+
 	void *context;
 } pinesy_host;
 
@@ -107,6 +122,30 @@ void pinesy_key(int keycode, int down);
 
 // Typed characters, for text entry in MAME's own menus.
 void pinesy_char(unsigned int ch);
+
+// Mouse input, for MAME's mouse. MAME takes it only with -mouse; the
+// machine reads it through its own mouse inputs, such as the Next's
+// Kempston mouse. The host sends the events of its view of the first
+// screen, and the movement of a drag that leaves the view.
+//
+// pinesy_mouse_inside: the pointer came over the view (1) or left it
+// (0). Each run starts with the pointer outside. MAME hides and
+// captures the pointer only while it is inside.
+void pinesy_mouse_inside(int inside);
+
+// pinesy_mouse_move: the pointer moved by dx, dy logical units, right
+// and down positive. While the pointer is captured the host still
+// sends the movement the mouse makes.
+void pinesy_mouse_move(double dx, double dy);
+
+// pinesy_mouse_button: button 0 is the left button, 1 the right, 2 the
+// middle, and 3 and 4 the next two. Other buttons are ignored.
+void pinesy_mouse_button(int button, int down);
+
+// pinesy_mouse_wheel: the vertical wheel turned by a number of notches,
+// positive away from the user. A device that scrolls smoothly sends
+// parts of a notch.
+void pinesy_mouse_wheel(double notches);
 
 // Linux: the size of the host's view of the first screen, in
 // logical units and in pixels. Call it before pinesy_run() and
@@ -148,9 +187,11 @@ int pinesy_list_machines(pinesy_text_fn fn, void *context);
 // MAME parses it as for a run (ini files are read only when the
 // command line allows it) and builds the machine configuration
 // without starting it. The object has driver, bios, biossets, slots
-// and media; errors, with MAME's error text; and warnings, with
-// MAME's warning text, which do not stop a run. Both are empty when
-// there is none. Returns 0, or MAME's error code.
+// and media; mouse, true when the machine with this hardware has
+// mouse inputs (input fields of MAME's mouse types, the controls
+// -listxml shows as type "mouse"); errors, with MAME's error text;
+// and warnings, with MAME's warning text, which do not stop a run.
+// Both are empty when there is none. Returns 0, or MAME's error code.
 int pinesy_describe(int argc, const char *const argv[], pinesy_text_fn fn, void *context);
 
 #ifdef __cplusplus

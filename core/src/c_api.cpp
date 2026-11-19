@@ -296,14 +296,15 @@ char *pinesy_core_read_document(const char *text)
 	return give(json::Object{
 		{ "machine", document->machine },
 		{ "arguments", encode::strings(document->arguments) },
-		{ "windowSize", document->window_size } });
+		{ "windowSize", document->window_size },
+		{ "mouse", document->mouse } });
 }
 
-char *pinesy_core_write_document(const char *machine, const char *arguments, int window_size)
+char *pinesy_core_write_document(const char *machine, const char *arguments, int window_size, int mouse)
 {
 	auto args = read_arguments(arguments);
 	if (!machine || !args) return nullptr;
-	return give(Document{ machine, *args, window_size }.write());
+	return give(Document{ machine, *args, window_size, mouse != 0 }.write());
 }
 
 //------------------------------------------------------------
@@ -354,25 +355,26 @@ char *pinesy_core_debug_arguments(const pinesy_core *core, int debug)
 	return core ? give(encode::strings(debug_arguments(core->core.settings(), debug != 0))) : nullptr;
 }
 
-char *pinesy_core_run_command_line(const pinesy_core *core, const char *arguments, int debug)
+char *pinesy_core_run_command_line(const pinesy_core *core, const char *arguments, int debug, int mouse)
 {
 	auto args = read_arguments(arguments);
 	if (!core || !args) return nullptr;
-	return give(encode::strings(core->core.run_command_line(*args, debug != 0)));
+	return give(encode::strings(core->core.run_command_line(*args, debug != 0, mouse != 0)));
 }
 
-int pinesy_core_run(const pinesy_core *core, const char *arguments, int debug, const pinesy_host *host)
+int pinesy_core_run(const pinesy_core *core, const char *arguments, int debug, int mouse, const pinesy_host *host)
 {
 	auto args = read_arguments(arguments);
 	if (!core || !args) return -1;
-	return core->core.run(*args, debug != 0, host);
+	return core->core.run(*args, debug != 0, mouse != 0, host);
 }
 
-char *pinesy_core_copy_command_line(const pinesy_core *core, const char *executable, const char *arguments, int debug)
+char *pinesy_core_copy_command_line(const pinesy_core *core, const char *executable, const char *arguments, int debug,
+		int mouse)
 {
 	auto args = read_arguments(arguments);
 	if (!core || !executable || !args) return nullptr;
-	return give(core->core.copy_command_line(executable, *args, debug != 0));
+	return give(core->core.copy_command_line(executable, *args, debug != 0, mouse != 0));
 }
 
 int pinesy_core_video_none(int argc, const char *const argv[])

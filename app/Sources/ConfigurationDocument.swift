@@ -21,17 +21,22 @@ struct ConfigurationDocument: FileDocument {
     /// The machine window's size: Core.windowFullScreen, Core.windowFit,
     /// or a magnification of the frame (pinesy_core_window_size()).
     var windowSize: Int
+    /// The mouse setting: runs of a machine that takes a mouse give it
+    /// the Mac's mouse.
+    var mouse: Bool
 
     init() {
         machine = ""
         arguments = []
         windowSize = Core.windowFit
+        mouse = false
     }
 
     private struct Contents: Decodable {
         var machine: String
         var arguments: [String]
         var windowSize: Int
+        var mouse: Bool
     }
 
     init(configuration: ReadConfiguration) throws {
@@ -44,10 +49,11 @@ struct ConfigurationDocument: FileDocument {
         machine = contents.machine
         arguments = contents.arguments
         windowSize = contents.windowSize
+        mouse = contents.mouse
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        guard let text = Core.take(pinesy_core_write_document(machine, Core.encode(arguments), Int32(clamping: windowSize))) else {
+        guard let text = Core.take(pinesy_core_write_document(machine, Core.encode(arguments), Int32(clamping: windowSize), mouse ? 1 : 0)) else {
             throw CocoaError(.fileWriteUnknown)
         }
         return FileWrapper(regularFileWithContents: Data(text.utf8))

@@ -48,6 +48,9 @@ struct ConfigurationSummary: Decodable {
     let currentROM: ROMChoice?
     let hardware: [HardwareRow]
     let media: [MediaRow]
+    /// The machine, with this hardware, has mouse inputs, so the mouse
+    /// setting is shown and reaches a run.
+    let mouse: Bool
     let errors: String
     let warnings: String
     let missingMedia: [String]

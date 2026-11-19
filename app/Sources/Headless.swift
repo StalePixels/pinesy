@@ -53,6 +53,9 @@ enum Headless {
                 window.center()
             }
         }
+        host.onPointer = { hide, capture in
+            view.setPointer(hide: hide, capture: capture)
+        }
         // the OSD prints MAME's output itself, as usual
         let code = MAME.withHost(view: view, receiver: host) { Core.headless(arguments, host: $0) }
         withExtendedLifetime(closer) {}

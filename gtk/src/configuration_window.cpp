@@ -374,6 +374,7 @@ void ConfigurationWindow::build_form(const core::Summary &summary)
 	for (auto group : m_groups)
 		adw_preferences_page_remove(m_page, group);
 	m_groups.clear();
+	m_command_line = nullptr;
 
 	if (!summary.errors.empty())
 		add_group(message_group("This configuration cannot run", summary.errors, "dialog-warning-symbolic", "error"));
@@ -538,6 +539,26 @@ AdwPreferencesGroup *ConfigurationWindow::machine_group(const core::Summary &sum
 				int(adw_spin_row_get_value(ADW_SPIN_ROW(magnification)))));
 	});
 	adw_preferences_group_add(group, magnification);
+
+	// the mouse setting, for a machine that takes a mouse
+	if (summary.mouse)
+	{
+		GtkWidget *mouse = adw_switch_row_new();
+		plain_row(mouse);
+		adw_preferences_row_set_title(ADW_PREFERENCES_ROW(mouse), "Mouse");
+		adw_switch_row_set_active(ADW_SWITCH_ROW(mouse), m_document.mouse);
+		connect_notify(mouse, "active", [this, mouse] {
+			const bool on = adw_switch_row_get_active(ADW_SWITCH_ROW(mouse));
+			if (on == m_document.mouse)
+				return;
+			m_document.mouse = on;
+			m_modified = true;
+			update_title();
+			if (m_command_line)
+				gtk_label_set_text(GTK_LABEL(m_command_line), command_line().c_str());
+		});
+		adw_preferences_group_add(group, mouse);
+	}
 	return group;
 }
 
@@ -695,10 +716,10 @@ AdwPreferencesGroup *ConfigurationWindow::command_line_group()
 	gtk_actionable_set_action_name(GTK_ACTIONABLE(copy), "win.copy-command-line");
 	adw_preferences_group_set_header_suffix(group, copy);
 
-	std::string text = m_app.core().copy_command_line(executable_path(), m_document.arguments, false);
 	GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	gtk_widget_add_css_class(box, "card");
-	GtkWidget *label = gtk_label_new(text.c_str());
+	GtkWidget *label = gtk_label_new(command_line().c_str());
+	m_command_line = label;
 	gtk_widget_add_css_class(label, "monospace");
 	gtk_label_set_wrap(GTK_LABEL(label), TRUE);
 	gtk_label_set_wrap_mode(GTK_LABEL(label), PANGO_WRAP_WORD_CHAR);
@@ -711,6 +732,16 @@ AdwPreferencesGroup *ConfigurationWindow::command_line_group()
 	gtk_box_append(GTK_BOX(box), label);
 	adw_preferences_group_add(group, box);
 	return group;
+}
+
+bool ConfigurationWindow::uses_mouse() const
+{
+	return m_document.mouse && m_summary && m_summary->mouse;
+}
+
+std::string ConfigurationWindow::command_line()
+{
+	return m_app.core().copy_command_line(executable_path(), m_document.arguments, false, uses_mouse());
 }
 
 void ConfigurationWindow::choose_media(const core::Media &media)
@@ -770,15 +801,14 @@ void ConfigurationWindow::run(bool debug)
 {
 	if (m_app.runner().running() || !m_summary || !m_summary->can_run() || m_refresh_waiting)
 		return;
-	m_app.runner().start(m_app.core(), title(), m_document.arguments, debug, m_document.window_size);
+	m_app.runner().start(m_app.core(), title(), m_document.arguments, debug, m_document.window_size, uses_mouse());
 }
 
 void ConfigurationWindow::copy_command_line()
 {
 	if (m_document.arguments.empty())
 		return;
-	std::string text = m_app.core().copy_command_line(executable_path(), m_document.arguments, false);
-	window().get_clipboard()->set_text(text);
+	window().get_clipboard()->set_text(command_line());
 	toast("Command line copied");
 }
 

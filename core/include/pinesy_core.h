@@ -259,6 +259,10 @@ char *pinesy_core_normalise(pinesy_core *core, const char *arguments);
 //   media        one row per media device: media (MAME's media
 //                object, with extensionList: its extensions as an
 //                array, without dots) and label
+//   mouse        true when the machine with this hardware has mouse
+//                inputs (pinesy_describe() in pinesy.h). The
+//                configuration window shows the mouse setting only
+//                then, and only then does the setting reach a run.
 //   errors       MAME's error text; "" when there is none
 //   warnings     MAME's warning text, which does not stop a run
 //   missingMedia labels of media MAME needs that have no file
@@ -341,20 +345,21 @@ int pinesy_core_window_size(int frame_width, int frame_height, int window_size, 
 //------------------------------------------------------------
 
 // Reads a .pinesy file's text. Returns a JSON object with machine,
-// arguments and windowSize, or NULL when the text is not a
+// arguments, windowSize and mouse, or NULL when the text is not a
 // configuration this core reads: not a JSON object with format (a
 // whole number), machine (a string) and arguments (an array of
 // strings), a format newer than 1, or empty arguments. windowSize is
 // a window size (pinesy_core_is_window_size()); a file without it, or
 // with a value that is not a window size, reads as
-// PINESY_CORE_WINDOW_FIT.
+// PINESY_CORE_WINDOW_FIT. mouse is the mouse setting, true or false;
+// a file without it, or with another value, reads as false.
 char *pinesy_core_read_document(const char *text);
 
 // The text of a .pinesy file: a JSON object with format 1, the
-// machine, the arguments and the window size, keys in order,
-// indented. A value that is not a window size is written as
-// PINESY_CORE_WINDOW_FIT.
-char *pinesy_core_write_document(const char *machine, const char *arguments, int window_size);
+// machine, the arguments, the window size and the mouse setting (mouse
+// not 0 is true), keys in order, indented. A value that is not a
+// window size is written as PINESY_CORE_WINDOW_FIT.
+char *pinesy_core_write_document(const char *machine, const char *arguments, int window_size, int mouse);
 
 //------------------------------------------------------------
 //  Runs
@@ -366,24 +371,29 @@ char *pinesy_core_write_document(const char *machine, const char *arguments, int
 char *pinesy_core_debug_arguments(const pinesy_core *core, int debug);
 
 // The whole command line a run gives MAME, as a JSON array: the
-// fixed options, the configuration, then the debugger options when
-// debug is not 0.
-char *pinesy_core_run_command_line(const pinesy_core *core, const char *arguments, int debug);
+// fixed options, the configuration, "-mouse" when mouse is not 0,
+// then the debugger options when debug is not 0. The front end passes
+// a mouse that is not 0 when the configuration's mouse setting is on
+// and its summary's mouse is true.
+char *pinesy_core_run_command_line(const pinesy_core *core, const char *arguments, int debug, int mouse);
 
 // Creates the folders and runs a configuration with
 // pinesy_run(), with the command line pinesy_core_run_command_line()
 // gives. host is passed to pinesy_run() and may be NULL. Returns
 // MAME's exit code, or -1 when arguments is not a JSON array of
 // strings. Main thread only.
-int pinesy_core_run(const pinesy_core *core, const char *arguments, int debug, const pinesy_host *host);
+int pinesy_core_run(const pinesy_core *core, const char *arguments, int debug, int mouse, const pinesy_host *host);
 
 // The headless command for a configuration, quoted for zsh, as
 // Copy Command Line gives it: the executable, "--", the
-// configuration, then the debugger options when debug is not 0.
-// Headless mode adds the fixed options itself. A string of letters,
-// digits and "-_./:=,+@%" stays as it is; any other string, the
-// empty string included, is put in single quotes.
-char *pinesy_core_copy_command_line(const pinesy_core *core, const char *executable, const char *arguments, int debug);
+// configuration, "-mouse" when mouse is not 0, then the debugger
+// options when debug is not 0. mouse is as for
+// pinesy_core_run_command_line(). Headless mode adds the fixed
+// options itself. A string of letters, digits and "-_./:=,+@%" stays
+// as it is; any other string, the empty string included, is put in
+// single quotes.
+char *pinesy_core_copy_command_line(const pinesy_core *core, const char *executable, const char *arguments, int debug,
+		int mouse);
 
 //------------------------------------------------------------
 //  Headless mode

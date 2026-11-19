@@ -13,8 +13,9 @@
 //  The host's window takes the shape and size of the frame
 //  (pinesy_render_size in pinesymain.cpp), not the window
 //  size MAME asks for: the host gets the frame's size, and
-//  the core decides the window's. Window order, fullscreen and the
-//  pointer belong to the host, so those calls do nothing here.
+//  the core decides the window's. Window order and fullscreen
+//  belong to the host, so those calls do nothing here. MAME's
+//  pointer requests go to the host from pinesymain.cpp.
 //
 //============================================================
 
@@ -328,13 +329,14 @@ void MacSetWindowContentSize(void *wincontroller, int width, int height) { }
 
 
 //============================================================
-//  owned by the host: window order, fullscreen, pointer
+//  owned by the host: window order, fullscreen; the pointer
+//  goes to the host from pinesymain.cpp
 //============================================================
 
 void MacOrderWindowFront(void *wincontroller) { }
 void MacSetWindowMinSize(void *wincontroller, int width, int height) { }
 void MacSetFullscreen(void *wincontroller, bool fullscreen, uint32_t displayID) { }
-void MacShowPointer(bool show) { }
-void MacCapturePointer(void *wincontroller, bool capture) { }
-int MacPointerInWindow() { return 0; }
+
+// the pointer's position over the view, which MAME's lightgun reads;
+// the host does not give it
 bool MacGetPointerPosition(void *wincontroller, int *outx, int *outy) { return false; }

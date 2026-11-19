@@ -32,7 +32,10 @@ class ConfigurationDocument : public QObject
 	Q_PROPERTY(bool waiting READ waiting NOTIFY summaryChanged)
 	Q_PROPERTY(bool canRun READ canRun NOTIFY canRunChanged)
 	// The headless command, as Copy Command Line gives it.
-	Q_PROPERTY(QString commandLine READ commandLine NOTIFY changed)
+	Q_PROPERTY(QString commandLine READ commandLine NOTIFY commandLineChanged)
+	// The mouse setting: runs of a machine that takes a mouse (the
+	// summary's mouse) give MAME the mouse.
+	Q_PROPERTY(bool mouse READ mouse WRITE setMouse NOTIFY mouseChanged)
 	// The machine window's size, as pinesy_core_window_size() takes it:
 	// full screen, fit, or a magnification of the frame, 1 or more.
 	Q_PROPERTY(int windowSize READ windowSize WRITE setWindowSize NOTIFY windowSizeChanged)
@@ -61,6 +64,8 @@ public:
 	QString commandLine() const;
 	int windowSize() const { return m_windowSize; }
 	void setWindowSize(int windowSize);
+	bool mouse() const { return m_mouse; }
+	void setMouse(bool mouse);
 	QVariantList windowChoices() const;
 	int windowChoice() const;
 	int windowFit() const { return PINESY_CORE_WINDOW_FIT; }
@@ -100,6 +105,8 @@ Q_SIGNALS:
 	void summaryChanged();
 	void canRunChanged();
 	void windowSizeChanged();
+	void mouseChanged();
+	void commandLineChanged();
 	// This document's run stopped with an error.
 	void runFailed(const QString &title, const QString &message);
 
@@ -107,6 +114,8 @@ private:
 	void setArguments(const QStringList &arguments);
 	void setModified(bool modified);
 	void refresh();
+	// Runs give MAME the mouse: the setting is on, and the machine takes one.
+	bool usesMouse() const;
 
 	QString m_machine;
 	QStringList m_arguments;
@@ -114,6 +123,7 @@ private:
 	// Custom was chosen for the window size, so the magnification field
 	// stays while the user enters a listed magnification in it.
 	bool m_customWindowSize = false;
+	bool m_mouse = false;
 	QUrl m_url;
 	bool m_modified = false;
 	QVariantMap m_summary;

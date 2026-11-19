@@ -47,13 +47,16 @@ public:
 	// Why MAME's SD card cannot use the image at path; empty when it can.
 	static QString sdCardProblem(const QString &path);
 	QVariantMap summary(const QStringList &arguments, const QString &machineHint);
-	QString copyCommandLine(const QStringList &arguments, bool debug);
+	// mouse adds -mouse, as a run with the mouse has it.
+	QString copyCommandLine(const QStringList &arguments, bool debug, bool mouse);
 
 	// .pinesy files. readDocument returns false when the text is not a
 	// configuration the core reads. windowSize is the machine window's
-	// size, as pinesy_core_window_size() takes it.
-	static bool readDocument(const QByteArray &text, QString *machine, QStringList *arguments, int *windowSize);
-	static QByteArray writeDocument(const QString &machine, const QStringList &arguments, int windowSize);
+	// size, as pinesy_core_window_size() takes it; mouse is the mouse
+	// setting.
+	static bool readDocument(const QByteArray &text, QString *machine, QStringList *arguments, int *windowSize,
+			bool *mouse);
+	static QByteArray writeDocument(const QString &machine, const QStringList &arguments, int windowSize, bool mouse);
 
 	QStringList romFolders() const { return m_romFolders; }
 	QString dataFolderSetting() const { return m_dataFolder; }

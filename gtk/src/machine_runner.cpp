@@ -106,6 +106,58 @@ void key_released(GtkEventControllerKey *controller, guint, guint keycode, GdkMo
 	static_cast<MachineWindow *>(data)->on_key_released(event_keycode(controller, keycode));
 }
 
+void pointer_enter(GtkEventControllerMotion *, double x, double y, gpointer data)
+{
+	static_cast<MachineWindow *>(data)->on_pointer_enter(x, y);
+}
+
+void pointer_motion(GtkEventControllerMotion *, double x, double y, gpointer data)
+{
+	static_cast<MachineWindow *>(data)->on_pointer_motion(x, y);
+}
+
+void pointer_leave(GtkEventControllerMotion *, gpointer data)
+{
+	static_cast<MachineWindow *>(data)->on_pointer_leave();
+}
+
+// MAME's mouse buttons: left, right, middle, then back and forward
+int mame_button(guint button)
+{
+	switch (button)
+	{
+	case GDK_BUTTON_PRIMARY: return 0;
+	case GDK_BUTTON_SECONDARY: return 1;
+	case GDK_BUTTON_MIDDLE: return 2;
+	case 8: return 3;
+	case 9: return 4;
+	default: return -1;
+	}
+}
+
+// Every button press and release over the view, also while another
+// button is held, goes to MAME.
+gboolean button_event(GtkEventControllerLegacy *, GdkEvent *event, gpointer)
+{
+	const GdkEventType type = gdk_event_get_event_type(event);
+	if (type != GDK_BUTTON_PRESS && type != GDK_BUTTON_RELEASE)
+		return FALSE;
+	const int button = mame_button(gdk_button_event_get_button(event));
+	if (button >= 0)
+		pinesy_mouse_button(button, type == GDK_BUTTON_PRESS ? 1 : 0);
+	return FALSE;
+}
+
+// A mouse wheel turns in notches; GTK gives them as wheel units, with
+// dy positive towards the user.
+gboolean wheel_scrolled(GtkEventControllerScroll *controller, double, double dy, gpointer)
+{
+	if (gtk_event_controller_scroll_get_unit(controller) != GDK_SCROLL_UNIT_WHEEL)
+		return FALSE;
+	pinesy_mouse_wheel(-dy);
+	return TRUE;
+}
+
 } // namespace
 
 MachineWindow::MachineWindow(const std::string &title, int window_size) : m_window_size(window_size)
@@ -137,6 +189,20 @@ MachineWindow::MachineWindow(const std::string &title, int window_size) : m_wind
 	g_signal_connect(keys, "key-pressed", G_CALLBACK(key_pressed), this);
 	g_signal_connect(keys, "key-released", G_CALLBACK(key_released), this);
 	gtk_widget_add_controller(GTK_WIDGET(m_window), keys);
+
+	// the mouse over the view
+	GtkWidget *view = GTK_WIDGET(m_view->gobj());
+	GtkEventController *motion = gtk_event_controller_motion_new();
+	g_signal_connect(motion, "enter", G_CALLBACK(pointer_enter), this);
+	g_signal_connect(motion, "motion", G_CALLBACK(pointer_motion), this);
+	g_signal_connect(motion, "leave", G_CALLBACK(pointer_leave), this);
+	gtk_widget_add_controller(view, motion);
+	GtkEventController *buttons = gtk_event_controller_legacy_new();
+	g_signal_connect(buttons, "event", G_CALLBACK(button_event), nullptr);
+	gtk_widget_add_controller(view, buttons);
+	GtkEventController *wheel = gtk_event_controller_scroll_new(GTK_EVENT_CONTROLLER_SCROLL_VERTICAL);
+	g_signal_connect(wheel, "scroll", G_CALLBACK(wheel_scrolled), nullptr);
+	gtk_widget_add_controller(view, wheel);
 
 	m_active_handler = connect_notify(m_window, "is-active", [this] { on_active_changed(); });
 	m_fullscreened_handler = connect_notify(m_window, "fullscreened", [this, leave] {
@@ -183,6 +249,7 @@ pinesy_host MachineWindow::host()
 	host.output = on_output;
 	host.size = on_size;
 	host.pump = on_pump;
+	host.pointer = on_pointer;
 	host.context = this;
 	return host;
 }
@@ -237,6 +304,42 @@ void MachineWindow::on_pump(void *)
 		;
 }
 
+// GTK has no call that holds the pointer in a window, so capture is
+// not done: the pointer is hidden over the view, and the machine gets
+// the mouse's movement while the pointer is over the view or a drag
+// that started there goes on.
+void MachineWindow::on_pointer(void *context, int hide, int)
+{
+	auto self = static_cast<MachineWindow *>(context);
+	gtk_widget_set_cursor_from_name(GTK_WIDGET(self->m_view->gobj()), hide ? "none" : nullptr);
+}
+
+void MachineWindow::on_pointer_enter(double x, double y)
+{
+	m_has_pointer = true;
+	m_pointer_x = x;
+	m_pointer_y = y;
+	pinesy_mouse_inside(1);
+}
+
+void MachineWindow::on_pointer_motion(double x, double y)
+{
+	if (m_has_pointer)
+		pinesy_mouse_move(x - m_pointer_x, y - m_pointer_y);
+	m_has_pointer = true;
+	m_pointer_x = x;
+	m_pointer_y = y;
+	GtkWidget *view = GTK_WIDGET(m_view->gobj());
+	const bool inside = x >= 0 && y >= 0 && x < gtk_widget_get_width(view) && y < gtk_widget_get_height(view);
+	pinesy_mouse_inside(inside ? 1 : 0);
+}
+
+void MachineWindow::on_pointer_leave()
+{
+	m_has_pointer = false;
+	pinesy_mouse_inside(0);
+}
+
 bool MachineWindow::on_key_pressed(unsigned keyval, unsigned keycode)
 {
 	// GTK repeats a held key as more presses; the machine wants one
@@ -274,7 +377,7 @@ void MachineWindow::release_keys()
 //------------------------------------------------------------
 
 void MachineRunner::start(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-		bool debug, int window_size)
+		bool debug, int window_size, bool mouse)
 {
 	if (m_running)
 		return;
@@ -284,13 +387,13 @@ void MachineRunner::start(const core::Core &core, const std::string &title, cons
 
 	// pinesy_run() keeps its own loop. Start it from an idle callback, so
 	// the action or click that asked for the run has been handled first.
-	Glib::signal_idle().connect_once([this, &core, title, arguments, debug, window_size] {
-		run(core, title, arguments, debug, window_size);
+	Glib::signal_idle().connect_once([this, &core, title, arguments, debug, window_size, mouse] {
+		run(core, title, arguments, debug, window_size, mouse);
 	});
 }
 
 void MachineRunner::run(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-		bool debug, int window_size)
+		bool debug, int window_size, bool mouse)
 {
 	int code = 0;
 	bool ran = false;
@@ -301,7 +404,7 @@ void MachineRunner::run(const core::Core &core, const std::string &title, const 
 		{
 			pinesy_host host = window.host();
 			window.set_running(true);
-			code = core.run(arguments, debug, &host);
+			code = core.run(arguments, debug, mouse, &host);
 			window.set_running(false);
 			ran = true;
 		}

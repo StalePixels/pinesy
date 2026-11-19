@@ -73,6 +73,8 @@ private:
 	// stays while the user enters a listed magnification in it.
 	bool m_custom_window_size = false;
 	std::optional<core::Summary> m_summary;
+	// the command line's label in the form
+	GtkWidget *m_command_line = nullptr;
 	// The configuration changed while a machine ran; the engine is asked
 	// about it when the run ends.
 	bool m_refresh_waiting = false;
@@ -97,6 +99,9 @@ private:
 	AdwPreferencesGroup *hardware_group(const core::Summary &summary);
 	AdwPreferencesGroup *media_group(const core::Summary &summary);
 	AdwPreferencesGroup *command_line_group();
+	// Runs give MAME the mouse: the setting is on, and the machine takes one.
+	bool uses_mouse() const;
+	std::string command_line();
 	void choose_media(const core::Media &media);
 
 	void run(bool debug);

@@ -172,14 +172,15 @@ QVariantMap Core::summary(const QStringList &arguments, const QString &machineHi
 		.toMap();
 }
 
-QString Core::copyCommandLine(const QStringList &arguments, bool debug)
+QString Core::copyCommandLine(const QStringList &arguments, bool debug, bool mouse)
 {
 	const QByteArray executable = QCoreApplication::applicationFilePath().toUtf8();
 	return QString::fromUtf8(take(pinesy_core_copy_command_line(m_core, executable.constData(),
-			toJson(arguments).constData(), debug ? 1 : 0)));
+			toJson(arguments).constData(), debug ? 1 : 0, mouse ? 1 : 0)));
 }
 
-bool Core::readDocument(const QByteArray &text, QString *machine, QStringList *arguments, int *windowSize)
+bool Core::readDocument(const QByteArray &text, QString *machine, QStringList *arguments, int *windowSize,
+		bool *mouse)
 {
 	const QByteArray json = take(pinesy_core_read_document(text.constData()));
 	if (json.isEmpty())
@@ -190,12 +191,14 @@ bool Core::readDocument(const QByteArray &text, QString *machine, QStringList *a
 	for (const QJsonValue &value : object.value(QLatin1String("arguments")).toArray())
 		arguments->append(value.toString());
 	*windowSize = object.value(QLatin1String("windowSize")).toInt(PINESY_CORE_WINDOW_FIT);
+	*mouse = object.value(QLatin1String("mouse")).toBool(false);
 	return true;
 }
 
-QByteArray Core::writeDocument(const QString &machine, const QStringList &arguments, int windowSize)
+QByteArray Core::writeDocument(const QString &machine, const QStringList &arguments, int windowSize, bool mouse)
 {
-	return take(pinesy_core_write_document(machine.toUtf8().constData(), toJson(arguments).constData(), windowSize));
+	return take(pinesy_core_write_document(machine.toUtf8().constData(), toJson(arguments).constData(), windowSize,
+			mouse ? 1 : 0));
 }
 
 //------------------------------------------------------------

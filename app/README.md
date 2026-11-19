@@ -6,14 +6,15 @@ To build it, see [docs/build-macos.md](../docs/build-macos.md).
 
 ## Configurations
 
-A configuration is a document: a machine, what is fitted to it, its ROM and the media in its drives. It is saved as a `.pinesy` file, a JSON object with four keys:
+A configuration is a document: a machine, what is fitted to it, its ROM and the media in its drives. It is saved as a `.pinesy` file, a JSON object with five keys:
 
 - `format`: the file format version, now 1.
 - `machine`: the driver that stands for the machine in the machine list.
 - `arguments`: the MAME command line the configuration runs, as an array of strings. The first string is the driver to run, then options, such as `-exp intf1,bios=v1` or `-pi /path/nextpi.img`. An empty value, as in `-rs232_rpi ""`, leaves a slot empty. A string that starts with `-` is always an option name, never a value, so a flag such as `-skip_gameinfo` stays a flag. Strings that are not options stay where they are.
 - `windowSize`: the machine window's size. `-1` is Full screen, `0` is Fit to screen, and a whole number of 1 or more is that magnification of the frame. A file without this key, or with another value, opens as Fit to screen.
+- `mouse`: the mouse setting, `true` or `false` (see "The mouse"). A file without this key, or with another value, opens with it off.
 
-File > New (⌘N) opens a window and asks for the machine. A launch with no document to open does the same. The configuration window shows the machine, its model and ROM, its window size, its hardware and its media, and the command line. Every change is checked with MAME, and an option the machine no longer has is removed. When MAME rejects the driver itself, no option is removed. When MAME rejects the command line, the window shows MAME's error text and Run is not available. MAME's warnings are shown too, and do not stop a run. A media row with a problem shows it in red under the row's name: a file the machine needs and does not have, a file that is not found (the row shows its full path), or an SD card image that MAME's SD card cannot use. MAME takes SD cards of up to 1 GiB, and SDHC cards of up to 32 GiB that are a multiple of 512 KiB. A CHD is not checked. Choose refuses such an SD card image and says why, and a configuration that holds one cannot run. Each media row shows the file extensions MAME lists for the device, but any file can be chosen, because MAME also opens others, such as `.img` SD card images.
+File > New (⌘N) opens a window and asks for the machine. A launch with no document to open does the same. The configuration window shows the machine, its model and ROM, its window size, the mouse setting for a machine that takes a mouse, its hardware and its media, and the command line. Every change is checked with MAME, and an option the machine no longer has is removed. When MAME rejects the driver itself, no option is removed. When MAME rejects the command line, the window shows MAME's error text and Run is not available. MAME's warnings are shown too, and do not stop a run. A media row with a problem shows it in red under the row's name: a file the machine needs and does not have, a file that is not found (the row shows its full path), or an SD card image that MAME's SD card cannot use. MAME takes SD cards of up to 1 GiB, and SDHC cards of up to 32 GiB that are a multiple of 512 KiB. A CHD is not checked. Choose refuses such an SD card image and says why, and a configuration that holds one cannot run. Each media row shows the file extensions MAME lists for the device, but any file can be chosen, because MAME also opens others, such as `.img` SD card images.
 
 ## The machine list
 
@@ -53,6 +54,18 @@ The frame size is in device pixels. The window's content is the frame times a wh
 The configuration window's Window size picker offers Fit to screen, Full screen, 1x to 4x and Custom. Custom shows a Magnification field for any whole number of 1 or more. A configuration opens with 1x to 4x as those entries, and with any larger magnification as Custom with its number. The core holds these choices (`pinesy_core_window_choice()`, `pinesy_core_window_size_for_choice()`), so the three apps offer the same ones.
 
 The window keeps the frame's shape when it is resized. Where the view's shape differs, as in full screen, the frame is drawn at its own shape, centred, with black bars. It is sharp (nearest-neighbour) where the drawn size is a whole multiple of the frame, and smoothed at any other size.
+
+## The mouse
+
+The configuration window shows a Mouse switch only for a machine that has mouse inputs with the hardware fitted now. The Next has a Kempston mouse built in, so it always has the switch; a ZX Spectrum has it only while the Kempston mouse interface is fitted. The core decides this from MAME's description of the configuration (`mouse` in `pinesy_describe()`: an input of MAME's mouse types), not from a list of machines. With the switch on, a run adds `-mouse` after the configuration, and Copy Command Line does the same. The setting is saved in the `.pinesy` file. It stays saved while hardware without a mouse is fitted, and then has no effect.
+
+The machine window sends the mouse over its view to MAME through the engine (`pinesy_mouse_inside()`, `pinesy_mouse_move()`, `pinesy_mouse_button()`, `pinesy_mouse_wheel()`): its movement, the left, right and middle buttons and two more, and the vertical wheel. With natural scrolling on, the wheel is still sent in the direction it turns. MAME puts the mouse in the machine's mouse inputs.
+
+With `-mouse`, MAME hides the pointer while it is over the machine's view, and holds it there: the pointer stays at the view's centre and the mouse's movement still reaches the machine. MAME gives the pointer back when the app loses the focus, when MAME's menu opens, and when the run ends. The engine passes these requests to the app through the host's `pointer` callback.
+
+Without `-mouse`, MAME still gives the mouse to a machine with mouse inputs, because its `-mouse_device` option is `mouse` by default: the machine gets the mouse's movement while the pointer is over its view, and the pointer stays visible and free.
+
+A machine window in headless mode sends the mouse the same way, and hides and holds the pointer when the command line has `-mouse`.
 
 ## Headless
 

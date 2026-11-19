@@ -108,6 +108,7 @@ struct MachineDescription
 	std::optional<std::vector<BiosSet>> biossets;
 	std::optional<std::vector<Slot>> slots;
 	std::optional<std::vector<Media>> media;
+	bool mouse = false;                    // the machine has mouse inputs
 	std::string errors;
 	std::optional<std::string> warnings;   // they do not stop a run
 
@@ -361,6 +362,7 @@ struct Summary
 	std::optional<ROMChoice> current_rom;
 	std::vector<HardwareRow> hardware;
 	std::vector<MediaRow> media;
+	bool mouse = false;         // the machine has mouse inputs, so the mouse setting applies
 	std::string errors;
 	std::string warnings;
 	std::vector<std::string> missing_media;   // labels of mandatory media with no file
@@ -455,12 +457,14 @@ struct Document
 	std::string machine;                 // the machine's driver; empty until chosen
 	std::vector<std::string> arguments;  // the MAME command line
 	int window_size = window::fit;       // the machine window's size (window::content_size)
+	bool mouse = false;                  // the mouse setting: runs give MAME the host's mouse
 
 	// Reads a .pinesy file's text. nullopt when it is not JSON with
 	// format, machine and arguments, its format is newer than this
 	// core reads, or its arguments are empty. A file without
 	// windowSize, or with a value window::is_window_size() refuses,
-	// reads as window::fit.
+	// reads as window::fit. A file without mouse, or with a value that
+	// is not true or false, reads as false.
 	static std::optional<Document> read(std::string_view text);
 
 	// The file's text.
@@ -512,6 +516,10 @@ bool is_usable_rom_folder(std::string_view path);
 // "-debug" and the debugger options from the settings; empty without debug.
 std::vector<std::string> debug_arguments(const Settings &settings, bool debug);
 
+// "-mouse" with mouse, else empty. mouse is true when the
+// configuration's mouse setting is on and its summary's mouse is true.
+std::vector<std::string> mouse_arguments(bool mouse);
+
 // A string quoted for zsh; plain strings stay as they are.
 std::string shell_quoted(std::string_view text);
 
@@ -560,14 +568,17 @@ public:
 	const Catalogue &catalogue();
 
 	// The full command line of a run: fixed options, the
-	// configuration, and the debugger options.
-	std::vector<std::string> run_command_line(const std::vector<std::string> &arguments, bool debug) const;
+	// configuration, the mouse option (mouse_arguments) and the
+	// debugger options.
+	std::vector<std::string> run_command_line(const std::vector<std::string> &arguments, bool debug, bool mouse) const;
 
 	// Creates the folders and runs a configuration. Returns MAME's exit code.
-	int run(const std::vector<std::string> &arguments, bool debug, const pinesy_host *host) const;
+	int run(const std::vector<std::string> &arguments, bool debug, bool mouse, const pinesy_host *host) const;
 
-	// The headless command for a configuration, quoted for zsh.
-	std::string copy_command_line(const std::string &executable, const std::vector<std::string> &arguments, bool debug) const;
+	// The headless command for a configuration, quoted for zsh, with the
+	// mouse option as a run has it.
+	std::string copy_command_line(const std::string &executable, const std::vector<std::string> &arguments, bool debug,
+			bool mouse) const;
 
 	// Headless mode: the executable's arguments, without its own name.
 	// A leading "--" is dropped. Creates the folders and runs MAME with

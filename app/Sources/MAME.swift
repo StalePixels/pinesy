@@ -21,6 +21,7 @@ enum MAME {
             host.output = RunHost.outputCallback
             host.aspect = RunHost.aspectCallback
             host.size = RunHost.sizeCallback
+            host.pointer = RunHost.pointerCallback
             host.context = receiver.context
         }
         return withUnsafePointer(to: &host) { body($0) }
@@ -45,10 +46,31 @@ enum MAME {
     static func character(_ scalar: UInt32) {
         pinesy_char(scalar)
     }
+
+    /// Whether the pointer is over the machine's view.
+    static func mouseInside(_ inside: Bool) {
+        pinesy_mouse_inside(inside ? 1 : 0)
+    }
+
+    /// The mouse moved by dx, dy points, right and down positive.
+    static func mouseMove(dx: CGFloat, dy: CGFloat) {
+        pinesy_mouse_move(Double(dx), Double(dy))
+    }
+
+    /// Button 0 is the left button, 1 the right, 2 the middle.
+    static func mouseButton(_ button: Int, down: Bool) {
+        pinesy_mouse_button(Int32(clamping: button), down ? 1 : 0)
+    }
+
+    /// The wheel turned by a number of notches, positive away from the user.
+    static func mouseWheel(_ notches: CGFloat) {
+        pinesy_mouse_wheel(Double(notches))
+    }
 }
 
-/// What MAME tells the app during a run: the error lines it prints, and
-/// the frame's size, which sets the machine window's shape and size. MAME calls on the main thread.
+/// What MAME tells the app during a run: the error lines it prints, the
+/// frame's size, which sets the machine window's shape and size, and
+/// what to do with the pointer. MAME calls on the main thread.
 @MainActor
 final class RunHost {
     /// MAME's osd_output_channel values.
@@ -61,6 +83,8 @@ final class RunHost {
     var onAspect: (NSSize?) -> Void = { _ in }
     /// The frame's size, in pixels, with the first frame and when it changes.
     var onSize: (NSSize) -> Void = { _ in }
+    /// MAME asks for the pointer to be hidden over the view, and held in it.
+    var onPointer: (_ hide: Bool, _ capture: Bool) -> Void = { _, _ in }
 
     nonisolated var context: UnsafeMutableRawPointer { Unmanaged.passUnretained(self).toOpaque() }
 
@@ -80,6 +104,12 @@ final class RunHost {
         let ratio = (width > 0 && height > 0) ? NSSize(width: Int(width), height: Int(height)) : nil
         let receiver = host(context)
         MainActor.assumeIsolated { receiver.onAspect(ratio) }
+    }
+
+    nonisolated static let pointerCallback: pinesy_pointer_fn = { context, hide, capture in
+        guard let context else { return }
+        let receiver = host(context)
+        MainActor.assumeIsolated { receiver.onPointer(hide != 0, capture != 0) }
     }
 
     nonisolated static let sizeCallback: pinesy_size_fn = { context, width, height in

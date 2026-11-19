@@ -4,12 +4,13 @@
 //
 //  document.cpp - .pinesy files
 //
-//  A .pinesy file is a JSON object with four keys: format
+//  A .pinesy file is a JSON object with five keys: format
 //  (the file format version), machine (the driver that stands
 //  for the machine in the machine list), arguments (the MAME
-//  command line, as an array of strings) and windowSize (-1 for
+//  command line, as an array of strings), windowSize (-1 for
 //  full screen, 0 for fit, else the magnification of the
-//  machine window). Other keys are ignored when reading.
+//  machine window) and mouse (true when runs give MAME the
+//  host's mouse). Other keys are ignored when reading.
 //
 //============================================================
 
@@ -42,6 +43,19 @@ int read_window_size(const json::Value *value)
 	}
 }
 
+// true or false; anything else, or no value, is false.
+bool read_mouse(const json::Value *value)
+{
+	try
+	{
+		return value && value->boolean();
+	}
+	catch (const json::Error &)
+	{
+		return false;
+	}
+}
+
 } // anonymous namespace
 
 std::optional<Document> Document::read(std::string_view text)
@@ -60,6 +74,7 @@ std::optional<Document> Document::read(std::string_view text)
 		document.arguments = encode::to_strings(*arguments);
 		if (version > format_version || document.arguments.empty()) return std::nullopt;
 		document.window_size = read_window_size(root.find("windowSize"));
+		document.mouse = read_mouse(root.find("mouse"));
 		return document;
 	}
 	catch (const json::Error &)
@@ -74,7 +89,8 @@ std::string Document::write() const
 		{ "format", format_version },
 		{ "machine", machine },
 		{ "arguments", encode::strings(arguments) },
-		{ "windowSize", window::is_window_size(window_size) ? window_size : window::fit } });
+		{ "windowSize", window::is_window_size(window_size) ? window_size : window::fit },
+		{ "mouse", mouse } });
 }
 
 } // namespace pinesy::core

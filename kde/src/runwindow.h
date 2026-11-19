@@ -1,6 +1,6 @@
 // The window a machine runs in, and the pinesy_host that ties it to
-// MAME: frames, the frame's size, focus, MAME's error lines and the
-// event pump. Closing the window asks MAME to exit; the window
+// MAME: frames, the frame's size, focus, MAME's error lines, the
+// pointer and the event pump. Closing the window asks MAME to exit; the window
 // stays until MAME has.
 
 #pragma once
@@ -38,6 +38,7 @@ private:
 	static void onOutput(void *context, int channel, const char *text);
 	static void onSize(void *context, int width, int height);
 	static void onPump(void *context);
+	static void onPointer(void *context, int hide, int capture);
 
 	void resizeForFrame(int frameWidth, int frameHeight);
 

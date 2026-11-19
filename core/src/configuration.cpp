@@ -383,6 +383,7 @@ Summary::Summary(const std::vector<std::string> &arguments, const MachineDescrip
 	preliminary = running ? running->status == "preliminary" : machine ? machine->preliminary : false;
 	errors = description.errors;
 	warnings = description.warnings.value_or("");
+	mouse = description.mouse;
 
 	// the models offered, plus the reference model when a document names it
 	if (machine)

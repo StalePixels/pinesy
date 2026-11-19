@@ -20,8 +20,9 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
 
     /// Starts a configuration. `arguments` is its command line; the core
     /// adds the app's paths and the debugger options. `windowSize` is
-    /// the configuration's window size.
-    func start(title: String, arguments: [String], debug: Bool, windowSize: Int) {
+    /// the configuration's window size. With `mouse`, the run gives MAME
+    /// the Mac's mouse (-mouse).
+    func start(title: String, arguments: [String], debug: Bool, windowSize: Int, mouse: Bool) {
         guard running == nil else { return }
         running = title
         self.windowSize = windowSize
@@ -72,8 +73,11 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
                         }
                     }
                 }
+                host.onPointer = { hide, capture in
+                    view.setPointer(hide: hide, capture: capture)
+                }
                 let code = MAME.withHost(view: view, receiver: host) {
-                    Core.run(arguments, debug: debug, host: $0)
+                    Core.run(arguments, debug: debug, mouse: mouse, host: $0)
                 }
                 self.finish(code: code, errors: host.errors)
             }
@@ -152,9 +156,70 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
 }
 
 /// The view MAME draws on. Keys go to MAME; key combinations the menus
-/// own reach the menus first.
+/// own reach the menus first. The mouse over the view goes to MAME,
+/// which takes it with -mouse.
 final class MachineView: NSView {
     override var acceptsFirstResponder: Bool { true }
+
+    /// MAME's last pointer request: the pointer hidden, the pointer held.
+    private var pointerHidden = false
+    private var pointerCaptured = false
+
+    /// Hides the pointer over the view, and holds it at the view's centre
+    /// while the mouse's movement still comes as events, as MAME asks.
+    func setPointer(hide: Bool, capture: Bool) {
+        // NSCursor's hide and unhide calls must balance
+        if hide != pointerHidden {
+            if hide { NSCursor.hide() } else { NSCursor.unhide() }
+            pointerHidden = hide
+        }
+        if capture != pointerCaptured {
+            if capture, let window {
+                // the pointer is at the view's centre when it comes back
+                let centre = window.convertPoint(toScreen: convert(NSPoint(x: bounds.midX, y: bounds.midY), to: nil))
+                let top = NSScreen.screens.first?.frame.maxY ?? 0
+                CGWarpMouseCursorPosition(CGPoint(x: centre.x, y: top - centre.y))
+            }
+            CGAssociateMouseAndMouseCursorPosition(capture ? 0 : 1)
+            pointerCaptured = capture
+        }
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: .zero,
+                                       options: [.mouseEnteredAndExited, .mouseMoved, .activeInKeyWindow, .inVisibleRect],
+                                       owner: self))
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        MAME.mouseInside(false)
+    }
+
+    /// The pointer is over the view when a move ends inside it; a drag
+    /// that leaves the view still moves MAME's mouse.
+    private func moved(_ event: NSEvent) {
+        MAME.mouseInside(bounds.contains(convert(event.locationInWindow, from: nil)))
+        MAME.mouseMove(dx: event.deltaX, dy: event.deltaY)
+    }
+
+    override func mouseMoved(with event: NSEvent) { moved(event) }
+    override func mouseDragged(with event: NSEvent) { moved(event) }
+    override func rightMouseDragged(with event: NSEvent) { moved(event) }
+    override func otherMouseDragged(with event: NSEvent) { moved(event) }
+
+    override func mouseDown(with event: NSEvent) { MAME.mouseButton(0, down: true) }
+    override func mouseUp(with event: NSEvent) { MAME.mouseButton(0, down: false) }
+    override func rightMouseDown(with event: NSEvent) { MAME.mouseButton(1, down: true) }
+    override func rightMouseUp(with event: NSEvent) { MAME.mouseButton(1, down: false) }
+    override func otherMouseDown(with event: NSEvent) { MAME.mouseButton(event.buttonNumber, down: true) }
+    override func otherMouseUp(with event: NSEvent) { MAME.mouseButton(event.buttonNumber, down: false) }
+
+    override func scrollWheel(with event: NSEvent) {
+        // with natural scrolling the deltas are reversed from the wheel's turn
+        MAME.mouseWheel(event.isDirectionInvertedFromDevice ? -event.deltaY : event.deltaY)
+    }
 
     override func keyDown(with event: NSEvent) {
         if !event.isARepeat {

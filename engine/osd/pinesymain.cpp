@@ -6,7 +6,8 @@
 //
 //  The OSD object is the Cocoa OSD's mac_osd_interface. Only
 //  the window layer differs: hostview.mm on macOS, hostlinux.cpp
-//  on Linux.
+//  on Linux. The pointer and mouse input are the same on both, and
+//  are here.
 //
 //============================================================
 
@@ -64,11 +65,27 @@ bool s_running = false;
 // an exit was asked for before the machine had a window to take it
 bool s_exit_pending = false;
 
+// the host's pointer callback, for the run
+pinesy_pointer_fn s_pointer_fn = nullptr;
+void *s_pointer_context = nullptr;
+
+// the pointer is over the host's view (pinesy_mouse_inside)
+bool s_pointer_inside = false;
+
+// what MAME last asked for: the pointer hidden, the pointer captured
+bool s_pointer_hidden = false;
+bool s_pointer_captured = false;
+
 } // anonymous namespace
 
 extern "C" int MacRequestMachineExit();        // in mac/window.cpp
 extern "C" void MacKeyboardEvent(int vk, int down); // in modules/input/input_mac.cpp
 extern "C" void MacCharEvent(unsigned int ch);
+extern "C" void MacMouseButtonEvent(int button, int down);
+extern "C" void MacMouseMotionEvent(float dx, float dy);
+extern "C" void MacMouseWheelEvent(float dv, float dh);
+
+static void pinesy_set_pointer(bool hidden, bool captured);
 
 
 //============================================================
@@ -89,6 +106,11 @@ extern "C" int pinesy_run(int argc, const char *const argv[], const pinesy_host 
 	diagnostics_module::get_instance()->init_crash_diagnostics();
 
 	pinesy_attach_host(host);
+	s_pointer_fn = host ? host->pointer : nullptr;
+	s_pointer_context = host ? host->context : nullptr;
+	s_pointer_inside = false;
+	s_pointer_hidden = false;
+	s_pointer_captured = false;
 
 	mac_options options;
 	mac_osd_interface osd(options);
@@ -113,6 +135,11 @@ extern "C" int pinesy_run(int argc, const char *const argv[], const pinesy_host 
 
 	if (output)
 		osd_output::pop(output.get());
+
+	// the pointer is free again when the run ends
+	pinesy_set_pointer(false, false);
+	s_pointer_fn = nullptr;
+	s_pointer_context = nullptr;
 
 	pinesy_attach_host(nullptr);
 	return res;
@@ -309,4 +336,62 @@ extern "C" void pinesy_key(int keycode, int down)
 extern "C" void pinesy_char(unsigned int ch)
 {
 	MacCharEvent(ch);
+}
+
+
+//============================================================
+//  the pointer: MAME's requests go to the host
+//============================================================
+
+// Tells the host when what MAME asks for changes.
+static void pinesy_set_pointer(bool hidden, bool captured)
+{
+	if ((hidden == s_pointer_hidden) && (captured == s_pointer_captured))
+		return;
+	s_pointer_hidden = hidden;
+	s_pointer_captured = captured;
+	if (s_pointer_fn != nullptr)
+		s_pointer_fn(s_pointer_context, hidden ? 1 : 0, captured ? 1 : 0);
+}
+
+// mac/window.cpp asks for these as the pointer moves over the view,
+// the focus changes and MAME's menu opens and closes
+void MacShowPointer(bool show)
+{
+	pinesy_set_pointer(!show, s_pointer_captured);
+}
+
+void MacCapturePointer(void *wincontroller, bool capture)
+{
+	pinesy_set_pointer(s_pointer_hidden, capture);
+}
+
+int MacPointerInWindow()
+{
+	return s_pointer_inside ? 1 : 0;
+}
+
+
+//============================================================
+//  mouse
+//============================================================
+
+extern "C" void pinesy_mouse_inside(int inside)
+{
+	s_pointer_inside = inside != 0;
+}
+
+extern "C" void pinesy_mouse_move(double dx, double dy)
+{
+	MacMouseMotionEvent(float(dx), float(dy));
+}
+
+extern "C" void pinesy_mouse_button(int button, int down)
+{
+	MacMouseButtonEvent(button, down);
+}
+
+extern "C" void pinesy_mouse_wheel(double notches)
+{
+	MacMouseWheelEvent(float(notches), 0.0f);
 }

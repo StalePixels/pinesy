@@ -179,19 +179,27 @@ std::vector<std::string> debug_arguments(const Settings &settings, bool debug)
 	return result;
 }
 
-std::vector<std::string> Core::run_command_line(const std::vector<std::string> &arguments, bool debug) const
+std::vector<std::string> mouse_arguments(bool mouse)
+{
+	if (!mouse) return {};
+	return { "-mouse" };
+}
+
+std::vector<std::string> Core::run_command_line(const std::vector<std::string> &arguments, bool debug, bool mouse) const
 {
 	std::vector<std::string> command = fixed_options();
 	command.insert(command.end(), arguments.begin(), arguments.end());
+	auto pointer = mouse_arguments(mouse);
+	command.insert(command.end(), pointer.begin(), pointer.end());
 	auto extra = debug_arguments(m_settings, debug);
 	command.insert(command.end(), extra.begin(), extra.end());
 	return command;
 }
 
-int Core::run(const std::vector<std::string> &arguments, bool debug, const pinesy_host *host) const
+int Core::run(const std::vector<std::string> &arguments, bool debug, bool mouse, const pinesy_host *host) const
 {
 	create_folders();
-	std::vector<std::string> command = run_command_line(arguments, debug);
+	std::vector<std::string> command = run_command_line(arguments, debug, mouse);
 	CStrings c(command);
 	return pinesy_run(c.argc(), c.data(), host);
 }
@@ -217,10 +225,13 @@ std::string shell_quoted(std::string_view text)
 	return out + "'";
 }
 
-std::string Core::copy_command_line(const std::string &executable, const std::vector<std::string> &arguments, bool debug) const
+std::string Core::copy_command_line(const std::string &executable, const std::vector<std::string> &arguments, bool debug,
+		bool mouse) const
 {
 	std::vector<std::string> words{ executable, "--" };
 	words.insert(words.end(), arguments.begin(), arguments.end());
+	auto pointer = mouse_arguments(mouse);
+	words.insert(words.end(), pointer.begin(), pointer.end());
 	auto extra = debug_arguments(m_settings, debug);
 	words.insert(words.end(), extra.begin(), extra.end());
 	std::string line;

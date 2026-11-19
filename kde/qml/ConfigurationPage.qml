@@ -173,6 +173,14 @@ Kirigami.Page {
                     onValueModified: page.document.setCustomWindowSize(value)
                 }
 
+                // the mouse setting, for a machine that takes a mouse
+                QQC2.Switch {
+                    Kirigami.FormData.label: i18nc("@option:check", "Mouse:")
+                    visible: page.summary.mouse === true
+                    checked: page.document.mouse
+                    onToggled: page.document.mouse = checked
+                }
+
             }
 
             Kirigami.FormLayout {

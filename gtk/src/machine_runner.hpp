@@ -44,8 +44,8 @@ private:
 };
 
 // A machine's window: a header bar and the view. Every key goes to the
-// machine. Closing the window asks the machine to stop; the window
-// goes when the run has ended.
+// machine, and the mouse over the view goes to MAME. Closing the window
+// asks the machine to stop; the window goes when the run has ended.
 class MachineWindow
 {
 public:
@@ -75,6 +75,11 @@ public:
 	bool on_key_pressed(unsigned keyval, unsigned keycode);
 	void on_key_released(unsigned keycode);
 
+	// Pointer events over the view, in the view's logical units.
+	void on_pointer_enter(double x, double y);
+	void on_pointer_motion(double x, double y);
+	void on_pointer_leave();
+
 private:
 	AdwWindow *m_window = nullptr;
 	GtkWidget *m_header = nullptr;
@@ -89,11 +94,16 @@ private:
 	std::string m_errors;
 	bool m_running = false;
 	bool m_closed = false;
+	// the pointer's last position over the view, to send its movement
+	bool m_has_pointer = false;
+	double m_pointer_x = 0;
+	double m_pointer_y = 0;
 
 	static void on_frame(void *context, const void *pixels, int width, int height, int pitch);
 	static void on_output(void *context, int channel, const char *text);
 	static void on_size(void *context, int width, int height);
 	static void on_pump(void *context);
+	static void on_pointer(void *context, int hide, int capture);
 
 	void on_active_changed();
 	void release_keys();
@@ -109,9 +119,10 @@ public:
 
 	// Runs a configuration in its own window, starting from the main
 	// loop once the current event has been handled. window_size is the
-	// configuration's window size. Does nothing while a machine runs.
+	// configuration's window size. With mouse, the run gives MAME the
+	// mouse (-mouse). Does nothing while a machine runs.
 	void start(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-			bool debug, int window_size);
+			bool debug, int window_size, bool mouse);
 
 	// Asks the running machine to stop. Its window closes when it has.
 	void stop();
@@ -134,7 +145,7 @@ private:
 	sigc::signal<void(const std::string &, int, const std::string &)> m_failed;
 
 	void run(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-			bool debug, int window_size);
+			bool debug, int window_size, bool mouse);
 };
 
 // Headless mode with a window: runs the arguments in a machine window

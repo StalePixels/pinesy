@@ -2,7 +2,10 @@
 
 #include "pinesy.h"
 
+#include <QHoverEvent>
 #include <QKeyEvent>
+#include <QMouseEvent>
+#include <QWheelEvent>
 #include <QQuickWindow>
 #include <QSGSimpleRectNode>
 #include <QSGSimpleTextureNode>
@@ -14,6 +17,8 @@ MachineView::MachineView(QQuickItem *parent)
 	setFlag(ItemIsFocusScope);
 	setActiveFocusOnTab(false);
 	setFocus(true);
+	setAcceptHoverEvents(true);
+	setAcceptedMouseButtons(Qt::AllButtons);
 }
 
 void MachineView::setFrame(const void *pixels, int width, int height, int pitch)
@@ -94,4 +99,74 @@ void MachineView::keyReleaseEvent(QKeyEvent *event)
 	event->accept();
 	if (!event->isAutoRepeat())
 		pinesy_key(int(event->nativeScanCode()), 0);
+}
+
+void MachineView::pointerMoved(const QPointF &position)
+{
+	if (m_hasPointer)
+		pinesy_mouse_move(position.x() - m_pointer.x(), position.y() - m_pointer.y());
+	m_hasPointer = true;
+	m_pointer = position;
+	pinesy_mouse_inside(boundingRect().contains(position) ? 1 : 0);
+}
+
+void MachineView::hoverEnterEvent(QHoverEvent *event)
+{
+	m_hasPointer = true;
+	m_pointer = event->position();
+	pinesy_mouse_inside(1);
+}
+
+void MachineView::hoverMoveEvent(QHoverEvent *event)
+{
+	pointerMoved(event->position());
+}
+
+void MachineView::hoverLeaveEvent(QHoverEvent *)
+{
+	m_hasPointer = false;
+	pinesy_mouse_inside(0);
+}
+
+// MAME's mouse buttons: left, right, middle, then back and forward
+static int mameButton(Qt::MouseButton button)
+{
+	switch (button) {
+	case Qt::LeftButton: return 0;
+	case Qt::RightButton: return 1;
+	case Qt::MiddleButton: return 2;
+	case Qt::BackButton: return 3;
+	case Qt::ForwardButton: return 4;
+	default: return -1;
+	}
+}
+
+void MachineView::mousePressEvent(QMouseEvent *event)
+{
+	// accepted, so the item gets the moves and the release of the drag
+	event->accept();
+	if (const int button = mameButton(event->button()); button >= 0)
+		pinesy_mouse_button(button, 1);
+}
+
+void MachineView::mouseMoveEvent(QMouseEvent *event)
+{
+	event->accept();
+	pointerMoved(event->position());
+}
+
+void MachineView::mouseReleaseEvent(QMouseEvent *event)
+{
+	event->accept();
+	if (const int button = mameButton(event->button()); button >= 0)
+		pinesy_mouse_button(button, 0);
+}
+
+void MachineView::wheelEvent(QWheelEvent *event)
+{
+	event->accept();
+	// 120 is one notch; inverted deltas (natural scrolling) are turned
+	// back to the wheel's own direction
+	const double notches = event->angleDelta().y() / 120.0;
+	pinesy_mouse_wheel(event->inverted() ? -notches : notches);
 }

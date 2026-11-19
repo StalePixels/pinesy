@@ -9,8 +9,9 @@
 //  host NSView; this file makes them for a GTK or Qt host on
 //  Linux. MAME renders in software and passes each frame to the
 //  host, which draws it. The host's events run through its pump
-//  function. The host owns the windows, window order,
-//  fullscreen and the pointer, so those calls do nothing here.
+//  function. The host owns the windows, window order and
+//  fullscreen, so those calls do nothing here. MAME's pointer
+//  requests go to the host from pinesymain.cpp.
 //
 //============================================================
 
@@ -228,15 +229,16 @@ void MacSetWindowContentSize(void *wincontroller, int width, int height) { }
 
 
 //============================================================
-//  owned by the host: window order, fullscreen, pointer
+//  owned by the host: window order, fullscreen; the pointer
+//  goes to the host from pinesymain.cpp
 //============================================================
 
 void MacOrderWindowFront(void *wincontroller) { }
 void MacSetWindowMinSize(void *wincontroller, int width, int height) { }
 void MacSetFullscreen(void *wincontroller, bool fullscreen, uint32_t displayID) { }
-void MacShowPointer(bool show) { }
-void MacCapturePointer(void *wincontroller, bool capture) { }
-int MacPointerInWindow() { return 0; }
+
+// the pointer's position over the view, which MAME's lightgun reads;
+// the host does not give it
 bool MacGetPointerPosition(void *wincontroller, int *outx, int *outy) { return false; }
 
 

@@ -372,6 +372,21 @@ void write_media(json_writer &json, machine_config &config, emu_options &options
 	json.end_array();
 }
 
+// Whether the machine has mouse inputs: an input port field of MAME's
+// mouse types, as -listxml shows a control of type "mouse".
+bool takes_mouse(machine_config &config)
+{
+	ioport_list portlist;
+	std::ostringstream errors;
+	for (device_t &device : device_enumerator(config.root_device()))
+		portlist.append(device, errors);
+	for (auto &port : portlist)
+		for (ioport_field &field : port.second->fields())
+			if ((field.type() == IPT_MOUSE_X) || (field.type() == IPT_MOUSE_Y))
+				return true;
+	return false;
+}
+
 void deliver(const json_writer &json, pinesy_text_fn fn, void *context)
 {
 	if (fn)
@@ -557,6 +572,7 @@ extern "C" int pinesy_describe(int argc, const char *const argv[], pinesy_text_f
 			write_slots(machine, *config, &options);
 			machine.key("media");
 			write_media(machine, *config, options);
+			machine.key("mouse").value(takes_mouse(*config));
 		}
 		catch (std::exception &ex)
 		{

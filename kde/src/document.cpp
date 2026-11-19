@@ -31,6 +31,9 @@ ConfigurationDocument::ConfigurationDocument(QObject *parent)
 	connect(this, &ConfigurationDocument::urlChanged, this, &ConfigurationDocument::titleChanged);
 	connect(this, &ConfigurationDocument::summaryChanged, this, &ConfigurationDocument::titleChanged);
 	connect(this, &ConfigurationDocument::summaryChanged, this, &ConfigurationDocument::canRunChanged);
+	connect(this, &ConfigurationDocument::changed, this, &ConfigurationDocument::commandLineChanged);
+	connect(this, &ConfigurationDocument::summaryChanged, this, &ConfigurationDocument::commandLineChanged);
+	connect(this, &ConfigurationDocument::mouseChanged, this, &ConfigurationDocument::commandLineChanged);
 }
 
 QString ConfigurationDocument::title() const
@@ -50,7 +53,21 @@ QString ConfigurationDocument::commandLine() const
 {
 	if (m_arguments.isEmpty())
 		return {};
-	return Core::instance()->copyCommandLine(m_arguments, false);
+	return Core::instance()->copyCommandLine(m_arguments, false, usesMouse());
+}
+
+bool ConfigurationDocument::usesMouse() const
+{
+	return m_mouse && m_summary.value(QStringLiteral("mouse")).toBool();
+}
+
+void ConfigurationDocument::setMouse(bool mouse)
+{
+	if (mouse == m_mouse)
+		return;
+	m_mouse = mouse;
+	setModified(true);
+	Q_EMIT mouseChanged();
 }
 
 void ConfigurationDocument::setWindowSize(int windowSize)
@@ -187,16 +204,19 @@ QString ConfigurationDocument::load(const QUrl &url)
 	QString machine;
 	QStringList arguments;
 	int windowSize = PINESY_CORE_WINDOW_FIT;
-	if (!Core::readDocument(file.readAll(), &machine, &arguments, &windowSize))
+	bool mouse = false;
+	if (!Core::readDocument(file.readAll(), &machine, &arguments, &windowSize, &mouse))
 		return i18n("This file is not a Pinesy configuration, or it is from a newer version of Pinesy.");
 	m_machine = machine;
 	m_arguments = arguments;
 	m_windowSize = windowSize;
 	m_customWindowSize = false;
+	m_mouse = mouse;
 	m_url = url;
 	setModified(false);
 	Q_EMIT changed();
 	Q_EMIT windowSizeChanged();
+	Q_EMIT mouseChanged();
 	Q_EMIT urlChanged();
 	refresh();
 	return {};
@@ -207,7 +227,7 @@ QString ConfigurationDocument::save(const QUrl &url)
 	QSaveFile file(url.toLocalFile());
 	if (!file.open(QIODevice::WriteOnly))
 		return file.errorString();
-	file.write(Core::writeDocument(m_machine, m_arguments, m_windowSize));
+	file.write(Core::writeDocument(m_machine, m_arguments, m_windowSize, m_mouse));
 	if (!file.commit())
 		return file.errorString();
 	if (url != m_url) {
@@ -222,7 +242,7 @@ void ConfigurationDocument::run(bool debug)
 {
 	if (!canRun())
 		return;
-	m_runningThis = MachineRunner::instance()->start(title(), m_arguments, debug, m_windowSize);
+	m_runningThis = MachineRunner::instance()->start(title(), m_arguments, debug, m_windowSize, usesMouse());
 }
 
 void ConfigurationDocument::copyCommandLine()

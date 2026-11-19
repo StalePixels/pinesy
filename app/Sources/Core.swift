@@ -145,16 +145,19 @@ enum Core {
 
     // MARK: - Runs
 
-    /// Runs a configuration with MAME's fixed options and, with debug,
-    /// the debugger options from the settings. Returns MAME's exit code.
-    static func run(_ arguments: [String], debug: Bool, host: UnsafePointer<pinesy_host>?) -> Int32 {
-        pinesy_core_run(current, encode(arguments), debug ? 1 : 0, host)
+    /// Runs a configuration with MAME's fixed options, -mouse with
+    /// mouse, and, with debug, the debugger options from the settings.
+    /// mouse is true when the configuration's mouse setting is on and
+    /// its summary's mouse is true. Returns MAME's exit code.
+    static func run(_ arguments: [String], debug: Bool, mouse: Bool, host: UnsafePointer<pinesy_host>?) -> Int32 {
+        pinesy_core_run(current, encode(arguments), debug ? 1 : 0, mouse ? 1 : 0, host)
     }
 
-    /// The headless command for a configuration, quoted for zsh.
-    static func copyCommandLine(_ arguments: [String], debug: Bool = false) -> String {
+    /// The headless command for a configuration, quoted for zsh, with
+    /// -mouse as run() has it.
+    static func copyCommandLine(_ arguments: [String], debug: Bool = false, mouse: Bool) -> String {
         let executable = Bundle.main.executablePath ?? "Pinesy"
-        return take(pinesy_core_copy_command_line(current, executable, encode(arguments), debug ? 1 : 0)) ?? ""
+        return take(pinesy_core_copy_command_line(current, executable, encode(arguments), debug ? 1 : 0, mouse ? 1 : 0)) ?? ""
     }
 
     // MARK: - Headless mode
