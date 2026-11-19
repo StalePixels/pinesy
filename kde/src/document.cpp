@@ -245,6 +245,14 @@ void ConfigurationDocument::run(bool debug)
 	m_runningThis = MachineRunner::instance()->start(title(), m_arguments, debug, m_windowSize, takesMouse(), m_mouse);
 }
 
+bool ConfigurationDocument::clearNvram()
+{
+	// MAME writes NVRAM when a machine exits, so it is not cleared while one runs
+	if (m_arguments.isEmpty() || !MachineRunner::instance()->running().isEmpty())
+		return false;
+	return pinesy_core_clear_nvram(Core::instance()->handle(), Core::toJson(m_arguments).constData()) == 0;
+}
+
 void ConfigurationDocument::copyCommandLine()
 {
 	if (!m_arguments.isEmpty())

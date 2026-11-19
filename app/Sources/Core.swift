@@ -143,6 +143,14 @@ enum Core {
         return NSSize(width: Int(width), height: Int(height))
     }
 
+    // MARK: - NVRAM
+
+    /// Deletes the NVRAM MAME saved for the configuration's driver, and
+    /// nothing else. False when something could not be deleted.
+    static func clearNVRAM(_ arguments: [String]) -> Bool {
+        pinesy_core_clear_nvram(current, encode(arguments)) == 0
+    }
+
     // MARK: - Runs
 
     /// Runs a configuration with MAME's fixed options, the mouse option

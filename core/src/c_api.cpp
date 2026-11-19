@@ -171,6 +171,20 @@ void pinesy_core_create_folders(const pinesy_core *core)
 	if (core) core->core.create_folders();
 }
 
+char *pinesy_core_nvram_folder(const pinesy_core *core, const char *arguments)
+{
+	auto args = read_arguments(arguments);
+	if (!core || !args) return nullptr;
+	return give(core->core.nvram_folder(*args));
+}
+
+int pinesy_core_clear_nvram(const pinesy_core *core, const char *arguments)
+{
+	auto args = read_arguments(arguments);
+	if (!core || !args) return -1;
+	return core->core.clear_nvram(*args) ? 0 : -1;
+}
+
 //------------------------------------------------------------
 //  The catalogue
 //------------------------------------------------------------

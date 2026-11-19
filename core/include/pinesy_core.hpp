@@ -97,6 +97,8 @@ struct Media
 	std::string interface;
 	bool mandatory = false;
 	std::string current;           // the file named on the command line; empty for none
+	// The extensions as a list. A hard disk device (type_name
+	// "harddisk") also lists img and raw, for raw disk images.
 	std::vector<std::string> extension_list() const;
 	bool operator==(const Media &) const = default;
 };
@@ -562,6 +564,19 @@ public:
 
 	// Creates the user's ROM folder and the folders MAME writes.
 	void create_folders() const;
+
+	// The folder MAME keeps NVRAM in for a configuration: the last
+	// -nvram_directory in its command line, else the data folder's
+	// "nvram" (fixed_options()).
+	std::string nvram_folder(const std::vector<std::string> &arguments) const;
+
+	// Deletes the NVRAM MAME saved for the configuration's driver: the
+	// entries in nvram_folder() named as the driver, or as the driver,
+	// "_" and a number (MAME's name for the NVRAM of a ROM that is not
+	// the driver's default), files and folders alike. Nothing else is
+	// deleted. True when every such entry is gone; false when one could
+	// not be deleted or the command line has no driver.
+	bool clear_nvram(const std::vector<std::string> &arguments) const;
 
 	// Asks MAME about a command line, with the fixed options first.
 	MachineDescription describe(const std::vector<std::string> &arguments) const;

@@ -48,6 +48,7 @@ With no arguments the app starts and asks for a machine. With any arguments it r
 | Machine > Run with Debugger (Opt+Cmd+R) | Machine > Run with Debugger (Ctrl+Shift+R), also in the page's toolbar |
 | Machine > Stop (Cmd+.) | Machine > Stop (Ctrl+.) |
 | Machine > Reset, Machine > Hard Reset | Machine > Reset, Machine > Hard Reset |
+| Machine > Clear NVRAM… | Machine > Clear NVRAM…, not available while a machine runs. A dialog asks to confirm. |
 | Machine > Copy Command Line | Machine > Copy Command Line, and a button under the command line |
 | Settings window | Settings > Configure Pi/Ne-Sy: a window with a General page and a Debugger page |
 | Settings in UserDefaults | Settings in KConfig, in `pinesyrc` |

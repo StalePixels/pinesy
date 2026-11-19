@@ -505,6 +505,28 @@ void test_checking(pinesy_core *core)
 	const json::Value *ram = slot_row(summary, "ram");
 	check(ram && text_of(*ram, "label") == "Memory", "the memory slot's row is labelled \"Memory\"");
 
+	// a hard disk device also lists img and raw; other media do not.
+	{
+		const json::Value *media = member(summary, "media");
+		bool hard_disk = false, others_plain = true;
+		for (const json::Value &row : media ? media->array() : json::Array{})
+		{
+			const json::Value *device = member(row, "media");
+			Strings list = strings(*member(*device, "extensionList"));
+			const bool raw = std::count(list.begin(), list.end(), "img") == 1 && std::count(list.begin(), list.end(), "raw") == 1;
+			if (text_of(*device, "typename") == "harddisk")
+				hard_disk = raw && std::find(list.begin(), list.end(), "chd") != list.end();
+			else
+			{
+				const std::string extensions = text_of(*device, "extensions");
+				if (list.size() != size_t(std::count(extensions.begin(), extensions.end(), ',')) + 1)
+					others_plain = false;
+			}
+		}
+		check(hard_disk, "the Next's SD card, a hard disk device, lists MAME's extensions and img and raw");
+		check(others_plain, "media that are not hard disks list only MAME's extensions");
+	}
+
 	// the summary says whether the machine, with its hardware, has mouse
 	// inputs: the Next has its Kempston mouse built in, a 48K Spectrum
 	// has one only with the Kempston mouse interface fitted.
@@ -554,6 +576,30 @@ void test_paths(pinesy_core *core)
 
 	pinesy_core_set_settings(core, (R"({"romFolders":[")" + extra + R"(",")" + data + R"(/bad;folder"]})").c_str());
 	Strings options = strings(parse(pinesy_core_fixed_options(core)));
+
+	// NVRAM: the data folder's nvram, or the last -nvram_directory of the
+	// command line. Clearing deletes the driver's entries and nothing else.
+	{
+		namespace fs = std::filesystem;
+		check(take(pinesy_core_nvram_folder(core, args_json({ "tbblue" }).c_str())) == data + "/nvram",
+				"a configuration's NVRAM folder is the data folder's nvram");
+		const std::string folder = data + "/nvram-test";
+		check(take(pinesy_core_nvram_folder(core, args_json({ "tbblue", "-nvram_directory", "/a", "-nvram_directory", folder }).c_str())) == folder,
+				"the last -nvram_directory names the NVRAM folder");
+		fs::remove_all(folder);
+		const Strings line{ "tbblue", "-nvram_directory", folder };
+		check(pinesy_core_clear_nvram(core, args_json(line).c_str()) == 0, "clearing NVRAM that was never saved succeeds");
+		fs::create_directories(folder + "/tbblue/sw");
+		for (const char *name : { "/tbblue/sw/dev", "/tbblue_1", "/tbblue_x", "/tbbluex", "/specnext_ks3" })
+			std::fclose(std::fopen((folder + name).c_str(), "w"));
+		check(pinesy_core_clear_nvram(core, args_json(line).c_str()) == 0, "clearing the Next's NVRAM succeeds");
+		check(!fs::exists(folder + "/tbblue") && !fs::exists(folder + "/tbblue_1"),
+				"the driver's NVRAM folder and its NVRAM for another ROM are deleted");
+		check(fs::exists(folder + "/tbblue_x") && fs::exists(folder + "/tbbluex") && fs::exists(folder + "/specnext_ks3"),
+				"NVRAM of other names is kept");
+		check(pinesy_core_clear_nvram(core, args_json({}).c_str()) == -1, "a command line without a driver clears nothing");
+		fs::remove_all(folder);
+	}
 
 	// the first option is -noreadconfig.
 	check(!options.empty() && options[0] == "-noreadconfig", "the fixed options start with -noreadconfig");

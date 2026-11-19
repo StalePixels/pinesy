@@ -262,7 +262,7 @@ Kirigami.Page {
                         id: mediaRow
                         required property var modelData
                         readonly property var media: modelData.media
-                        readonly property var extensions: media.extensions === "" ? [] : media.extensions.split(",")
+                        readonly property var extensions: media.extensionList
                         readonly property bool needed: media.mandatory && media.current === ""
                         readonly property bool missing: (page.summary.missingFiles ?? []).indexOf(media.name) >= 0
                         readonly property string sdCardProblem: (page.summary.sdCardProblems ?? {})[media.name] ?? ""

@@ -17,6 +17,7 @@
 
 #include "pinesy.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <utility>
 
@@ -132,6 +133,48 @@ void Core::create_folders() const
 		std::error_code error;
 		std::filesystem::create_directories(folder, error);   // a folder that cannot be made is left to MAME
 	}
+}
+
+//------------------------------------------------------------
+//  NVRAM
+//------------------------------------------------------------
+
+std::string Core::nvram_folder(const std::vector<std::string> &arguments) const
+{
+	// a later option takes precedence, as in MAME
+	std::optional<std::string> folder;
+	for (const Arguments::Option &option : Arguments::parse(arguments).options)
+		if (option.name == "nvram_directory" && option.has_value) folder = option.value;
+	return folder ? *folder : join(data_folder(), "nvram");
+}
+
+bool Core::clear_nvram(const std::vector<std::string> &arguments) const
+{
+	const std::string driver = Arguments::parse(arguments).driver;
+	if (driver.empty()) return false;
+
+	// MAME names a machine's NVRAM after its driver, with "_<n>" for a
+	// ROM that is not the driver's default (running_machine::nvram_filename)
+	auto is_driver_nvram = [&driver](const std::string &name) {
+		if (name == driver) return true;
+		if (name.size() <= driver.size() + 1 || name.compare(0, driver.size(), driver) != 0 || name[driver.size()] != '_')
+			return false;
+		return std::all_of(name.begin() + driver.size() + 1, name.end(), [](char c) { return c >= '0' && c <= '9'; });
+	};
+
+	namespace fs = std::filesystem;
+	std::error_code error;
+	fs::directory_iterator entries(nvram_folder(arguments), error);
+	if (error) return error == std::errc::no_such_file_or_directory;   // no folder: nothing saved
+	bool cleared = true;
+	for (const fs::directory_entry &entry : entries)
+	{
+		if (!is_driver_nvram(entry.path().filename().string())) continue;
+		std::error_code removed;
+		fs::remove_all(entry.path(), removed);
+		if (removed) cleared = false;
+	}
+	return cleared;
 }
 
 //------------------------------------------------------------

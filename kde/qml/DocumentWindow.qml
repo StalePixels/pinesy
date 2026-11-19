@@ -126,6 +126,13 @@ Kirigami.ApplicationWindow {
                 enabled: window.running
                 onTriggered: MachineRunner.reset(true)
             }
+            QQC2.Action {
+                text: i18nc("@action", "Clear NVRAM…")
+                icon.name: "edit-clear"
+                // MAME writes NVRAM when a machine exits, so it is not cleared while one runs
+                enabled: !window.running && !window.document.empty
+                onTriggered: clearNvramDialog.open()
+            }
             QQC2.MenuSeparator {}
             QQC2.Action {
                 text: i18nc("@action", "Copy Command Line")
@@ -237,6 +244,31 @@ Kirigami.ApplicationWindow {
     Kirigami.PromptDialog {
         id: errorDialog
         title: i18nc("@title:dialog", "The configuration could not be read or saved")
+        standardButtons: Kirigami.Dialog.Ok
+    }
+
+    Kirigami.PromptDialog {
+        id: clearNvramDialog
+        title: i18nc("@title:dialog", "Clear the NVRAM of \"%1\"?", window.document.title)
+        subtitle: i18n("The NVRAM that MAME saved for this machine is deleted. You cannot undo this.")
+        standardButtons: Kirigami.Dialog.Cancel
+        customFooterActions: [
+            Kirigami.Action {
+                text: i18nc("@action:button", "Clear NVRAM")
+                icon.name: "edit-clear"
+                onTriggered: {
+                    clearNvramDialog.close()
+                    if (!window.running && !window.document.clearNvram())
+                        nvramFailedDialog.open()
+                }
+            }
+        ]
+    }
+
+    Kirigami.PromptDialog {
+        id: nvramFailedDialog
+        title: i18nc("@title:dialog", "The NVRAM could not be cleared")
+        subtitle: i18n("A file in the NVRAM folder could not be deleted.")
         standardButtons: Kirigami.Dialog.Ok
     }
 

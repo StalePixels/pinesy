@@ -53,6 +53,7 @@ The permissions:
 | Machine > Run with Debugger (⌥⌘R) | Run with Debugger in the Run button's menu (Ctrl+Shift+R) |
 | Machine > Stop (⌘.) | The Stop button, shown while a machine runs (Ctrl+.) |
 | Machine > Reset, Machine > Hard Reset | Reset and Hard Reset in the main menu, enabled while a machine runs |
+| Machine > Clear NVRAM… | Clear NVRAM… in the main menu, under Hard Reset, not available while a machine runs. An alert dialog asks to confirm, with Clear NVRAM as a destructive button. |
 | Machine > Copy Command Line | Copy Command Line in the main menu (Ctrl+Shift+C), and the copy button by the command line |
 | Settings (UserDefaults) | Preferences in the main menu (Ctrl+,), stored with GSettings |
 | Debugger windows | MAME's GTK debugger |

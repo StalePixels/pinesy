@@ -96,6 +96,9 @@ public:
 
 	Q_INVOKABLE void run(bool debug);
 	Q_INVOKABLE void copyCommandLine();
+	// Deletes the NVRAM MAME saved for the configuration's driver, and
+	// nothing else. False when a file could not be deleted.
+	Q_INVOKABLE bool clearNvram();
 
 Q_SIGNALS:
 	void changed();

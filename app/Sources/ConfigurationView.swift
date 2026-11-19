@@ -11,6 +11,8 @@ struct ConfigurationActions {
     let run: () -> Void
     let runWithDebugger: () -> Void
     let copyCommandLine: () -> Void
+    let canClearNVRAM: Bool
+    let clearNVRAM: () -> Void
 }
 
 extension FocusedValues {
@@ -38,6 +40,9 @@ struct ConfigurationView: View {
     /// The configuration changed while a machine ran; MAME is asked about
     /// it when the run ends.
     @State private var refreshWaiting = false
+    /// Clear NVRAM asks first, and says when it could not delete a file.
+    @State private var confirmingClearNVRAM = false
+    @State private var clearNVRAMFailed = false
 
     private var title: String {
         fileURL?.deletingPathExtension().lastPathComponent
@@ -48,6 +53,11 @@ struct ConfigurationView: View {
 
     private var canRun: Bool {
         runner.running == nil && summary?.canRun == true
+    }
+
+    /// MAME writes NVRAM when a machine exits, so it is not cleared while one runs.
+    private var canClearNVRAM: Bool {
+        runner.running == nil && !document.arguments.isEmpty
     }
 
     /// The machine takes a mouse, so the mouse setting applies.
@@ -83,7 +93,9 @@ struct ConfigurationView: View {
                            ConfigurationActions(canRun: canRun,
                                                 run: { run(debug: false) },
                                                 runWithDebugger: { run(debug: true) },
-                                                copyCommandLine: copyCommandLine))
+                                                copyCommandLine: copyCommandLine,
+                                                canClearNVRAM: canClearNVRAM,
+                                                clearNVRAM: { if canClearNVRAM { confirmingClearNVRAM = true } }))
         .background(WindowReader { window = $0 })
         .sheet(isPresented: $choosingMachine) {
             MachinePicker(catalogue: Catalogue.shared,
@@ -109,6 +121,20 @@ struct ConfigurationView: View {
                 }
             }
             mediaToChoose = nil
+        }
+        .alert("Clear the NVRAM of \(title)?", isPresented: $confirmingClearNVRAM) {
+            Button("Clear NVRAM", role: .destructive) {
+                guard canClearNVRAM else { return }
+                clearNVRAMFailed = !Core.clearNVRAM(document.arguments)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The NVRAM that MAME saved for this machine is deleted. You cannot undo this.")
+        }
+        .alert("The NVRAM could not be cleared", isPresented: $clearNVRAMFailed) {
+            Button("OK") {}
+        } message: {
+            Text("A file in the NVRAM folder could not be deleted.")
         }
         .alert("This SD card image cannot be used",
                isPresented: Binding(get: { refusedFile != nil }, set: { if !$0 { refusedFile = nil } })) {

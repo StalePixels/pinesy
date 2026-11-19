@@ -129,6 +129,7 @@ ConfigurationWindow::ConfigurationWindow(Application &app) : m_app(app)
 	auto running = Gio::Menu::create();
 	running->append("_Reset", "app.reset");
 	running->append("_Hard Reset", "app.hard-reset");
+	running->append("Clear _NVRAM…", "win.clear-nvram");
 	menu->append_section(running);
 	auto machine = Gio::Menu::create();
 	machine->append("_Copy Command Line", "win.copy-command-line");
@@ -182,6 +183,7 @@ ConfigurationWindow::ConfigurationWindow(Application &app) : m_app(app)
 	m_run = map->add_action("run", [this] { run(false); });
 	m_run_debug = map->add_action("run-debug", [this] { run(true); });
 	m_copy = map->add_action("copy-command-line", [this] { copy_command_line(); });
+	m_clear_nvram = map->add_action("clear-nvram", [this] { clear_nvram(); });
 	map->add_action("save", [this] { save(); });
 	map->add_action("save-as", [this] { save_as(); });
 
@@ -249,6 +251,8 @@ void ConfigurationWindow::update_actions()
 	m_run->set_enabled(can_run);
 	m_run_debug->set_enabled(can_run);
 	m_copy->set_enabled(!m_document.arguments.empty());
+	// MAME writes NVRAM when a machine exits, so it is not cleared while one runs
+	m_clear_nvram->set_enabled(!running && !m_document.arguments.empty());
 	gtk_widget_set_visible(m_stop, running);
 	gtk_widget_set_sensitive(GTK_WIDGET(m_page), !running);
 }
@@ -883,6 +887,28 @@ void ConfigurationWindow::save_as(std::function<void()> then)
 		if (write(file) && then)
 			then();
 	});
+}
+
+void ConfigurationWindow::clear_nvram()
+{
+	if (m_app.runner().running() || m_document.arguments.empty())
+		return;
+
+	AdwDialog *dialog = adw_alert_dialog_new(("Clear the NVRAM of “" + title() + "”?").c_str(), nullptr);
+	adw_alert_dialog_set_body(ADW_ALERT_DIALOG(dialog),
+			"The NVRAM that MAME saved for this machine is deleted. You cannot undo this.");
+	adw_alert_dialog_add_responses(ADW_ALERT_DIALOG(dialog), "cancel", "_Cancel", "clear", "_Clear NVRAM", nullptr);
+	adw_alert_dialog_set_response_appearance(ADW_ALERT_DIALOG(dialog), "clear", ADW_RESPONSE_DESTRUCTIVE);
+	adw_alert_dialog_set_default_response(ADW_ALERT_DIALOG(dialog), "cancel");
+	adw_alert_dialog_set_close_response(ADW_ALERT_DIALOG(dialog), "cancel");
+	auto alive = std::weak_ptr<bool>(m_alive);
+	connect_string(dialog, "response", [this, alive](const std::string &response) {
+		if (alive.expired() || response != "clear" || m_app.runner().running())
+			return;
+		if (!m_app.core().clear_nvram(m_document.arguments))
+			m_app.alert("The NVRAM could not be cleared", "A file in the NVRAM folder could not be deleted.", &window());
+	});
+	adw_dialog_present(dialog, GTK_WIDGET(m_window));
 }
 
 bool ConfigurationWindow::on_close_request()

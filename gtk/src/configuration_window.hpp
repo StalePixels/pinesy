@@ -64,6 +64,7 @@ private:
 	Glib::RefPtr<Gio::SimpleAction> m_run;
 	Glib::RefPtr<Gio::SimpleAction> m_run_debug;
 	Glib::RefPtr<Gio::SimpleAction> m_copy;
+	Glib::RefPtr<Gio::SimpleAction> m_clear_nvram;
 
 	core::Document m_document;
 	Glib::RefPtr<Gio::File> m_file;
@@ -106,6 +107,8 @@ private:
 
 	void run(bool debug);
 	void copy_command_line();
+	// Asks, then deletes the NVRAM MAME saved for the configuration's driver.
+	void clear_nvram();
 	void save(std::function<void()> then = {});
 	void save_as(std::function<void()> then = {});
 	bool write(const Glib::RefPtr<Gio::File> &file);

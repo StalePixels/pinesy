@@ -136,6 +136,21 @@ char *pinesy_core_rom_folders(const pinesy_core *core);
 // themselves.
 void pinesy_core_create_folders(const pinesy_core *core);
 
+// The folder MAME keeps NVRAM in for a configuration: the last
+// -nvram_directory in its command line, else the data folder's
+// "nvram", as pinesy_core_fixed_options() gives it.
+char *pinesy_core_nvram_folder(const pinesy_core *core, const char *arguments);
+
+// Deletes the NVRAM MAME saved for a configuration's driver: the
+// entries in pinesy_core_nvram_folder() named as the driver, or as the
+// driver, "_" and a number (MAME's name for the NVRAM of a ROM that is
+// not the driver's default), files and folders alike. Nothing else is
+// deleted. MAME writes NVRAM when a machine exits, so a front end
+// does not call this while a machine runs. Returns 0 when every such
+// entry is gone, also when there was none; -1 when one could not be
+// deleted, or arguments is not a command line with a driver.
+int pinesy_core_clear_nvram(const pinesy_core *core, const char *arguments);
+
 //------------------------------------------------------------
 //  The machine catalogue
 //

@@ -14,6 +14,8 @@
 #include "pinesy_core.hpp"
 #include "internal.hpp"
 
+#include <algorithm>
+
 namespace pinesy::core {
 
 using json::Value;
@@ -118,6 +120,10 @@ std::vector<std::string> Media::extension_list() const
 		if (comma > start) result.push_back(extensions.substr(start, comma - start));
 		start = comma + 1;
 	}
+	// raw hard disk images, which MAME's hard disk devices also open
+	if (type_name == "harddisk")
+		for (const char *raw : { "img", "raw" })
+			if (std::find(result.begin(), result.end(), raw) == result.end()) result.push_back(raw);
 	return result;
 }
 

@@ -48,6 +48,8 @@ struct MachineCommands: Commands {
                 .disabled(runner.running == nil)
             Button("Hard Reset") { runner.reset(hard: true) }
                 .disabled(runner.running == nil)
+            Button("Clear NVRAM…") { actions?.clearNVRAM() }
+                .disabled(actions?.canClearNVRAM != true)
             Divider()
             Button("Copy Command Line") { actions?.copyCommandLine() }
                 .disabled(actions == nil)
