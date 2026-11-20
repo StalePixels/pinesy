@@ -73,14 +73,16 @@ void RunWindow::onPump(void *)
 // Qt has no call that holds the pointer in a window, so capture is not
 // done: the pointer is hidden over the view, and the machine gets the
 // mouse's movement while the pointer is over the view or a drag that
-// started there goes on.
-void RunWindow::onPointer(void *context, int hide, int)
+// started there goes on. MAME's request to capture still counts as the
+// pointer held, for the Grab/Release Pointer item.
+void RunWindow::onPointer(void *context, int hide, int capture)
 {
-	MachineView *view = static_cast<RunWindow *>(context)->m_view;
+	auto self = static_cast<RunWindow *>(context);
 	if (hide)
-		view->setCursor(Qt::BlankCursor);
+		self->m_view->setCursor(Qt::BlankCursor);
 	else
-		view->unsetCursor();
+		self->m_view->unsetCursor();
+	Q_EMIT self->pointerHeldChanged(capture != 0);
 }
 
 // Takes the size the core gives for a frame of frameWidth x frameHeight

@@ -34,6 +34,7 @@ bool MachineRunner::start(const QString &title, const QStringList &arguments, bo
 
 	m_window = new RunWindow(windowSize);
 	m_window->setTitle(title);
+	connect(m_window, &RunWindow::pointerHeldChanged, this, [this](bool held) { setPointerHeld(held); });
 	m_window->show();
 	m_window->requestActivate();
 
@@ -54,6 +55,7 @@ void MachineRunner::run(const QStringList &arguments, bool debug, bool takesMous
 	m_window->hide();
 	m_window->deleteLater();
 	m_window = nullptr;
+	setPointerHeld(false);
 	m_running.clear();
 	Q_EMIT runningChanged();
 
@@ -72,6 +74,19 @@ void MachineRunner::stop()
 void MachineRunner::reset(bool hard)
 {
 	pinesy_reset(hard ? 1 : 0);
+}
+
+void MachineRunner::togglePointer()
+{
+	pinesy_toggle_pointer();
+}
+
+void MachineRunner::setPointerHeld(bool held)
+{
+	if (held == m_pointerHeld)
+		return;
+	m_pointerHeld = held;
+	Q_EMIT pointerHeldChanged();
 }
 
 bool MachineRunner::quitWhenStopped()

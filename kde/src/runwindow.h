@@ -30,6 +30,10 @@ public:
 	// Call before pinesy_run(): MAME takes the view's size from here.
 	void prepare();
 
+Q_SIGNALS:
+	// MAME holds the pointer in the view (true), or lets it go.
+	void pointerHeldChanged(bool held);
+
 protected:
 	void closeEvent(QCloseEvent *event) override;
 

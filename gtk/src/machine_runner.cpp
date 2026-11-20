@@ -307,11 +307,14 @@ void MachineWindow::on_pump(void *)
 // GTK has no call that holds the pointer in a window, so capture is
 // not done: the pointer is hidden over the view, and the machine gets
 // the mouse's movement while the pointer is over the view or a drag
-// that started there goes on.
-void MachineWindow::on_pointer(void *context, int hide, int)
+// that started there goes on. MAME's request to capture still counts
+// as the pointer held, for the Grab/Release Pointer item.
+void MachineWindow::on_pointer(void *context, int hide, int capture)
 {
 	auto self = static_cast<MachineWindow *>(context);
 	gtk_widget_set_cursor_from_name(GTK_WIDGET(self->m_view->gobj()), hide ? "none" : nullptr);
+	if (self->m_on_pointer_held)
+		self->m_on_pointer_held(capture != 0);
 }
 
 void MachineWindow::on_pointer_enter(double x, double y)
@@ -403,6 +406,12 @@ void MachineRunner::run(const core::Core &core, const std::string &title, const 
 		if (window.show_and_wait())
 		{
 			pinesy_host host = window.host();
+			window.set_on_pointer_held([this](bool held) {
+				if (held == m_pointer_held)
+					return;
+				m_pointer_held = held;
+				m_changed.emit();
+			});
 			window.set_running(true);
 			code = core.run(arguments, debug, takes_mouse, mouse, &host);
 			window.set_running(false);
@@ -412,6 +421,7 @@ void MachineRunner::run(const core::Core &core, const std::string &title, const 
 	}
 
 	m_running = false;
+	m_pointer_held = false;
 	m_changed.emit();
 	m_app.release();
 
@@ -429,6 +439,12 @@ void MachineRunner::reset(bool hard)
 {
 	if (m_running)
 		pinesy_reset(hard ? 1 : 0);
+}
+
+void MachineRunner::toggle_pointer()
+{
+	if (m_running)
+		pinesy_toggle_pointer();
 }
 
 //------------------------------------------------------------

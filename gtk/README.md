@@ -53,7 +53,8 @@ The permissions:
 | Machine > Run with Debugger (⌥⌘R) | Run with Debugger in the Run button's menu (Ctrl+Shift+R) |
 | Machine > Stop (⌘.) | The Stop button, shown while a machine runs (Ctrl+.) |
 | Machine > Reset, Machine > Hard Reset | Reset and Hard Reset in the main menu, enabled while a machine runs |
-| Machine > Clear NVRAM… | Clear NVRAM… in the main menu, under Hard Reset, not available while a machine runs. An alert dialog asks to confirm, with Clear NVRAM as a destructive button. |
+| Machine > Release Pointer / Grab Pointer (⇧⌘M) | Release Pointer / Grab Pointer in the main menu (Ctrl+Shift+M), enabled while a machine runs. The pointer is not held on GNOME, so Release Pointer only stops the machine's mouse input, until Grab Pointer or a click in the view. In the machine's window the key goes to MAME, as MAME's UI Release Pointer key. |
+| Machine > Clear NVRAM… | Clear NVRAM… in the main menu, under Grab Pointer, not available while a machine runs. An alert dialog asks to confirm, with Clear NVRAM as a destructive button. |
 | Machine > Copy Command Line | Copy Command Line in the main menu (Ctrl+Shift+C), and the copy button by the command line |
 | Settings (UserDefaults) | Preferences in the main menu (Ctrl+,), stored with GSettings |
 | Debugger windows | MAME's GTK debugger |

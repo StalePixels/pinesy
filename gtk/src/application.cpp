@@ -52,13 +52,16 @@ void Application::on_startup()
 	auto stop = add_action("stop", [this] { m_runner.stop(); });
 	auto reset = add_action("reset", [this] { m_runner.reset(false); });
 	auto hard_reset = add_action("hard-reset", [this] { m_runner.reset(true); });
+	auto toggle_pointer = add_action("toggle-pointer", [this] { m_runner.toggle_pointer(); });
 	stop->set_enabled(false);
 	reset->set_enabled(false);
 	hard_reset->set_enabled(false);
-	m_runner.signal_changed().connect([this, stop, reset, hard_reset] {
+	toggle_pointer->set_enabled(false);
+	m_runner.signal_changed().connect([this, stop, reset, hard_reset, toggle_pointer] {
 		stop->set_enabled(m_runner.running());
 		reset->set_enabled(m_runner.running());
 		hard_reset->set_enabled(m_runner.running());
+		toggle_pointer->set_enabled(m_runner.running());
 	});
 	add_action("quit", [this] { quit_app(); });
 
@@ -66,6 +69,7 @@ void Application::on_startup()
 	set_accel_for_action("app.open", "<Control>o");
 	set_accel_for_action("app.settings", "<Control>comma");
 	set_accel_for_action("app.stop", "<Control>period");
+	set_accel_for_action("app.toggle-pointer", "<Control><Shift>m");
 	set_accel_for_action("app.quit", "<Control>q");
 	set_accel_for_action("win.save", "<Control>s");
 	set_accel_for_action("win.save-as", "<Control><Shift>s");

@@ -87,9 +87,13 @@ typedef struct pinesy_host
 	// (pinesy_mouse_inside), MAME asks to hide it in a run with -mouse
 	// or -lightgun, and to capture it in a run with -mouse. It asks to
 	// show and release it when the app loses the focus, when MAME's
-	// menu opens, and at the end of the run. A call comes only when
-	// either value changes. MAME's debugger, while enabled, makes no
-	// requests. May be null.
+	// menu opens, and at the end of the run. MAME's UI Release Pointer
+	// key (Command+Shift+M on macOS and Ctrl+Shift+M on Linux by
+	// default, set in MAME's Input menu) or pinesy_toggle_pointer()
+	// shows and frees a captured pointer, and the machine gets no mouse
+	// input until the same key, pinesy_toggle_pointer() or a click in
+	// the view grabs it again; that click does not reach the machine. A call comes only when either value changes. MAME's
+	// debugger, while enabled, makes no requests. May be null.
 	pinesy_pointer_fn pointer;
 
 	void *context;
@@ -112,6 +116,11 @@ int pinesy_request_exit(void);
 // with the same command line. Returns 1 if a machine took the request,
 // 0 if none is running or it has not started yet.
 int pinesy_reset(int hard);
+
+// Releases a captured pointer, or grabs it again, as MAME's UI Release
+// Pointer key does (see pinesy_host.pointer). A grab moves the pointer
+// into the view. Returns 1 while pinesy_run() runs.
+int pinesy_toggle_pointer(void);
 
 // Keyboard input. keycode is the key's position, not its character:
 // on macOS a virtual key code (NSEvent keyCode, kVK_* in Carbon), on

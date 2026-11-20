@@ -48,6 +48,7 @@ With no arguments the app starts and asks for a machine. With any arguments it r
 | Machine > Run with Debugger (Opt+Cmd+R) | Machine > Run with Debugger (Ctrl+Shift+R), also in the page's toolbar |
 | Machine > Stop (Cmd+.) | Machine > Stop (Ctrl+.) |
 | Machine > Reset, Machine > Hard Reset | Machine > Reset, Machine > Hard Reset |
+| Machine > Release Pointer / Grab Pointer (⇧⌘M) | Machine > Release Pointer / Grab Pointer (Ctrl+Shift+M). The pointer is not held on KDE, so Release Pointer only stops the machine's mouse input, until Grab Pointer or a click in the view. In the machine's window the key goes to MAME, as MAME's UI Release Pointer key. |
 | Machine > Clear NVRAM… | Machine > Clear NVRAM…, not available while a machine runs. A dialog asks to confirm. |
 | Machine > Copy Command Line | Machine > Copy Command Line, and a button under the command line |
 | Settings window | Settings > Configure Pi/Ne-Sy: a window with a General page and a Debugger page |

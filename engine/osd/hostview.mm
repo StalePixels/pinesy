@@ -56,6 +56,7 @@ bool s_had_keyboard = false;
 
 // in pinesymain.cpp
 void pinesy_retry_exit();
+void pinesy_poll_pointer();
 void pinesy_render_size(void *wincontroller, int &width, int &height);
 void pinesy_fill_frame(void *wincontroller);
 void pinesy_release_keys();
@@ -242,6 +243,7 @@ void MacPollInputs()
 	s_had_keyboard = has_keyboard;
 
 	pinesy_retry_exit();
+	pinesy_poll_pointer();
 }
 
 bool MacAppHasFocus()

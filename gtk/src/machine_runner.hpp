@@ -13,6 +13,7 @@
 #include <gtkmm/widget.h>
 #include <sigc++/signal.h>
 
+#include <functional>
 #include <set>
 #include <string>
 #include <vector>
@@ -68,6 +69,10 @@ public:
 	// the machine to stop.
 	void set_running(bool running) { m_running = running; }
 
+	// Called with true when MAME holds the pointer in the view, and with
+	// false when it lets it go.
+	void set_on_pointer_held(std::function<void(bool)> fn) { m_on_pointer_held = std::move(fn); }
+
 	// MAME's error lines from the run.
 	const std::string &errors() const { return m_errors; }
 
@@ -94,6 +99,7 @@ private:
 	std::string m_errors;
 	bool m_running = false;
 	bool m_closed = false;
+	std::function<void(bool)> m_on_pointer_held;
 	// the pointer's last position over the view, to send its movement
 	bool m_has_pointer = false;
 	double m_pointer_x = 0;
@@ -117,6 +123,9 @@ public:
 
 	bool running() const { return m_running; }
 
+	// The running machine holds the pointer in its view.
+	bool pointer_held() const { return m_pointer_held; }
+
 	// Runs a configuration in its own window, starting from the main
 	// loop once the current event has been handled. window_size is the
 	// configuration's window size. takes_mouse is the summary's mouse
@@ -132,7 +141,11 @@ public:
 	// power-on.
 	void reset(bool hard);
 
-	// Emitted when a run starts and when it ends.
+	// Releases a held pointer, or grabs it again.
+	void toggle_pointer();
+
+	// Emitted when a run starts and when it ends, and when the pointer
+	// is held or let go.
 	sigc::signal<void()> &signal_changed() { return m_changed; }
 
 	// Emitted when a run ends with an exit code that is not 0: the
@@ -142,6 +155,7 @@ public:
 private:
 	Gtk::Application &m_app;
 	bool m_running = false;
+	bool m_pointer_held = false;
 	sigc::signal<void()> m_changed;
 	sigc::signal<void(const std::string &, int, const std::string &)> m_failed;
 

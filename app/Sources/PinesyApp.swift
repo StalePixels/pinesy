@@ -49,6 +49,9 @@ struct MachineCommands: Commands {
                 .disabled(runner.running == nil)
             Button("Hard Reset") { runner.reset(hard: true) }
                 .disabled(runner.running == nil)
+            Button(runner.pointerHeld ? "Release Pointer" : "Grab Pointer") { runner.togglePointer() }
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+                .disabled(runner.running == nil)
             Button("Clear NVRAM…") { actions?.clearNVRAM() }
                 .disabled(actions?.canClearNVRAM != true)
             Divider()

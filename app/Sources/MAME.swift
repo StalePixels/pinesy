@@ -39,6 +39,12 @@ enum MAME {
         pinesy_reset(hard ? 1 : 0) != 0
     }
 
+    /// Releases a held pointer, or grabs it again, as MAME's UI Release
+    /// Pointer key does.
+    static func togglePointer() {
+        _ = pinesy_toggle_pointer()
+    }
+
     static func key(_ keyCode: UInt16, down: Bool) {
         pinesy_key(Int32(keyCode), down ? 1 : 0)
     }

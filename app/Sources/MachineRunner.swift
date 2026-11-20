@@ -11,6 +11,9 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
     /// The title of the running machine's window, or nil when none runs.
     @Published private(set) var running: String?
 
+    /// The running machine holds the pointer in its view.
+    @Published private(set) var pointerHeld = false
+
     private var window: NSWindow?
     private var quitAfterRun = false
     /// The running configuration's window size, and the last frame size
@@ -75,6 +78,7 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
                 }
                 host.onPointer = { hide, capture in
                     view.setPointer(hide: hide, capture: capture)
+                    self.pointerHeld = capture
                 }
                 let code = MAME.withHost(view: view, receiver: host) {
                     Core.run(arguments, debug: debug, takesMouse: takesMouse, mouse: mouse, host: $0)
@@ -131,6 +135,11 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
     /// Resets the running machine. A hard reset starts it again from power-on.
     func reset(hard: Bool) {
         _ = MAME.reset(hard: hard)
+    }
+
+    /// Releases a held pointer, or grabs it again.
+    func togglePointer() {
+        MAME.togglePointer()
     }
 
     /// Asks the running machine to exit and quits when it has.

@@ -17,12 +17,15 @@ class MachineRunner : public QObject
 
 	// The title of the running machine's window; empty when none runs.
 	Q_PROPERTY(QString running READ running NOTIFY runningChanged)
+	// The running machine holds the pointer in its view.
+	Q_PROPERTY(bool pointerHeld READ pointerHeld NOTIFY pointerHeldChanged)
 
 public:
 	static MachineRunner *instance();
 	static MachineRunner *create(QQmlEngine *, QJSEngine *);
 
 	QString running() const { return m_running; }
+	bool pointerHeld() const { return m_pointerHeld; }
 
 	// Starts a configuration's command line. The core adds the fixed
 	// options and, with debug, the debugger options from the settings.
@@ -39,12 +42,16 @@ public:
 	// power-on.
 	Q_INVOKABLE void reset(bool hard);
 
+	// Releases a held pointer, or grabs it again.
+	Q_INVOKABLE void togglePointer();
+
 	// Asks the running machine to exit and quits the app when it has.
 	// Returns false when no machine runs.
 	Q_INVOKABLE bool quitWhenStopped();
 
 Q_SIGNALS:
 	void runningChanged();
+	void pointerHeldChanged();
 	// A run ended. errors is MAME's error text when it stopped with an
 	// error, else empty.
 	void finished(const QString &title, int code, const QString &errors);
@@ -52,8 +59,10 @@ Q_SIGNALS:
 private:
 	explicit MachineRunner(QObject *parent = nullptr);
 	void run(const QStringList &arguments, bool debug, bool takesMouse, bool mouse);
+	void setPointerHeld(bool held);
 
 	QString m_running;
+	bool m_pointerHeld = false;
 	RunWindow *m_window = nullptr;
 	bool m_quitAfterRun = false;
 };

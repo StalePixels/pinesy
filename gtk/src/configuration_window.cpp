@@ -129,8 +129,10 @@ ConfigurationWindow::ConfigurationWindow(Application &app) : m_app(app)
 	auto running = Gio::Menu::create();
 	running->append("_Reset", "app.reset");
 	running->append("_Hard Reset", "app.hard-reset");
+	running->append("_Grab Pointer", "app.toggle-pointer");
 	running->append("Clear _NVRAM…", "win.clear-nvram");
 	menu->append_section(running);
+	m_running_menu = running;
 	auto machine = Gio::Menu::create();
 	machine->append("_Copy Command Line", "win.copy-command-line");
 	menu->append_section(machine);
@@ -255,6 +257,11 @@ void ConfigurationWindow::update_actions()
 	m_clear_nvram->set_enabled(!running && !m_document.arguments.empty());
 	gtk_widget_set_visible(m_stop, running);
 	gtk_widget_set_sensitive(GTK_WIDGET(m_page), !running);
+
+	// a menu model item's label is fixed, so the item is made again
+	const char *const pointer_label = m_app.runner().pointer_held() ? "Release _Pointer" : "_Grab Pointer";
+	m_running_menu->remove(pointer_item);
+	m_running_menu->insert(pointer_item, pointer_label, "app.toggle-pointer");
 }
 
 void ConfigurationWindow::on_runner_changed()

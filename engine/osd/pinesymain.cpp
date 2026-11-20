@@ -59,6 +59,35 @@ private:
 	void *m_context;
 };
 
+// The Cocoa OSD with Pinesy's default for MAME's UI Release Pointer
+// key, which grabs and releases the pointer in turn: the front ends'
+// Grab/Release Pointer shortcut, Command+Shift+M on macOS and
+// Ctrl+Shift+M on Linux. MAME's own default, Right Control + Right
+// Option, needs a key that Mac laptops do not have. MAME's Input menu
+// can still change the key.
+class pinesy_osd_interface : public mac_osd_interface
+{
+public:
+	using mac_osd_interface::mac_osd_interface;
+
+	virtual void customize_input_type_list(std::vector<input_type_entry> &typelist) override
+	{
+		mac_osd_interface::customize_input_type_list(typelist);
+#if defined(__APPLE__)
+		const input_code left = KEYCODE_LWIN, right = KEYCODE_RWIN;
+#else
+		const input_code left = KEYCODE_LCONTROL, right = KEYCODE_RCONTROL;
+#endif
+		for (input_type_entry &entry : typelist)
+			if (entry.type() == IPT_UI_RELEASE_POINTER)
+				entry.defseq(SEQ_TYPE_STANDARD).set(
+						left, KEYCODE_LSHIFT, KEYCODE_M, input_seq::or_code,
+						left, KEYCODE_RSHIFT, KEYCODE_M, input_seq::or_code,
+						right, KEYCODE_LSHIFT, KEYCODE_M, input_seq::or_code,
+						right, KEYCODE_RSHIFT, KEYCODE_M);
+	}
+};
+
 // pinesy_run() is running
 bool s_running = false;
 
@@ -75,6 +104,20 @@ bool s_pointer_inside = false;
 // what MAME last asked for: the pointer hidden, the pointer captured
 bool s_pointer_hidden = false;
 bool s_pointer_captured = false;
+
+// what the host was last told
+bool s_host_hidden = false;
+bool s_host_captured = false;
+
+// MAME's UI Release Pointer key freed the pointer; a click in the view
+// takes it back
+bool s_pointer_released = false;
+
+// the UI Release Pointer key was down at the last poll
+bool s_release_key_down = false;
+
+// the button that took the pointer back, held until its release
+int s_recapture_button = -1;
 
 } // anonymous namespace
 
@@ -111,9 +154,14 @@ extern "C" int pinesy_run(int argc, const char *const argv[], const pinesy_host 
 	s_pointer_inside = false;
 	s_pointer_hidden = false;
 	s_pointer_captured = false;
+	s_host_hidden = false;
+	s_host_captured = false;
+	s_pointer_released = false;
+	s_release_key_down = false;
+	s_recapture_button = -1;
 
 	mac_options options;
-	mac_osd_interface osd(options);
+	pinesy_osd_interface osd(options);
 	osd.register_options();
 
 	// the host's view takes a software-rendered frame; -video still overrides
@@ -343,15 +391,66 @@ extern "C" void pinesy_char(unsigned int ch)
 //  the pointer: MAME's requests go to the host
 //============================================================
 
-// Tells the host when what MAME asks for changes.
-static void pinesy_set_pointer(bool hidden, bool captured)
+// Tells the host when the pointer it should have changes: what MAME
+// asks for, but shown and free while the release key has freed it.
+static void pinesy_update_host_pointer()
 {
-	if ((hidden == s_pointer_hidden) && (captured == s_pointer_captured))
+	const bool hidden = s_pointer_hidden && !s_pointer_released;
+	const bool captured = s_pointer_captured && !s_pointer_released;
+	if ((hidden == s_host_hidden) && (captured == s_host_captured))
 		return;
-	s_pointer_hidden = hidden;
-	s_pointer_captured = captured;
+	s_host_hidden = hidden;
+	s_host_captured = captured;
 	if (s_pointer_fn != nullptr)
 		s_pointer_fn(s_pointer_context, hidden ? 1 : 0, captured ? 1 : 0);
+}
+
+static void pinesy_set_pointer(bool hidden, bool captured)
+{
+	s_pointer_hidden = hidden;
+	s_pointer_captured = captured;
+	pinesy_update_host_pointer();
+}
+
+// Releases a held pointer, so it can reach the host's menus, or grabs
+// it again. A grab does not wait for the pointer to come over the
+// view: MAME is told that it is there, so MAME asks to hold it, and the
+// host moves it into the view.
+static void pinesy_toggle_pointer_now()
+{
+	if (s_pointer_captured && !s_pointer_released)
+	{
+		s_pointer_released = true;
+	}
+	else
+	{
+		s_pointer_released = false;
+		s_pointer_inside = true;
+	}
+	pinesy_update_host_pointer();
+}
+
+// Called from the event pump. MAME's UI Release Pointer key grabs and
+// releases the pointer in turn. The Cocoa OSD defines the key but does
+// not act on it.
+void pinesy_poll_pointer()
+{
+	if (!s_running || osd_common_t::window_list().empty())
+		return;
+
+	running_machine &machine = osd_common_t::window_list().front()->machine();
+	const bool down = machine.ioport().type_pressed(IPT_UI_RELEASE_POINTER);
+	if (down && !s_release_key_down)
+		pinesy_toggle_pointer_now();
+	s_release_key_down = down;
+}
+
+extern "C" int pinesy_toggle_pointer(void)
+{
+	if (!s_running)
+		return 0;
+	pinesy_toggle_pointer_now();
+	return 1;
 }
 
 // mac/window.cpp asks for these as the pointer moves over the view,
@@ -381,17 +480,40 @@ extern "C" void pinesy_mouse_inside(int inside)
 	s_pointer_inside = inside != 0;
 }
 
+// While the release key has freed the pointer, the machine gets no
+// mouse input. A click in the view takes the pointer back; that click
+// does not reach the machine.
 extern "C" void pinesy_mouse_move(double dx, double dy)
 {
+	if (s_pointer_released)
+		return;
 	MacMouseMotionEvent(float(dx), float(dy));
 }
 
 extern "C" void pinesy_mouse_button(int button, int down)
 {
+	if (s_pointer_released)
+	{
+		if (down && s_pointer_inside)
+		{
+			s_pointer_released = false;
+			s_recapture_button = button;
+			pinesy_update_host_pointer();
+		}
+		return;
+	}
+	if (button == s_recapture_button)
+	{
+		if (!down)
+			s_recapture_button = -1;
+		return;
+	}
 	MacMouseButtonEvent(button, down);
 }
 
 extern "C" void pinesy_mouse_wheel(double notches)
 {
+	if (s_pointer_released)
+		return;
 	MacMouseWheelEvent(float(notches), 0.0f);
 }

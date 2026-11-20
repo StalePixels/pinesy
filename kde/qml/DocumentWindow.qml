@@ -127,6 +127,12 @@ Kirigami.ApplicationWindow {
                 onTriggered: MachineRunner.reset(true)
             }
             QQC2.Action {
+                text: MachineRunner.pointerHeld ? i18nc("@action", "Release Pointer") : i18nc("@action", "Grab Pointer")
+                shortcut: "Ctrl+Shift+M"
+                enabled: window.running
+                onTriggered: MachineRunner.togglePointer()
+            }
+            QQC2.Action {
                 text: i18nc("@action", "Clear NVRAM…")
                 icon.name: "edit-clear"
                 // MAME writes NVRAM when a machine exits, so it is not cleared while one runs

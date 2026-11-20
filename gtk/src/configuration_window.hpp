@@ -9,6 +9,7 @@
 
 #include <adwaita.h>
 #include <giomm/file.h>
+#include <giomm/menu.h>
 #include <giomm/simpleaction.h>
 #include <gtkmm/window.h>
 #include <sigc++/connection.h>
@@ -65,6 +66,9 @@ private:
 	Glib::RefPtr<Gio::SimpleAction> m_run_debug;
 	Glib::RefPtr<Gio::SimpleAction> m_copy;
 	Glib::RefPtr<Gio::SimpleAction> m_clear_nvram;
+	// the menu section with Reset, and the place of Grab/Release Pointer in it
+	Glib::RefPtr<Gio::Menu> m_running_menu;
+	static constexpr int pointer_item = 2;
 
 	core::Document m_document;
 	Glib::RefPtr<Gio::File> m_file;
