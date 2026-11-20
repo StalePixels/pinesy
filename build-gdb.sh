@@ -6,7 +6,12 @@
 # metal or running Linux. objcopy-pinesy makes the Z80 ELF symbol files
 # that gdb-pinesy reads (docs/gdb.md).
 #
-# Usage: build-gdb.sh [--prefix DIR]
+# Usage: build-gdb.sh [--prefix DIR] [--check]
+#
+# On Linux, the build first checks that the system has what it needs
+# and names the package of this OS for each missing part
+# (cmake/PinesyGdbCheck.cmake). --check runs only that check, and does
+# not fetch the source; build.sh runs it before the engine build.
 #
 # The source is vendor/gdb, a shallow checkout of a GDB release tag. The
 # build runs out of tree in build/gdb/obj and installs into DIR (default
@@ -27,6 +32,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 src=$here/vendor/gdb
 build=$here/build/gdb
 prefix=$build/install
+check_only=0
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -35,13 +41,31 @@ while [ $# -gt 0 ]; do
 			prefix=$2
 			shift 2
 			;;
+		--check)
+			check_only=1
+			shift
+			;;
 		*)
 			echo "build-gdb: unknown argument: $1" >&2
-			echo "usage: build-gdb.sh [--prefix DIR]" >&2
+			echo "usage: build-gdb.sh [--prefix DIR] [--check]" >&2
 			exit 1
 			;;
 	esac
 done
+
+if [ "$(uname -s)" != Darwin ]; then
+	if ! command -v cmake >/dev/null 2>&1; then
+		echo "build-gdb: cmake is not installed. Install the cmake package of your distribution." >&2
+		exit 1
+	fi
+	report=$(cmake -DSOURCE="$src" -DGMP_PREFIX="${GMP_PREFIX:-}" -DMPFR_PREFIX="${MPFR_PREFIX:-}" \
+		-P "$here/cmake/PinesyGdbCheck.cmake" 2>&1)
+	if [ -n "$report" ]; then
+		printf '%s\n' "$report" >&2
+		exit 1
+	fi
+fi
+[ $check_only = 0 ] || exit 0
 
 # vendor/gdb is not fetched with the other submodules (.gitmodules sets
 # update = none for it), so ask for it by name. It is a shallow checkout
@@ -68,7 +92,11 @@ if [ ! -f "$src/gdb/c-exp.c" ]; then
 			PATH=$(brew --prefix bison)/bin:$PATH
 			export PATH
 		else
-			echo "build-gdb: bison 3.0 or later is needed. On macOS: brew install bison" >&2
+			if [ "$(uname -s)" = Darwin ]; then
+				echo "build-gdb: bison 3.0 or later is needed. On macOS: brew install bison" >&2
+			else
+				echo "build-gdb: bison 3.0 or later is needed. Install the bison package of your distribution." >&2
+			fi
 			exit 1
 		fi
 	fi

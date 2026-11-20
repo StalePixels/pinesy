@@ -128,6 +128,6 @@ The data directory (`show data-directory`) holds the system call tables for `cat
 ./build-gdb.sh [--prefix DIR]
 ```
 
-The source is `vendor/gdb`, a shallow checkout of the `gdb-18.1-release` tag. It holds GDB and the binutils from the same snapshot. The script fetches it, builds out of tree in `build/gdb/obj` and installs `gdb-pinesy` and `objcopy-pinesy` into `build/gdb/install/bin` (or `DIR/bin`). What it needs is in [build-macos.md](build-macos.md) and [build-linux.md](build-linux.md).
+The source is `vendor/gdb`, a shallow checkout of the `gdb-18.1-release` tag. It holds GDB and the binutils from the same snapshot. The script fetches it, builds out of tree in `build/gdb/obj` and installs `gdb-pinesy` and `objcopy-pinesy` into `build/gdb/install/bin` (or `DIR/bin`). What it needs is in [build-macos.md](build-macos.md) and [build-linux.md](build-linux.md). On Linux it first checks that the system has all of it, and names the package of your distribution for each missing part. `./build-gdb.sh --check` runs only that check.
 
 To change the GDB version, move the `vendor/gdb` pin to another `gdb-*-release` tag, and change the `gdb-18.1.tar.xz` archive (its `url` and `sha256`) in `kde/flatpak/com.stalepixels.pinesy.kde.yml` and `gtk/flatpak/com.stalepixels.Pinesy.yml` to the same release. The manifests build `objcopy-pinesy` from `binutils-2.47.tar.xz`, because GDB's tarball has no `binutils` folder. When the pin moves, use the binutils release that is closest to it.

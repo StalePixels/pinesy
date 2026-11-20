@@ -1,13 +1,20 @@
 #!/bin/bash
 #
-# Builds Pinesy: the engine, then the app for this platform.
+# Builds Pinesy: the engine, gdb-pinesy and objcopy-pinesy (build-gdb.sh),
+# and the app for this platform.
 #
 #   macOS:  ./build.sh         the app is app/build/Pinesy.app
 #   Linux:  ./build.sh gtk     the GNOME app is build/gtk/pinesy
 #           ./build.sh kde     the KDE app is build/kde/bin/pinesy-kde
 #
-# Each build also builds gdb-pinesy and objcopy-pinesy (build-gdb.sh). On
-# macOS they go in the app. On Linux they stay in build/gdb/install/bin.
+# On macOS, gdb-pinesy and objcopy-pinesy go in the app, so they build
+# before it: the engine, then GDB, then the app.
+#
+# On Linux they stay in build/gdb/install/bin. Before anything builds,
+# build-gdb.sh --check names the packages GDB needs that are missing. Then
+# the engine builds, then the app, and GDB last: the app and the engine
+# must come from the same source, and a GDB build that fails after the
+# engine would leave the old app with the new engine.
 #
 # What each build needs is in docs/build-macos.md and docs/build-linux.md.
 
@@ -46,16 +53,18 @@ case "$(uname -s)" in
 		[ $# -eq 1 ] || usage
 		case "$1" in
 			gtk)
+				./build-gdb.sh --check
 				./build-mame.sh --gtk
-				./build-gdb.sh
 				cmake -S gtk -B build/gtk
 				cmake --build build/gtk --parallel "$(nproc)"
+				./build-gdb.sh
 				;;
 			kde)
+				./build-gdb.sh --check
 				./build-mame.sh --qt
-				./build-gdb.sh
 				cmake -S kde -B build/kde
 				cmake --build build/kde --parallel "$(nproc)"
+				./build-gdb.sh
 				;;
 			*)
 				usage

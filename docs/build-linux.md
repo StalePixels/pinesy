@@ -10,7 +10,7 @@ For both apps:
 - GNU `make`, `cmake` 3.20 or later, `ninja`, `pkg-config` and `git`
 - `python3` with its `venv` module
 - The development files for GLib 2, ALSA, PulseAudio and PipeWire
-- For `gdb-pinesy` and `objcopy-pinesy`: a C++17 compiler, `bison` 3.0 or later, `flex`, and the development files for GMP, MPFR, expat, zlib and ncurses
+- For `gdb-pinesy` and `objcopy-pinesy`: `gcc` and `g++` (GDB's build does not look for clang), `bison` 3.0 or later, `flex`, and the development files for GMP, MPFR, expat, zlib and ncurses
 - Network access on the first build
 
 For the GNOME app:
@@ -31,6 +31,8 @@ cd pinesy
 ```
 
 The first build downloads the submodules before it compiles, and prints nothing while it does.
+
+Before it builds anything, `build.sh` checks that the system has what the engine and `gdb-pinesy` need. If something is missing, it names the package of your distribution for each missing part, and stops. Otherwise it builds the engine, then the app, and `gdb-pinesy` and `objcopy-pinesy` last. They go in `build/gdb/install/bin`.
 
 ## Build the GNOME app
 
