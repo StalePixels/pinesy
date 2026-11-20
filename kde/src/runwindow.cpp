@@ -2,9 +2,14 @@
 
 #include "machineview.h"
 
+#include <KLocalizedString>
+
 #include <QCloseEvent>
 #include <QCoreApplication>
 #include <QCursor>
+#include <QQmlComponent>
+#include <QQmlEngine>
+#include <QQuickItem>
 #include <QScreen>
 
 RunWindow::RunWindow(int windowSize)
@@ -32,7 +37,46 @@ RunWindow::RunWindow(int windowSize)
 	m_host.size = onSize;
 	m_host.pump = onPump;
 	m_host.pointer = onPointer;
+	m_host.stopped = onStopped;
 	m_host.context = this;
+
+	// the Continue button, at the view's top right, over the picture
+	m_qml = new QQmlEngine(this);
+	QQmlComponent button(m_qml);
+	button.setData(QByteArrayLiteral("import QtQuick\n"
+									 "import QtQuick.Controls\n"
+									 "Button {\n"
+									 "    property string tip\n"
+									 "    icon.name: \"media-playback-start\"\n"
+									 "    ToolTip.visible: hovered\n"
+									 "    ToolTip.text: tip\n"
+									 "    visible: false\n"
+									 "    anchors.top: parent ? parent.top : undefined\n"
+									 "    anchors.right: parent ? parent.right : undefined\n"
+									 "    anchors.margins: 8\n"
+									 "}\n"),
+			QUrl());
+	m_continue = qobject_cast<QQuickItem *>(button.create());
+	if (m_continue) {
+		m_continue->setParent(this);
+		m_continue->setParentItem(contentItem());
+		m_continue->setZ(1);
+		m_continue->setProperty("text", i18n("Continue"));
+		m_continue->setProperty("tip", i18n("Continue the stopped Next or Pi"));
+		connect(m_continue, SIGNAL(clicked()), this, SLOT(continueMachine()));
+	}
+}
+
+void RunWindow::continueMachine()
+{
+	pinesy_continue();
+}
+
+void RunWindow::onStopped(void *context, int stopped)
+{
+	auto self = static_cast<RunWindow *>(context);
+	if (self->m_continue)
+		self->m_continue->setVisible(stopped != 0);
 }
 
 void RunWindow::prepare()

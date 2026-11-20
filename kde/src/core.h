@@ -22,6 +22,8 @@ class Core : public QObject
 	Q_PROPERTY(QString dataFolder READ dataFolder NOTIFY settingsChanged)
 	Q_PROPERTY(QString debugger READ debugger WRITE setDebugger NOTIFY settingsChanged)
 	Q_PROPERTY(int gdbPort READ gdbPort WRITE setGdbPort NOTIFY settingsChanged)
+	Q_PROPERTY(int piGdbPort READ piGdbPort WRITE setPiGdbPort NOTIFY settingsChanged)
+	Q_PROPERTY(bool startPaused READ startPaused WRITE setStartPaused NOTIFY settingsChanged)
 	Q_PROPERTY(int minGdbPort READ minGdbPort CONSTANT)
 	Q_PROPERTY(int maxGdbPort READ maxGdbPort CONSTANT)
 
@@ -54,16 +56,19 @@ public:
 	// .pinesy files. readDocument returns false when the text is not a
 	// configuration the core reads. windowSize is the machine window's
 	// size, as pinesy_core_window_size() takes it; mouse is the mouse
-	// setting.
+	// setting; piPaused the Pi pause setting.
 	static bool readDocument(const QByteArray &text, QString *machine, QStringList *arguments, int *windowSize,
-			bool *mouse);
-	static QByteArray writeDocument(const QString &machine, const QStringList &arguments, int windowSize, bool mouse);
+			bool *mouse, bool *piPaused);
+	static QByteArray writeDocument(const QString &machine, const QStringList &arguments, int windowSize, bool mouse,
+			bool piPaused);
 
 	QStringList romFolders() const { return m_romFolders; }
 	QString dataFolderSetting() const { return m_dataFolder; }
 	QString dataFolder() const;
 	QString debugger() const;
 	int gdbPort() const;
+	int piGdbPort() const { return m_piGdbPort; }
+	bool startPaused() const { return m_startPaused; }
 	int minGdbPort() const { return PINESY_CORE_MIN_GDB_PORT; }
 	int maxGdbPort() const { return PINESY_CORE_MAX_GDB_PORT; }
 
@@ -75,6 +80,8 @@ public:
 	Q_INVOKABLE void setDataFolder(const QString &path);
 	void setDebugger(const QString &debugger);
 	void setGdbPort(int port);
+	void setPiGdbPort(int port);
+	void setStartPaused(bool paused);
 
 	// Turns a file URL from a dialog into a local path.
 	Q_INVOKABLE static QString localPath(const QUrl &url);
@@ -101,4 +108,6 @@ private:
 	QString m_dataFolder;
 	QString m_debugger;
 	int m_gdbPort = PINESY_CORE_DEFAULT_GDB_PORT;
+	int m_piGdbPort = PINESY_CORE_DEFAULT_PI_GDB_PORT;
+	bool m_startPaused = false;
 };

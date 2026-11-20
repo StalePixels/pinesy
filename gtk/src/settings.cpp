@@ -34,6 +34,8 @@ core::Settings core_settings(const Glib::RefPtr<Gio::Settings> &settings)
 			? core::Settings::Debugger::gdb_stub
 			: core::Settings::Debugger::windows;
 	result.gdb_port = settings->get_int(key::gdb_port);
+	result.pi_gdb_port = settings->get_int(key::pi_gdb_port);
+	result.start_paused = settings->get_boolean(key::start_paused);
 	return result;
 }
 

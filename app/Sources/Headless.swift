@@ -29,6 +29,8 @@ enum Headless {
                               backing: .buffered, defer: false)
         window.title = arguments.first { !$0.hasPrefix("-") } ?? "Pinesy"
         window.contentView = view
+        let continueButton = ContinueAccessory()
+        window.addTitlebarAccessoryViewController(continueButton)
         window.isReleasedWhenClosed = false
         let closer = WindowCloser()
         window.delegate = closer
@@ -55,6 +57,9 @@ enum Headless {
         }
         host.onPointer = { hide, capture in
             view.setPointer(hide: hide, capture: capture)
+        }
+        host.onStopped = { stopped in
+            continueButton.isHidden = !stopped
         }
         // the OSD prints MAME's output itself, as usual
         let code = MAME.withHost(view: view, receiver: host) { Core.headless(arguments, host: $0) }

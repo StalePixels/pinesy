@@ -211,6 +211,7 @@ project ("osd_" .. _OPTIONS["osd"])
 		MAME_DIR .. "../engine/include/pinesy.h",
 		MAME_DIR .. "../engine/osd/pinesymain.cpp",
 		MAME_DIR .. "../engine/osd/pinesyinfo.cpp",
+		MAME_DIR .. "../engine/osd/pinesyopts.h",
 		MAME_DIR .. "../engine/osd/hostmonitor.cpp",
 		MAME_DIR .. "../engine/osd/hostmonitor.h",
 	}

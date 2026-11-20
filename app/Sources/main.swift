@@ -1,6 +1,7 @@
 // Entry point. With arguments, Pinesy runs MAME headless with that
-// command line and exits with MAME's exit code; the core drops a
-// leading "--". Without arguments, it starts the app.
+// command line and exits with MAME's exit code; the core takes
+// Pinesy's own switches from before "--" (pinesy_core_headless()).
+// Without arguments, it starts the app.
 
 import AppKit
 

@@ -365,6 +365,9 @@ struct Summary
 	std::vector<HardwareRow> hardware;
 	std::vector<MediaRow> media;
 	bool mouse = false;         // the machine has mouse inputs, so the mouse setting applies
+	// the media name of the Pi's SD card (pi_sd_card()) when it holds a
+	// file, so the Pi pause setting applies; empty when it does not
+	std::string pi_sd_card;
 	std::string errors;
 	std::string warnings;
 	std::vector<std::string> missing_media;   // labels of mandatory media with no file
@@ -460,13 +463,16 @@ struct Document
 	std::vector<std::string> arguments;  // the MAME command line
 	int window_size = window::fit;       // the machine window's size (window::content_size)
 	bool mouse = true;                   // the mouse setting: turns the machine's mouse on or off
+	bool pi_paused = false;              // the Pi pause setting: the Pi waits at its first instruction (run_switches)
 
 	// Reads a .pinesy file's text. nullopt when it is not JSON with
 	// format, machine and arguments, its format is newer than this
 	// core reads, or its arguments are empty. A file without
 	// windowSize, or with a value window::is_window_size() refuses,
 	// reads as window::fit. A file without mouse, or with a value that
-	// is not true or false, reads as true, the default.
+	// is not true or false, reads as true, the default. A file without
+	// piPaused, or with a value that is not true or false, reads as
+	// false, the default.
 	static std::optional<Document> read(std::string_view text);
 
 	// The file's text.
@@ -496,6 +502,7 @@ struct Settings
 	enum class Debugger { windows, gdb_stub };
 
 	static constexpr int default_gdb_port = 23946;
+	static constexpr int default_pi_gdb_port = 23947;
 	static constexpr int min_gdb_port = 1;
 	static constexpr int max_gdb_port = 65535;
 
@@ -503,7 +510,31 @@ struct Settings
 	std::string data_folder;   // empty: the platform's default
 	Debugger debugger = Debugger::windows;
 	int gdb_port = default_gdb_port;
+	bool start_paused = false;                // the Next waits at its first instruction (run_switches)
+	int pi_gdb_port = default_pi_gdb_port;    // the Pi's GDB stub (QEMU), same range as gdb_port
 };
+
+// Pinesy's own switches, before "--" on its command line.
+struct Switches
+{
+	// --paused: under the debugger, the Next waits at its first
+	// instruction; without it, Pinesy continues the Next there
+	// (pinesy_set_start_paused in the engine)
+	bool paused = false;
+	// --paused-pi: the Pi waits at its first instruction until a GDB
+	// client or pinesy_continue() continues it; MAME's -pi_gdb_wait
+	bool paused_pi = false;
+
+	// The MAME options the switches add: -pi_gdb_wait for paused_pi.
+	std::vector<std::string> mame_arguments() const;
+
+	bool operator==(const Switches &) const = default;
+};
+
+// The media name of the Pi's SD card in a command line: "pi", MAME's
+// name for the image of the nextpi card, when the command line names a
+// file for it. Empty when it does not.
+std::string pi_sd_card(const std::vector<std::string> &arguments);
 
 namespace paths {
 
@@ -515,8 +546,16 @@ bool is_usable_rom_folder(std::string_view path);
 
 } // namespace paths
 
-// "-debug" and the debugger options from the settings; empty without debug.
-std::vector<std::string> debug_arguments(const Settings &settings, bool debug);
+// "-debug" and the debugger options from the settings; empty without
+// debug. A command line with a Pi SD card (pi_sd_card) also gets
+// "-pi_gdb_port" and the settings' Pi GDB port.
+std::vector<std::string> debug_arguments(const Settings &settings, const std::vector<std::string> &arguments, bool debug);
+
+// The switches of a run. Only a run with the debugger has any: paused
+// from the settings' start_paused, and paused_pi from pi_paused (the
+// configuration's Pi pause setting) when the command line has a Pi SD
+// card.
+Switches run_switches(const Settings &settings, const std::vector<std::string> &arguments, bool debug, bool pi_paused);
 
 // The mouse option of a run. For a machine that takes a mouse (the
 // summary's mouse), "-mouse" with the mouse setting on, and
@@ -535,6 +574,20 @@ bool video_none(const std::vector<std::string> &arguments);
 // True when the command line asks for the debugger and does not pick
 // one without windows (none or gdbstub). The last -debugger wins.
 bool opens_debugger_windows(const std::vector<std::string> &arguments);
+
+// The executable's arguments, split.
+struct CommandLine
+{
+	Switches switches;
+	std::vector<std::string> mame;   // MAME's command line, as given
+	std::string error;               // why the arguments cannot run; empty when they can
+};
+
+// With "--" among the arguments, the words before the first "--" are
+// Pinesy's switches (--paused, --paused-pi) and the words after it are
+// MAME's. Without "--", every word is MAME's. A word before "--" that
+// is not a switch is an error.
+CommandLine split(const std::vector<std::string> &arguments);
 
 } // namespace headless
 
@@ -585,24 +638,30 @@ public:
 	const Catalogue &catalogue();
 
 	// The full command line of a run: fixed options, the
-	// configuration, the mouse option (mouse_arguments) and the
-	// debugger options.
+	// configuration, the mouse option (mouse_arguments), the debugger
+	// options and the MAME options of the run's switches (run_switches).
+	// pi_paused is the configuration's Pi pause setting.
 	std::vector<std::string> run_command_line(const std::vector<std::string> &arguments, bool debug, bool takes_mouse,
-			bool mouse) const;
+			bool mouse, bool pi_paused) const;
 
-	// Creates the folders and runs a configuration. Returns MAME's exit code.
-	int run(const std::vector<std::string> &arguments, bool debug, bool takes_mouse, bool mouse,
+	// Creates the folders and runs a configuration, with the run's
+	// switches. Returns MAME's exit code.
+	int run(const std::vector<std::string> &arguments, bool debug, bool takes_mouse, bool mouse, bool pi_paused,
 			const pinesy_host *host) const;
 
-	// The headless command for a configuration, quoted for zsh, with the
-	// mouse option as a run has it.
+	// The headless command for a configuration, quoted for zsh: the
+	// executable, "--", then the command line as a run has it, without
+	// the fixed options and without Pinesy's switches.
 	std::string copy_command_line(const std::string &executable, const std::vector<std::string> &arguments, bool debug,
 			bool takes_mouse, bool mouse) const;
 
-	// Headless mode: the executable's arguments, without its own name.
-	// A leading "--" is dropped. Creates the folders and runs MAME with
-	// the fixed options first. Returns MAME's exit code.
-	int headless(std::vector<std::string> arguments, const pinesy_host *host) const;
+	// Headless mode: the executable's arguments, without its own name,
+	// split by headless::split(). Creates the folders and runs MAME with
+	// the fixed options first, then MAME's command line and the MAME
+	// options of the switches. Returns MAME's exit code, or
+	// EMU_ERR_INVALID_CONFIG (6) after printing the error when the
+	// arguments do not split.
+	int headless(const std::vector<std::string> &arguments, const pinesy_host *host) const;
 
 private:
 	Platform m_platform;

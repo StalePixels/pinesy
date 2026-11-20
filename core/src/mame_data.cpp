@@ -316,6 +316,7 @@ Value summary(const Summary &s)
 		{ "currentROM", s.current_rom ? rom_choice(*s.current_rom) : Value() },
 		{ "hardware", std::move(hardware) }, { "media", std::move(media_rows) },
 		{ "mouse", s.mouse },
+		{ "piSDCard", s.pi_sd_card },
 		{ "errors", s.errors }, { "warnings", s.warnings },
 		{ "missingMedia", strings(s.missing_media) }, { "missingFiles", std::move(missing_files) },
 		{ "sdCardProblems", std::move(sd_card_problems) },

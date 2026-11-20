@@ -7,6 +7,12 @@
 # (default: mame/libmame_pinesy.dylib in this repo). It must be named
 # libmame_pinesy.dylib: the app links -lmame_pinesy from its folder.
 #
+# GDB_BIN overrides gdb-pinesy, the GDB for the Next's Z80 and the Pi's
+# ARM (default: build/gdb/install/bin/gdb-pinesy in this repo, which
+# ../build-gdb.sh builds). It goes in Contents/MacOS. OBJCOPY_BIN does the
+# same for objcopy-pinesy, the objcopy that makes Z80 ELF symbol files for
+# gdb-pinesy (default: build/gdb/install/bin/objcopy-pinesy).
+#
 # The core, libpinesy.dylib, is compiled from ../core/src into
 # <output-dir>/core, linked against the engine library.
 #
@@ -22,6 +28,8 @@ set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 out=${1:-$here/build}
 mame_lib=${MAME_LIB:-$here/../mame/libmame_pinesy.dylib}
+gdb_bin=${GDB_BIN:-$here/../build/gdb/install/bin/gdb-pinesy}
+objcopy_bin=${OBJCOPY_BIN:-$here/../build/gdb/install/bin/objcopy-pinesy}
 
 app=$out/Pinesy.app
 contents=$app/Contents
@@ -101,6 +109,19 @@ swiftc -swift-version 6 -O \
 	-o "$contents/MacOS/Pinesy" \
 	"$here"/Sources/*.swift
 
+if [ ! -x "$gdb_bin" ]; then
+	echo "build.sh: $gdb_bin is missing; run ../build-gdb.sh" >&2
+	exit 1
+fi
+cp "$gdb_bin" "$contents/MacOS/gdb-pinesy"
+chmod u+w "$contents/MacOS/gdb-pinesy"
+if [ ! -x "$objcopy_bin" ]; then
+	echo "build.sh: $objcopy_bin is missing; run ../build-gdb.sh" >&2
+	exit 1
+fi
+cp "$objcopy_bin" "$contents/MacOS/objcopy-pinesy"
+chmod u+w "$contents/MacOS/objcopy-pinesy"
+
 # the libraries a Mach-O file loads, without its own install name
 dependencies() {
 	local id
@@ -151,7 +172,7 @@ while [ -n "$pending" ]; do
 done
 
 # a reference left outside the bundle would load from the build machine
-for bin in "$contents/MacOS/Pinesy" "$frameworks"/*.dylib; do
+for bin in "$contents/MacOS/Pinesy" "$contents/MacOS/gdb-pinesy" "$contents/MacOS/objcopy-pinesy" "$frameworks"/*.dylib; do
 	for dep in $(dependencies "$bin"); do
 		if ! is_system "$dep" && [ "${dep#@rpath/}" = "$dep" ]; then
 			echo "build.sh: $bin still loads $dep" >&2
@@ -167,6 +188,8 @@ done
 for lib in "$frameworks"/*.dylib; do
 	codesign --force --sign - "$lib"
 done
+codesign --force --sign - "$contents/MacOS/gdb-pinesy"
+codesign --force --sign - "$contents/MacOS/objcopy-pinesy"
 codesign --force --sign - "$app"
 
 echo "built $app"

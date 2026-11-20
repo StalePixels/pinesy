@@ -13,6 +13,7 @@
 //============================================================
 
 #include "pinesy.h"
+#include "pinesyopts.h"
 
 // MAME headers
 #include "emu.h"
@@ -483,6 +484,7 @@ extern "C" int pinesy_describe(int argc, const char *const argv[], pinesy_text_f
 		args.emplace_back(argv[i]);
 
 	mac_options options;
+	pinesy_add_options(options);
 	std::string errors;
 	std::string warnings;
 	int result = EMU_ERR_NONE;

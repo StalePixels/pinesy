@@ -45,8 +45,10 @@ private:
 };
 
 // A machine's window: a header bar and the view. Every key goes to the
-// machine, and the mouse over the view goes to MAME. Closing the window
-// asks the machine to stop; the window goes when the run has ended.
+// machine, and the mouse over the view goes to MAME. The header bar has
+// a Continue button while the Next is stopped in the debugger or the Pi
+// waits. Closing the window asks the machine to stop; the window goes
+// when the run has ended.
 class MachineWindow
 {
 public:
@@ -88,6 +90,7 @@ public:
 private:
 	AdwWindow *m_window = nullptr;
 	GtkWidget *m_header = nullptr;
+	GtkWidget *m_continue = nullptr;
 	MachineView *m_view = nullptr;
 	int m_window_size = core::window::fit;
 	// the window goes to full screen with the first frame, when its
@@ -110,6 +113,7 @@ private:
 	static void on_size(void *context, int width, int height);
 	static void on_pump(void *context);
 	static void on_pointer(void *context, int hide, int capture);
+	static void on_stopped(void *context, int stopped);
 
 	void on_active_changed();
 	void release_keys();
@@ -129,10 +133,11 @@ public:
 	// Runs a configuration in its own window, starting from the main
 	// loop once the current event has been handled. window_size is the
 	// configuration's window size. takes_mouse is the summary's mouse
-	// and mouse the configuration's mouse setting. Does nothing while a
-	// machine runs.
+	// and mouse the configuration's mouse setting. pi_paused is the
+	// configuration's Pi pause setting. Does nothing while a machine
+	// runs.
 	void start(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-			bool debug, int window_size, bool takes_mouse, bool mouse);
+			bool debug, int window_size, bool takes_mouse, bool mouse, bool pi_paused);
 
 	// Asks the running machine to stop. Its window closes when it has.
 	void stop();
@@ -160,7 +165,7 @@ private:
 	sigc::signal<void(const std::string &, int, const std::string &)> m_failed;
 
 	void run(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-			bool debug, int window_size, bool takes_mouse, bool mouse);
+			bool debug, int window_size, bool takes_mouse, bool mouse, bool pi_paused);
 };
 
 // Headless mode with a window: runs the arguments in a machine window

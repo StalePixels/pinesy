@@ -226,6 +226,12 @@ struct ConfigurationView: View {
                 Section("Media") {
                     ForEach(summary.media) { row in
                         mediaRow(row, missing: summary.missingFiles.contains(row.media.name), sdCardProblem: summary.sdCardProblems[row.media.name])
+                        if row.media.name == summary.piSDCard {
+                            Toggle(isOn: $document.piPaused) {
+                                Text("Pi starts paused")
+                                Text("With Run with Debugger, the Pi waits at its first instruction until you continue it.")
+                            }
+                        }
                     }
                 }
             }
@@ -423,7 +429,7 @@ struct ConfigurationView: View {
     private func run(debug: Bool) {
         guard canRun else { return }
         runner.start(title: title, arguments: document.arguments, debug: debug, windowSize: document.windowSize,
-                     takesMouse: takesMouse, mouse: document.mouse)
+                     takesMouse: takesMouse, mouse: document.mouse, piPaused: document.piPaused)
     }
 
     private func copyCommandLine() {

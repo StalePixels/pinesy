@@ -711,6 +711,26 @@ AdwPreferencesGroup *ConfigurationWindow::media_group(const core::Summary &summa
 			adw_action_row_add_suffix(ADW_ACTION_ROW(item), eject);
 		}
 		adw_preferences_group_add(group, item);
+
+		// the Pi pause setting, next to the Pi's SD card
+		if (media.name == summary.pi_sd_card)
+		{
+			GtkWidget *paused = adw_switch_row_new();
+			plain_row(paused);
+			adw_preferences_row_set_title(ADW_PREFERENCES_ROW(paused), "Pi starts paused");
+			adw_action_row_set_subtitle(ADW_ACTION_ROW(paused),
+					"With Run with Debugger, the Pi waits at its first instruction until you continue it.");
+			adw_switch_row_set_active(ADW_SWITCH_ROW(paused), m_document.pi_paused);
+			connect_notify(paused, "active", [this, paused] {
+				const bool on = adw_switch_row_get_active(ADW_SWITCH_ROW(paused));
+				if (on == m_document.pi_paused)
+					return;
+				m_document.pi_paused = on;
+				m_modified = true;
+				update_title();
+			});
+			adw_preferences_group_add(group, paused);
+		}
 	}
 	return group;
 }
@@ -814,7 +834,7 @@ void ConfigurationWindow::run(bool debug)
 	if (m_app.runner().running() || !m_summary || !m_summary->can_run() || m_refresh_waiting)
 		return;
 	m_app.runner().start(m_app.core(), title(), m_document.arguments, debug, m_document.window_size,
-			takes_mouse(), m_document.mouse);
+			takes_mouse(), m_document.mouse, m_document.pi_paused);
 }
 
 void ConfigurationWindow::copy_command_line()

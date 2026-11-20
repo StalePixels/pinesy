@@ -180,7 +180,7 @@ QString Core::copyCommandLine(const QStringList &arguments, bool debug, bool tak
 }
 
 bool Core::readDocument(const QByteArray &text, QString *machine, QStringList *arguments, int *windowSize,
-		bool *mouse)
+		bool *mouse, bool *piPaused)
 {
 	const QByteArray json = take(pinesy_core_read_document(text.constData()));
 	if (json.isEmpty())
@@ -192,13 +192,15 @@ bool Core::readDocument(const QByteArray &text, QString *machine, QStringList *a
 		arguments->append(value.toString());
 	*windowSize = object.value(QLatin1String("windowSize")).toInt(PINESY_CORE_WINDOW_FIT);
 	*mouse = object.value(QLatin1String("mouse")).toBool(true);
+	*piPaused = object.value(QLatin1String("piPaused")).toBool(false);
 	return true;
 }
 
-QByteArray Core::writeDocument(const QString &machine, const QStringList &arguments, int windowSize, bool mouse)
+QByteArray Core::writeDocument(const QString &machine, const QStringList &arguments, int windowSize, bool mouse,
+		bool piPaused)
 {
 	return take(pinesy_core_write_document(machine.toUtf8().constData(), toJson(arguments).constData(), windowSize,
-			mouse ? 1 : 0));
+			mouse ? 1 : 0, piPaused ? 1 : 0));
 }
 
 //------------------------------------------------------------
@@ -213,6 +215,8 @@ void Core::loadSettings()
 	m_dataFolder = general.readEntry("dataFolder", QString());
 	m_debugger = debugger.readEntry("debugger", QString());
 	m_gdbPort = debugger.readEntry("gdbPort", int(PINESY_CORE_DEFAULT_GDB_PORT));
+	m_piGdbPort = debugger.readEntry("piGdbPort", int(PINESY_CORE_DEFAULT_PI_GDB_PORT));
+	m_startPaused = debugger.readEntry("startPaused", false);
 }
 
 void Core::storeSettings()
@@ -223,6 +227,8 @@ void Core::storeSettings()
 	general.writeEntry("dataFolder", m_dataFolder);
 	debugger.writeEntry("debugger", m_debugger);
 	debugger.writeEntry("gdbPort", m_gdbPort);
+	debugger.writeEntry("piGdbPort", m_piGdbPort);
+	debugger.writeEntry("startPaused", m_startPaused);
 	general.sync();
 }
 
@@ -235,11 +241,15 @@ void Core::applySettings()
 	settings.insert(QLatin1String("dataFolder"), m_dataFolder);
 	settings.insert(QLatin1String("debugger"), m_debugger);
 	settings.insert(QLatin1String("gdbPort"), m_gdbPort);
+	settings.insert(QLatin1String("piGdbPort"), m_piGdbPort);
+	settings.insert(QLatin1String("startPaused"), m_startPaused);
 	pinesy_core_set_settings(m_core, QJsonDocument(settings).toJson(QJsonDocument::Compact).constData());
 
 	const QJsonObject used = QJsonDocument::fromJson(take(pinesy_core_settings(m_core))).object();
 	m_debugger = used.value(QLatin1String("debugger")).toString();
 	m_gdbPort = used.value(QLatin1String("gdbPort")).toInt();
+	m_piGdbPort = used.value(QLatin1String("piGdbPort")).toInt();
+	m_startPaused = used.value(QLatin1String("startPaused")).toBool();
 	Q_EMIT settingsChanged();
 }
 
@@ -301,6 +311,24 @@ void Core::setGdbPort(int port)
 	if (port == m_gdbPort)
 		return;
 	m_gdbPort = port;
+	storeSettings();
+	applySettings();
+}
+
+void Core::setPiGdbPort(int port)
+{
+	if (port == m_piGdbPort)
+		return;
+	m_piGdbPort = port;
+	storeSettings();
+	applySettings();
+}
+
+void Core::setStartPaused(bool paused)
+{
+	if (paused == m_startPaused)
+		return;
+	m_startPaused = paused;
 	storeSettings();
 	applySettings();
 }

@@ -129,6 +129,8 @@ pinesy_core *make_core()
 //  The catalogue
 //------------------------------------------------------------
 
+void test_switches(pinesy_core *core);
+
 void test_catalogue(pinesy_core *core)
 {
 	json::Value sections = parse(pinesy_core_catalogue(core));
@@ -303,25 +305,28 @@ void test_documents()
 	check(args.array() == line, "a command line reads back as it was written");
 
 	// a JSON object
-	// with format (now 1), machine, arguments, windowSize and mouse.
+	// with format (now 1), machine, arguments, windowSize, mouse and piPaused.
 	Strings saved{ "specnext_ks3", "-rs232_rpi", "", "-pi", "/tmp/a b/next.img" };
-	std::string text = take(pinesy_core_write_document("tbblue", args_json(saved).c_str(), 3, 1));
+	std::string text = take(pinesy_core_write_document("tbblue", args_json(saved).c_str(), 3, 1, 1));
 	json::Value written;
 	try { written = json::parse(text); } catch (const json::Error &) {}
-	check(written.is_object() && written.object().size() == 5 && member(written, "format") && member(written, "format")->number() == 1
+	check(written.is_object() && written.object().size() == 6 && member(written, "format") && member(written, "format")->number() == 1
 			&& text_of(written, "machine") == "tbblue" && strings(*member(written, "arguments")) == saved
 			&& member(written, "windowSize") && member(written, "windowSize")->number() == 3
-			&& member(written, "mouse") && member(written, "mouse")->boolean(),
-			"a .pinesy file has format 1, machine, arguments, windowSize and mouse");
+			&& member(written, "mouse") && member(written, "mouse")->boolean()
+			&& member(written, "piPaused") && member(written, "piPaused")->boolean(),
+			"a .pinesy file has format 1, machine, arguments, windowSize, mouse and piPaused");
 	check(text.find("\"/tmp/a b/next.img\"") != std::string::npos, "slashes are not escaped");
 	check(text.find("\"arguments\"") < text.find("\"format\"") && text.find("\"format\"") < text.find("\"machine\"")
-			&& text.find("\"machine\"") < text.find("\"mouse\"") && text.find("\"mouse\"") < text.find("\"windowSize\""),
+			&& text.find("\"machine\"") < text.find("\"mouse\"") && text.find("\"mouse\"") < text.find("\"piPaused\"")
+			&& text.find("\"piPaused\"") < text.find("\"windowSize\""),
 			"keys are written sorted");
 
 	json::Value read = parse(pinesy_core_read_document(text.c_str()));
 	check(text_of(read, "machine") == "tbblue" && member(read, "arguments") && strings(*member(read, "arguments")) == saved
 			&& member(read, "windowSize") && member(read, "windowSize")->number() == 3
-			&& member(read, "mouse") && member(read, "mouse")->boolean(),
+			&& member(read, "mouse") && member(read, "mouse")->boolean()
+			&& member(read, "piPaused") && member(read, "piPaused")->boolean(),
 			"a .pinesy file reads back as it was written");
 
 	// the mouse setting: true or false; anything else, or none, is the
@@ -341,8 +346,28 @@ void test_documents()
 			&& mouse_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"mouse":"false"})") == 1,
 			"a mouse that is not true or false opens as on");
 	check(pinesy::core::Document{}.mouse, "a new configuration starts with the mouse setting on");
-	json::Value off = parse(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), 0, 0));
+	json::Value off = parse(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), 0, 0, 0));
 	check(off.is_object() && member(off, "mouse") && !member(off, "mouse")->boolean(), "the mouse setting off is written as false");
+
+	// the Pi pause setting: true or false; anything else, or none, is
+	// the default, off
+	auto pi_paused_of = [](const char *file) {
+		json::Value document = parse(pinesy_core_read_document(file));
+		const json::Value *paused = document.is_object() ? member(document, "piPaused") : nullptr;
+		if (!paused) return -1;
+		try { return paused->boolean() ? 1 : 0; } catch (const json::Error &) { return -1; }
+	};
+	check(pi_paused_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"]})") == 0,
+			"a file without piPaused opens with the Pi pause setting off");
+	check(pi_paused_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"piPaused":true})") == 1
+			&& pi_paused_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"piPaused":false})") == 0,
+			"a file with piPaused true or false opens with it");
+	check(pi_paused_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"piPaused":1})") == 0
+			&& pi_paused_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"piPaused":"true"})") == 0,
+			"a piPaused that is not true or false opens as off");
+	check(!pinesy::core::Document{}.pi_paused, "a new configuration starts with the Pi pause setting off");
+	check(off.is_object() && member(off, "piPaused") && !member(off, "piPaused")->boolean(),
+			"the Pi pause setting off is written as false");
 
 	// the window size: full screen (-1), fit (0) or a magnification of 1 or more
 	auto window_size_of = [](const char *file) {
@@ -365,7 +390,7 @@ void test_documents()
 			&& window_size_of(R"({"format":1,"machine":"tbblue","arguments":["tbblue"],"windowSize":3000000000})") == PINESY_CORE_WINDOW_FIT,
 			"a windowSize that is not -1 or a whole number from 0 to the largest int opens as fit");
 	auto written_size = [](int window_size) {
-		json::Value written = parse(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), window_size, 0));
+		json::Value written = parse(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), window_size, 0, 0));
 		const json::Value *size = written.is_object() ? member(written, "windowSize") : nullptr;
 		return size ? int(size->number()) : -3;
 	};
@@ -373,7 +398,7 @@ void test_documents()
 			"full screen and a magnification above 4 are written as they are");
 	check(written_size(PINESY_CORE_WINDOW_CUSTOM) == PINESY_CORE_WINDOW_FIT && written_size(-7) == PINESY_CORE_WINDOW_FIT,
 			"a value that is not a window size is written as fit");
-	std::string custom_text = take(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), 12, 0));
+	std::string custom_text = take(pinesy_core_write_document("tbblue", args_json({ "tbblue" }).c_str(), 12, 0, 0));
 	check(window_size_of(custom_text.c_str()) == 12, "a custom magnification reads back as it was written");
 
 	// a newer format, or empty arguments,
@@ -630,7 +655,7 @@ void test_paths(pinesy_core *core)
 
 	// the GDB stub adds its options and port.
 	pinesy_core_set_settings(core, R"({"debugger":"gdbStub","gdbPort":1234})");
-	Strings debug = strings(parse(pinesy_core_debug_arguments(core, 1)));
+	Strings debug = strings(parse(pinesy_core_debug_arguments(core, args_json({ "tbblue" }).c_str(), 1)));
 	check(debug == Strings{ "-debug", "-debugger", "gdbstub", "-debugger_port", "1234" }, "a debug run with the GDB stub adds its port: " + show(debug));
 
 	// Copy Command Line gives
@@ -648,7 +673,7 @@ void test_paths(pinesy_core *core)
 	check(mouse_off == "/opt/Pinesy -- tbblue -mouse_device none",
 			"the copied command line has -mouse_device none with the setting off: " + mouse_off);
 	auto run_line = [&](int takes_mouse, int mouse) {
-		Strings line = strings(parse(pinesy_core_run_command_line(core, args_json({ "tbblue" }).c_str(), 0, takes_mouse, mouse)));
+		Strings line = strings(parse(pinesy_core_run_command_line(core, args_json({ "tbblue" }).c_str(), 0, takes_mouse, mouse, 0)));
 		auto driver = std::find(line.begin(), line.end(), "tbblue");
 		return driver == line.end() ? Strings{ "<no driver>" } : Strings(driver + 1, line.end());
 	};
@@ -659,6 +684,8 @@ void test_paths(pinesy_core *core)
 			"a run of a machine that takes no mouse gets no mouse option, whatever the setting");
 	pinesy_core_set_settings(core, "{}");
 
+	test_switches(core);
+
 	// 63-83.
 	const char *video[] = { "tbblue", "-video", "opengl", "-video", "none" };
 	check(pinesy_core_video_none(5, video) == 1, "the last -video wins");
@@ -667,6 +694,78 @@ void test_paths(pinesy_core *core)
 	check(pinesy_core_opens_debugger_windows(4, gdb) == 0 && pinesy_core_opens_debugger_windows(2, windows) == 1,
 			"the GDB stub opens no debugger windows; -d alone does");
 	check(pinesy_core_is_usable_rom_folder("/a;b") == 0, "a folder with \";\" cannot be a ROM folder");
+}
+
+// Pinesy's switches (--paused, --paused-pi), the start paused and Pi
+// GDB port settings, and the Pi pause setting of a configuration.
+void test_switches(pinesy_core *core)
+{
+	// the settings' defaults, and an unusable value takes its default
+	json::Value defaults = parse(pinesy_core_settings(core));
+	check(member(defaults, "startPaused") && !member(defaults, "startPaused")->boolean()
+			&& member(defaults, "piGdbPort") && member(defaults, "piGdbPort")->number() == PINESY_CORE_DEFAULT_PI_GDB_PORT,
+			"start paused is off and the Pi GDB port is 23947 by default");
+	pinesy_core_set_settings(core, R"({"startPaused":"yes","piGdbPort":0})");
+	json::Value unusable = parse(pinesy_core_settings(core));
+	check(!member(unusable, "startPaused")->boolean() && member(unusable, "piGdbPort")->number() == PINESY_CORE_DEFAULT_PI_GDB_PORT,
+			"a start paused that is not true or false is off, and a Pi port out of range is 23947");
+
+	const Strings next{ "tbblue" };
+	const Strings with_pi{ "tbblue", "-rs232_rpi", "nextpi", "-pi", "/x/pi.img" };
+	const Strings empty_pi{ "tbblue", "-rs232_rpi", "nextpi", "-pi", "" };
+	check(pi_sd_card(with_pi) == "pi" && pi_sd_card(next).empty() && pi_sd_card(empty_pi).empty(),
+			"a configuration has a Pi SD card when -pi names a file");
+	json::Value summary = parse(pinesy_core_summary(core, args_json(with_pi).c_str(), "tbblue"));
+	json::Value no_pi = parse(pinesy_core_summary(core, args_json(next).c_str(), "tbblue"));
+	check(text_of(summary, "piSDCard") == "pi" && member(no_pi, "piSDCard") && text_of(no_pi, "piSDCard").empty(),
+			"the summary names the Pi SD card's media");
+
+	pinesy_core_set_settings(core, R"({"debugger":"gdbStub","gdbPort":1234,"startPaused":true,"piGdbPort":1235})");
+	auto debug_of = [&](const Strings &args, int debug) {
+		return strings(parse(pinesy_core_debug_arguments(core, args_json(args).c_str(), debug)));
+	};
+	check(debug_of(with_pi, 1) == Strings{ "-debug", "-debugger", "gdbstub", "-debugger_port", "1234", "-pi_gdb_port", "1235" },
+			"a debug run with a Pi SD card adds the Pi GDB port: " + show(debug_of(with_pi, 1)));
+	check(debug_of(next, 1) == Strings{ "-debug", "-debugger", "gdbstub", "-debugger_port", "1234" } && debug_of(with_pi, 0).empty(),
+			"no Pi SD card, or no debugger, gives no Pi GDB port");
+
+	Settings paused_settings;
+	paused_settings.start_paused = true;
+	check(run_switches(paused_settings, with_pi, true, true) == Switches{ true, true },
+			"a debug run with start paused and the Pi pause setting has both switches");
+	check(run_switches(paused_settings, with_pi, false, true) == Switches{}, "a run without the debugger has no switches");
+	check(run_switches(paused_settings, next, true, true) == Switches{ true, false }, "the Pi pause setting needs a Pi SD card");
+	check(run_switches(Settings{}, with_pi, true, false) == Switches{} && run_switches(Settings{}, with_pi, true, true) == Switches{ false, true },
+			"start paused off gives no --paused");
+
+	pinesy_core_set_settings(core, R"({"debugger":"gdbStub","gdbPort":1234,"startPaused":true,"piGdbPort":1235})");
+	std::string copied = take(pinesy_core_copy_command_line(core, "/opt/Pinesy", args_json(with_pi).c_str(), 0, 0, 0));
+	check(copied == "/opt/Pinesy -- tbblue -rs232_rpi nextpi -pi /x/pi.img",
+			"the copied command line has none of Pinesy's switches: " + copied);
+	Strings run = strings(parse(pinesy_core_run_command_line(core, args_json(with_pi).c_str(), 1, 0, 0, 1)));
+	check(!run.empty() && run.back() == "-pi_gdb_wait" && std::count(run.begin(), run.end(), "--paused") == 0,
+			"a run with --paused-pi gives MAME -pi_gdb_wait, and no switch: " + show(run));
+	pinesy_core_set_settings(core, "{}");
+
+	// headless mode's command line
+	using headless::split;
+	headless::CommandLine plain = split({ "tbblue", "-debug" });
+	check(plain.mame == Strings{ "tbblue", "-debug" } && plain.switches == Switches{} && plain.error.empty(),
+			"without \"--\", every word is MAME's");
+	headless::CommandLine dropped = split({ "--", "tbblue", "-debug" });
+	check(dropped.mame == Strings{ "tbblue", "-debug" } && dropped.switches == Switches{} && dropped.error.empty(),
+			"a leading \"--\" is dropped");
+	headless::CommandLine both = split({ "--paused-pi", "--paused", "--", "tbblue", "--", "-debug" });
+	check(both.switches.paused && both.switches.paused_pi && both.mame == Strings{ "tbblue", "--", "-debug" } && both.error.empty(),
+			"switches before the first \"--\", in any order; MAME gets the rest as it is");
+	check(both.switches.mame_arguments() == Strings{ "-pi_gdb_wait" } && Switches{ true, false }.mame_arguments().empty(),
+			"--paused-pi gives MAME -pi_gdb_wait; --paused gives MAME nothing");
+	check(!split({ "--pause", "--", "tbblue" }).error.empty() && !split({ "tbblue", "--", "-debug" }).error.empty(),
+			"a word before \"--\" that is not a switch is an error");
+	check(split({ "--paused", "tbblue" }).mame == Strings{ "--paused", "tbblue" },
+			"a switch without \"--\" goes to MAME");
+	const char *bad[] = { "--pause", "--", "tbblue" };
+	check(pinesy_core_headless(core, 3, bad, nullptr) == 6, "headless mode refuses an unknown switch with 6");
 }
 
 int run_rules()
@@ -693,6 +792,14 @@ int run_headless()
 	// the run creates the folders MAME writes.
 	check(std::filesystem::is_directory(std::string(PINESY_TEST_DATA) + "/cfg") && std::filesystem::is_directory(std::string(PINESY_TEST_DATA) + "/roms"),
 			"the headless run created the data folder's folders");
+
+	// under the debugger, MAME stops the machine at its first
+	// instruction; without --paused, Pinesy continues it there, so the
+	// machine runs and -seconds_to_run ends the run
+	const char *debug_argv[] = { "--", "tbblue", "-debug", "-debugger", "none", "-video", "none", "-sound", "none",
+			"-seconds_to_run", "2" };
+	code = pinesy_core_headless(core, 11, debug_argv, nullptr);
+	check(code == 0, "a headless run with -debug and no --paused runs from the start: exit code " + std::to_string(code));
 	pinesy_core_destroy(core);
 	return 0;
 }

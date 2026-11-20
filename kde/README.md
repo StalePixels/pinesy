@@ -20,6 +20,8 @@ In the Flatpak:
 
 - The resources folder is `/app/share/pinesy/resources`. `../flatpak/install-resources.sh` fills it with the content that `../app/build.sh` puts in the macOS bundle: the ROM sets from `../roms`, with the same check, and MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders.
 - The data folder is `~/.var/app/com.stalepixels.pinesy.kde/data/pinesy`.
+- `gdb-pinesy` is `/app/bin/gdb-pinesy`, and `objcopy-pinesy` is `/app/bin/objcopy-pinesy`. The manifest builds `gdb-pinesy` from GDB's release tarball and `objcopy-pinesy` from the binutils release tarball. [../docs/gdb.md](../docs/gdb.md) says what they do.
+
 - Copy Command Line gives `/app/bin/pinesy-kde`, the path inside the Flatpak. Outside it, the command is `flatpak run com.stalepixels.pinesy.kde`.
 
 The permissions:
@@ -66,13 +68,15 @@ One machine runs at a time. While it runs, configurations cannot be changed, and
 ### Settings
 
 - General: extra ROM folders, and the folder where MAME keeps its files. A folder with `;` in its path cannot be a ROM folder.
-- Debugger: what Run with Debugger uses. The choices are the core's: MAME's debugger windows, or the GDB remote stub with its port (23946 by default, from 1 to 65535). The engine is built with MAME's Qt debugger, so MAME's own choice for its debugger windows is the Qt debugger. Its windows use the app's `QApplication`, and the app's windows stay live while the debugger has the machine stopped.
+- Debugger: what Run with Debugger uses. The choices are the core's: MAME's debugger windows, or the GDB remote stub with its port (23946 by default, from 1 to 65535). The engine is built with MAME's Qt debugger, so MAME's own choice for its debugger windows is the Qt debugger. Its windows use the app's `QApplication`, and the app's windows stay live while the debugger has the machine stopped. The page also has the Pi GDB port (23947 by default) and Start paused.
+
+The configuration window has a "Pi starts paused" check box under the Pi's SD card, when the configuration has one. The machine window shows a Continue button at its top right while the Next is stopped in MAME's debugger or the Pi waits. `../app/README.md` ("The debugger") and `../docs/gdb.md` describe both.
 
 Settings apply as they change.
 
 ## Headless mode
 
-Any arguments make the executable run MAME with them and no app user interface, through the core's headless call. A leading `--` is dropped. The exit code is MAME's.
+Any arguments make the executable run MAME with them and no app user interface, through the core's headless call. Pinesy's switches (`--paused`, `--paused-pi`) go before `--`, and MAME's command line after it, as on macOS (`../app/README.md`, "Headless"). The exit code is MAME's.
 
 ```sh
 <build-dir>/bin/pinesy-kde -- tbblue -video none -sound none -seconds_to_run 10
@@ -86,6 +90,3 @@ With `-video none` there is no window and Qt is not started. Otherwise the machi
 
 The desktop file lists the MIME type and sets `DBusActivatable=true`, so a file manager opens `.pinesy` files with the app over D-Bus, not on the command line, where any argument starts headless mode. CMake installs the D-Bus service file, `com.stalepixels.pinesy.kde.service`, made from `com.stalepixels.pinesy.kde.service.in` with the installed path of the executable; the Flatpak exports it. The app registers `org.freedesktop.Application` under the app id on the session bus (`src/desktopservice.cpp`). Open brings a file that is already open to the front; otherwise an untouched new configuration window takes the file, or the file opens in a new window. Activate brings the newest window to the front, or opens a new configuration when there is none. When another instance has the name, the app runs without it.
 
-## Known limits
-
-- While the GDB remote stub waits for a client, Stop does not end the run.

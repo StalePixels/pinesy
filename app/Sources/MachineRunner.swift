@@ -24,8 +24,9 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
     /// Starts a configuration. `arguments` is its command line; the core
     /// adds the app's paths and the debugger options. `windowSize` is
     /// the configuration's window size. `takesMouse` is the summary's
-    /// mouse and `mouse` the configuration's mouse setting.
-    func start(title: String, arguments: [String], debug: Bool, windowSize: Int, takesMouse: Bool, mouse: Bool) {
+    /// mouse and `mouse` the configuration's mouse setting. `piPaused` is
+    /// the configuration's Pi pause setting.
+    func start(title: String, arguments: [String], debug: Bool, windowSize: Int, takesMouse: Bool, mouse: Bool, piPaused: Bool) {
         guard running == nil else { return }
         running = title
         self.windowSize = windowSize
@@ -42,6 +43,8 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.center()
+        let continueButton = ContinueAccessory()
+        window.addTitlebarAccessoryViewController(continueButton)
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(view)
         self.window = window
@@ -80,8 +83,11 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
                     view.setPointer(hide: hide, capture: capture)
                     self.pointerHeld = capture
                 }
+                host.onStopped = { stopped in
+                    continueButton.isHidden = !stopped
+                }
                 let code = MAME.withHost(view: view, receiver: host) {
-                    Core.run(arguments, debug: debug, takesMouse: takesMouse, mouse: mouse, host: $0)
+                    Core.run(arguments, debug: debug, takesMouse: takesMouse, mouse: mouse, piPaused: piPaused, host: $0)
                 }
                 self.finish(code: code, errors: host.errors)
             }
@@ -161,6 +167,36 @@ final class MachineRunner: NSObject, ObservableObject, NSWindowDelegate {
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         _ = MAME.requestExit()
         return false
+    }
+}
+
+/// The machine window's Continue button, at the right of its title bar.
+/// It shows only while a CPU is stopped and waits (the Next in MAME's
+/// debugger, or the Pi), and continues them.
+final class ContinueAccessory: NSTitlebarAccessoryViewController {
+    init() {
+        super.init(nibName: nil, bundle: nil)
+        let button = NSButton(title: "Continue", target: nil, action: #selector(continueMachine))
+        button.target = self
+        button.image = NSImage(systemSymbolName: "play.fill", accessibilityDescription: nil)
+        button.imagePosition = .imageLeading
+        button.bezelStyle = .accessoryBarAction
+        button.toolTip = "Continue the stopped Next or Pi"
+        let holder = NSView(frame: NSRect(x: 0, y: 0, width: button.fittingSize.width + 12, height: button.fittingSize.height))
+        button.frame.origin = NSPoint(x: 4, y: 0)
+        button.frame.size = button.fittingSize
+        holder.addSubview(button)
+        view = holder
+        layoutAttribute = .trailing
+        isHidden = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not used")
+    }
+
+    @objc private func continueMachine() {
+        MAME.continueMachine()
     }
 }
 

@@ -36,6 +36,10 @@ class ConfigurationDocument : public QObject
 	// The mouse setting: turns the mouse of a machine that takes one
 	// (the summary's mouse) on or off.
 	Q_PROPERTY(bool mouse READ mouse WRITE setMouse NOTIFY mouseChanged)
+	// The Pi pause setting: in a run with the debugger, the Pi waits at
+	// its first instruction until it is continued. It applies when the
+	// summary's piSDCard names the Pi's SD card.
+	Q_PROPERTY(bool piPaused READ piPaused WRITE setPiPaused NOTIFY piPausedChanged)
 	// The machine window's size, as pinesy_core_window_size() takes it:
 	// full screen, fit, or a magnification of the frame, 1 or more.
 	Q_PROPERTY(int windowSize READ windowSize WRITE setWindowSize NOTIFY windowSizeChanged)
@@ -66,6 +70,8 @@ public:
 	void setWindowSize(int windowSize);
 	bool mouse() const { return m_mouse; }
 	void setMouse(bool mouse);
+	bool piPaused() const { return m_piPaused; }
+	void setPiPaused(bool paused);
 	QVariantList windowChoices() const;
 	int windowChoice() const;
 	int windowFit() const { return PINESY_CORE_WINDOW_FIT; }
@@ -109,6 +115,7 @@ Q_SIGNALS:
 	void canRunChanged();
 	void windowSizeChanged();
 	void mouseChanged();
+	void piPausedChanged();
 	void commandLineChanged();
 	// This document's run stopped with an error.
 	void runFailed(const QString &title, const QString &message);
@@ -127,6 +134,7 @@ private:
 	// stays while the user enters a listed magnification in it.
 	bool m_customWindowSize = false;
 	bool m_mouse = true;
+	bool m_piPaused = false;
 	QUrl m_url;
 	bool m_modified = false;
 	QVariantMap m_summary;

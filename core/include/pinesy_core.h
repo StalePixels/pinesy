@@ -41,9 +41,10 @@ extern "C" {
 
 typedef struct pinesy_core pinesy_core;
 
-// The GDB stub port a run uses when the settings name none, and
-// the range a port must be in.
+// The GDB stub ports a run uses when the settings name none (the
+// Next's, and the Pi's), and the range a port must be in.
 #define PINESY_CORE_DEFAULT_GDB_PORT 23946
+#define PINESY_CORE_DEFAULT_PI_GDB_PORT 23947
 #define PINESY_CORE_MIN_GDB_PORT 1
 #define PINESY_CORE_MAX_GDB_PORT 65535
 
@@ -86,13 +87,18 @@ void pinesy_core_free(char *text);
 //   debugger    "windows" (MAME's debugger windows) or "gdbStub"
 //               (the GDB remote stub)
 //   gdbPort     the GDB stub's port
+//   startPaused true: in a run with the debugger, the Next waits at its
+//               first instruction (the --paused switch)
+//   piGdbPort   the port of the Pi's GDB stub (QEMU), for a run with
+//               the debugger of a configuration with a Pi SD card
 //
 // The front end stores the settings; the core reads them only from
 // here. A missing or unusable value takes its default: no ROM
-// folders, the default data folder, "windows", and
-// PINESY_CORE_DEFAULT_GDB_PORT for a port outside
-// PINESY_CORE_MIN_GDB_PORT to PINESY_CORE_MAX_GDB_PORT. Returns 0,
-// or -1 when the text is not a JSON object.
+// folders, the default data folder, "windows", false,
+// PINESY_CORE_DEFAULT_GDB_PORT and PINESY_CORE_DEFAULT_PI_GDB_PORT
+// for a port outside PINESY_CORE_MIN_GDB_PORT to
+// PINESY_CORE_MAX_GDB_PORT. Returns 0, or -1 when the text is not a
+// JSON object.
 int pinesy_core_set_settings(pinesy_core *core, const char *settings_json);
 
 // The settings in use, as the JSON object pinesy_core_set_settings()
@@ -279,6 +285,10 @@ char *pinesy_core_normalise(pinesy_core *core, const char *arguments);
 //                configuration window shows the mouse setting only
 //                then, and only then does a run get a mouse option
 //                (pinesy_core_run_command_line()).
+//   piSDCard     the media name of the Pi's SD card ("pi") when the
+//                command line names a file for it, else "". The
+//                configuration window shows the Pi pause setting
+//                next to that media row only then.
 //   errors       MAME's error text; "" when there is none
 //   warnings     MAME's warning text, which does not stop a run
 //   missingMedia labels of media MAME needs that have no file
@@ -361,7 +371,7 @@ int pinesy_core_window_size(int frame_width, int frame_height, int window_size, 
 //------------------------------------------------------------
 
 // Reads a .pinesy file's text. Returns a JSON object with machine,
-// arguments, windowSize and mouse, or NULL when the text is not a
+// arguments, windowSize, mouse and piPaused, or NULL when the text is not a
 // configuration this core reads: not a JSON object with format (a
 // whole number), machine (a string) and arguments (an array of
 // strings), a format newer than 1, or empty arguments. windowSize is
@@ -369,50 +379,60 @@ int pinesy_core_window_size(int frame_width, int frame_height, int window_size, 
 // with a value that is not a window size, reads as
 // PINESY_CORE_WINDOW_FIT. mouse is the mouse setting, true or false;
 // a file without it, or with another value, reads as true, the
-// default.
+// default. piPaused is the Pi pause setting, true or false; a file
+// without it, or with another value, reads as false, the default.
 char *pinesy_core_read_document(const char *text);
 
 // The text of a .pinesy file: a JSON object with format 1, the
-// machine, the arguments, the window size and the mouse setting (mouse
-// not 0 is true), keys in order, indented. A value that is not a
-// window size is written as PINESY_CORE_WINDOW_FIT.
-char *pinesy_core_write_document(const char *machine, const char *arguments, int window_size, int mouse);
+// machine, the arguments, the window size, the mouse setting (mouse
+// not 0 is true) and the Pi pause setting (pi_paused not 0 is true),
+// keys in order, indented. A value that is not a window size is
+// written as PINESY_CORE_WINDOW_FIT.
+char *pinesy_core_write_document(const char *machine, const char *arguments, int window_size, int mouse,
+		int pi_paused);
 
 //------------------------------------------------------------
 //  Runs
 //------------------------------------------------------------
 
-// The options a run with the debugger adds, from the settings, as a
-// JSON array: "-debug", and with the GDB stub "-debugger", "gdbstub",
-// "-debugger_port", "<port>". Empty when debug is 0.
-char *pinesy_core_debug_arguments(const pinesy_core *core, int debug);
+// The options a run of a configuration with the debugger adds, from
+// the settings, as a JSON array: "-debug"; with the GDB stub
+// "-debugger", "gdbstub", "-debugger_port", "<port>"; and when the
+// configuration has a Pi SD card (piSDCard in the summary)
+// "-pi_gdb_port", "<Pi port>". Empty when debug is 0.
+char *pinesy_core_debug_arguments(const pinesy_core *core, const char *arguments, int debug);
 
 // The whole command line a run gives MAME, as a JSON array: the
 // fixed options, the configuration, the mouse option, then the
-// debugger options when debug is not 0. takes_mouse is the summary's
-// mouse, and mouse the configuration's mouse setting. For a machine
-// that takes a mouse, the mouse option is "-mouse" with the setting on
-// and "-mouse_device none" with it off, so the setting turns the
-// machine's mouse on and off. For any other machine there is none.
+// debugger options when debug is not 0, then "-pi_gdb_wait" when the
+// run waits for the Pi: a run with the debugger, pi_paused (the
+// configuration's Pi pause setting) not 0, and a Pi SD card in the
+// configuration (piSDCard in the summary). takes_mouse is the
+// summary's mouse, and mouse the configuration's mouse setting. For a
+// machine that takes a mouse, the mouse option is "-mouse" with the
+// setting on and "-mouse_device none" with it off, so the setting
+// turns the machine's mouse on and off. For any other machine there is
+// none.
 char *pinesy_core_run_command_line(const pinesy_core *core, const char *arguments, int debug, int takes_mouse,
-		int mouse);
+		int mouse, int pi_paused);
 
 // Creates the folders and runs a configuration with
 // pinesy_run(), with the command line pinesy_core_run_command_line()
-// gives. host is passed to pinesy_run() and may be NULL. Returns
-// MAME's exit code, or -1 when arguments is not a JSON array of
-// strings. Main thread only.
+// gives, and with pinesy_set_start_paused() set from the settings'
+// startPaused in a run with the debugger. host is
+// passed to pinesy_run() and may be NULL. Returns MAME's exit code, or
+// -1 when arguments is not a JSON array of strings. Main thread only.
 int pinesy_core_run(const pinesy_core *core, const char *arguments, int debug, int takes_mouse, int mouse,
-		const pinesy_host *host);
+		int pi_paused, const pinesy_host *host);
 
 // The headless command for a configuration, quoted for zsh, as
 // Copy Command Line gives it: the executable, "--", the
 // configuration, the mouse option, then the debugger options when
-// debug is not 0. takes_mouse and mouse are as for
-// pinesy_core_run_command_line(). Headless mode adds the fixed
-// options itself. A string of letters, digits and "-_./:=,+@%" stays
-// as it is; any other string, the empty string included, is put in
-// single quotes.
+// debug is not 0. It has none of Pinesy's switches. takes_mouse
+// and mouse are as for pinesy_core_run_command_line(). Headless mode
+// adds the fixed options itself. A string of letters, digits and
+// "-_./:=,+@%" stays as it is; any other string, the empty string
+// included, is put in single quotes.
 char *pinesy_core_copy_command_line(const pinesy_core *core, const char *executable, const char *arguments, int debug,
 		int takes_mouse, int mouse);
 
@@ -433,11 +453,24 @@ int pinesy_core_video_none(int argc, const char *const argv[]);
 // "none" or "gdbstub". Else 0.
 int pinesy_core_opens_debugger_windows(int argc, const char *const argv[]);
 
-// Runs headless mode. A leading "--" is dropped. Creates the folders
-// and runs pinesy_run() with the fixed options, then the arguments.
-// host is passed to pinesy_run(): NULL with -video none, else the
-// window the front end made for the machine. Returns MAME's exit
-// code. Main thread only. Does not read .pinesy files.
+// Runs headless mode. With "--" among the arguments, the words before
+// the first "--" are Pinesy's switches and the words after it are
+// MAME's command line; without "--", every word is MAME's. The
+// switches:
+//
+//   --paused     under the debugger (-debug), the Next waits at its
+//                first instruction. Without it, Pinesy continues the
+//                Next there, so it runs from the start.
+//   --paused-pi  the Pi waits at its first instruction until a GDB
+//                client or pinesy_continue() continues it: adds
+//                "-pi_gdb_wait".
+//
+// Any other word before "--" prints an error and returns 6, MAME's
+// code for a bad option. Creates the folders and runs pinesy_run()
+// with the fixed options, then MAME's command line, then the options
+// the switches add. host is passed to pinesy_run(): NULL with -video
+// none, else the window the front end made for the machine. Returns
+// MAME's exit code. Main thread only. Does not read .pinesy files.
 int pinesy_core_headless(const pinesy_core *core, int argc, const char *const argv[], const pinesy_host *host);
 
 #ifdef __cplusplus

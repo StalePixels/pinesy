@@ -31,9 +31,10 @@ public:
 	// options and, with debug, the debugger options from the settings.
 	// windowSize is the configuration's window size. takesMouse is the
 	// summary's mouse and mouse the configuration's mouse setting.
-	// Returns false when a machine is already running.
+	// piPaused is the configuration's Pi pause setting. Returns false
+	// when a machine is already running.
 	bool start(const QString &title, const QStringList &arguments, bool debug, int windowSize, bool takesMouse,
-			bool mouse);
+			bool mouse, bool piPaused);
 
 	// Asks the running machine to stop. Its window closes when it has.
 	Q_INVOKABLE void stop();
@@ -58,7 +59,7 @@ Q_SIGNALS:
 
 private:
 	explicit MachineRunner(QObject *parent = nullptr);
-	void run(const QStringList &arguments, bool debug, bool takesMouse, bool mouse);
+	void run(const QStringList &arguments, bool debug, bool takesMouse, bool mouse, bool piPaused);
 	void setPointerHeld(bool held);
 
 	QString m_running;

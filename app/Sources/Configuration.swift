@@ -51,6 +51,9 @@ struct ConfigurationSummary: Decodable {
     /// The machine, with this hardware, has mouse inputs, so the mouse
     /// setting is shown and reaches a run.
     let mouse: Bool
+    /// The media name of the Pi's SD card when it holds a file, so the Pi
+    /// pause setting is shown next to it; empty when there is none.
+    let piSDCard: String
     let errors: String
     let warnings: String
     let missingMedia: [String]

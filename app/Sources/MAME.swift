@@ -22,6 +22,7 @@ enum MAME {
             host.aspect = RunHost.aspectCallback
             host.size = RunHost.sizeCallback
             host.pointer = RunHost.pointerCallback
+            host.stopped = RunHost.stoppedCallback
             host.context = receiver.context
         }
         return withUnsafePointer(to: &host) { body($0) }
@@ -37,6 +38,11 @@ enum MAME {
     /// from power-on. Returns true if a machine took the request.
     static func reset(hard: Bool) -> Bool {
         pinesy_reset(hard ? 1 : 0) != 0
+    }
+
+    /// Continues the Next and the Pi when they are stopped.
+    static func continueMachine() {
+        _ = pinesy_continue()
     }
 
     /// Releases a held pointer, or grabs it again, as MAME's UI Release
@@ -91,6 +97,9 @@ final class RunHost {
     var onSize: (NSSize) -> Void = { _ in }
     /// MAME asks for the pointer to be hidden over the view, and held in it.
     var onPointer: (_ hide: Bool, _ capture: Bool) -> Void = { _, _ in }
+    /// A CPU is stopped and waits (true): the Next in MAME's debugger, or the
+    /// Pi. False when none is.
+    var onStopped: (Bool) -> Void = { _ in }
 
     nonisolated var context: UnsafeMutableRawPointer { Unmanaged.passUnretained(self).toOpaque() }
 
@@ -116,6 +125,12 @@ final class RunHost {
         guard let context else { return }
         let receiver = host(context)
         MainActor.assumeIsolated { receiver.onPointer(hide != 0, capture != 0) }
+    }
+
+    nonisolated static let stoppedCallback: pinesy_flag_fn = { context, stopped in
+        guard let context else { return }
+        let receiver = host(context)
+        MainActor.assumeIsolated { receiver.onStopped(stopped != 0) }
     }
 
     nonisolated static let sizeCallback: pinesy_size_fn = { context, width, height in

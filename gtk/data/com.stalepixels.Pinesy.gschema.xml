@@ -26,5 +26,16 @@
       <summary>GDB port</summary>
       <description>The port the GDB remote stub listens on.</description>
     </key>
+    <key name="pi-gdb-port" type="i">
+      <range min="1" max="65535"/>
+      <default>23947</default>
+      <summary>Pi GDB port</summary>
+      <description>The port the Pi's GDB stub (QEMU) listens on, in a run with the debugger of a configuration with a Pi SD card.</description>
+    </key>
+    <key name="start-paused" type="b">
+      <default>false</default>
+      <summary>Start paused</summary>
+      <description>In a run with the debugger, the Next waits at its first instruction until it is continued.</description>
+    </key>
   </schema>
 </schemalist>

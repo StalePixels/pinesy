@@ -318,6 +318,15 @@ Kirigami.Page {
                             color: Kirigami.Theme.disabledTextColor
                             font: Kirigami.Theme.smallFont
                         }
+                        // the Pi pause setting, next to the Pi's SD card
+                        QQC2.CheckBox {
+                            visible: mediaRow.media.name === (page.summary.piSDCard ?? "")
+                            text: i18nc("@option:check", "Pi starts paused")
+                            checked: page.document.piPaused
+                            onToggled: page.document.piPaused = checked
+                            QQC2.ToolTip.visible: hovered
+                            QQC2.ToolTip.text: i18n("With Run with Debugger, the Pi waits at its first instruction until you continue it.")
+                        }
                     }
                 }
 

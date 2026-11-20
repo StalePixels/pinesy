@@ -70,6 +70,15 @@ void ConfigurationDocument::setMouse(bool mouse)
 	Q_EMIT mouseChanged();
 }
 
+void ConfigurationDocument::setPiPaused(bool paused)
+{
+	if (paused == m_piPaused)
+		return;
+	m_piPaused = paused;
+	setModified(true);
+	Q_EMIT piPausedChanged();
+}
+
 void ConfigurationDocument::setWindowSize(int windowSize)
 {
 	if (windowSize == m_windowSize || !pinesy_core_is_window_size(windowSize))
@@ -205,18 +214,21 @@ QString ConfigurationDocument::load(const QUrl &url)
 	QStringList arguments;
 	int windowSize = PINESY_CORE_WINDOW_FIT;
 	bool mouse = true;
-	if (!Core::readDocument(file.readAll(), &machine, &arguments, &windowSize, &mouse))
+	bool piPaused = false;
+	if (!Core::readDocument(file.readAll(), &machine, &arguments, &windowSize, &mouse, &piPaused))
 		return i18n("This file is not a Pinesy configuration, or it is from a newer version of Pinesy.");
 	m_machine = machine;
 	m_arguments = arguments;
 	m_windowSize = windowSize;
 	m_customWindowSize = false;
 	m_mouse = mouse;
+	m_piPaused = piPaused;
 	m_url = url;
 	setModified(false);
 	Q_EMIT changed();
 	Q_EMIT windowSizeChanged();
 	Q_EMIT mouseChanged();
+	Q_EMIT piPausedChanged();
 	Q_EMIT urlChanged();
 	refresh();
 	return {};
@@ -227,7 +239,7 @@ QString ConfigurationDocument::save(const QUrl &url)
 	QSaveFile file(url.toLocalFile());
 	if (!file.open(QIODevice::WriteOnly))
 		return file.errorString();
-	file.write(Core::writeDocument(m_machine, m_arguments, m_windowSize, m_mouse));
+	file.write(Core::writeDocument(m_machine, m_arguments, m_windowSize, m_mouse, m_piPaused));
 	if (!file.commit())
 		return file.errorString();
 	if (url != m_url) {
@@ -242,7 +254,8 @@ void ConfigurationDocument::run(bool debug)
 {
 	if (!canRun())
 		return;
-	m_runningThis = MachineRunner::instance()->start(title(), m_arguments, debug, m_windowSize, takesMouse(), m_mouse);
+	m_runningThis = MachineRunner::instance()->start(title(), m_arguments, debug, m_windowSize, takesMouse(), m_mouse,
+			m_piPaused);
 }
 
 bool ConfigurationDocument::clearNvram()

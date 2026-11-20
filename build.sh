@@ -6,6 +6,9 @@
 #   Linux:  ./build.sh gtk     the GNOME app is build/gtk/pinesy
 #           ./build.sh kde     the KDE app is build/kde/bin/pinesy-kde
 #
+# Each build also builds gdb-pinesy and objcopy-pinesy (build-gdb.sh). On
+# macOS they go in the app. On Linux they stay in build/gdb/install/bin.
+#
 # What each build needs is in docs/build-macos.md and docs/build-linux.md.
 
 set -euo pipefail
@@ -36,6 +39,7 @@ case "$(uname -s)" in
 				;;
 		esac
 		./build-mame.sh
+		./build-gdb.sh
 		app/build.sh
 		;;
 	*)
@@ -43,11 +47,13 @@ case "$(uname -s)" in
 		case "$1" in
 			gtk)
 				./build-mame.sh --gtk
+				./build-gdb.sh
 				cmake -S gtk -B build/gtk
 				cmake --build build/gtk --parallel "$(nproc)"
 				;;
 			kde)
 				./build-mame.sh --qt
+				./build-gdb.sh
 				cmake -S kde -B build/kde
 				cmake --build build/kde --parallel "$(nproc)"
 				;;

@@ -46,6 +46,9 @@ typedef void (*pinesy_pump_fn)(void *context);
 // sending its movement.
 typedef void (*pinesy_pointer_fn)(void *context, int hide, int capture);
 
+// Receives a yes (1) or a no (0).
+typedef void (*pinesy_flag_fn)(void *context, int value);
+
 typedef struct pinesy_host
 {
 	// macOS: the NSView that shows the first screen. MAME sets the
@@ -96,6 +99,14 @@ typedef struct pinesy_host
 	// debugger, while enabled, makes no requests. May be null.
 	pinesy_pointer_fn pointer;
 
+	// A CPU of the machine is stopped and waits (1), or none is (0):
+	// the Next stopped in MAME's debugger, or the Pi of the nextpi card
+	// waiting at its first instruction (-pi_gdb_wait) or stopped by its
+	// GDB stub. pinesy_continue() continues them. Each run starts with
+	// none stopped, and a run that ends while one is stopped gets a 0.
+	// A call comes only when the value changes. May be null.
+	pinesy_flag_fn stopped;
+
 	void *context;
 } pinesy_host;
 
@@ -121,6 +132,19 @@ int pinesy_reset(int hard);
 // Pointer key does (see pinesy_host.pointer). A grab moves the pointer
 // into the view. Returns 1 while pinesy_run() runs.
 int pinesy_toggle_pointer(void);
+
+// Under MAME's debugger (-debug), MAME stops each new machine at its
+// first instruction. With paused 0, the default, Pinesy continues it
+// there, so it runs from the start; with 1 it stays stopped until the
+// debugger, a GDB client or pinesy_continue() continues it. Applies to
+// the runs that pinesy_run() starts after the call.
+void pinesy_set_start_paused(int paused);
+
+// Continues every stopped CPU (see pinesy_host.stopped): the Next, as
+// the debugger's go command does, and the Pi, as GDB's continue command
+// does. A GDB client that has one stopped is not told. Returns 1 if one
+// was stopped, 0 if none was or no machine is running.
+int pinesy_continue(void);
 
 // Keyboard input. keycode is the key's position, not its character:
 // on macOS a virtual key code (NSEvent keyCode, kVK_* in Carbon), on

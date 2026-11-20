@@ -12,7 +12,7 @@ The data folder is `$XDG_DATA_HOME/pinesy` (by default `~/.local/share/pinesy`) 
 
 `data/` holds the files a desktop needs:
 
-- `com.stalepixels.Pinesy.gschema.xml`: the settings schema. The keys are `rom-folders`, `data-folder`, `debugger` (`windows` or `gdbStub`) and `gdb-port`, as the core's settings schema names them.
+- `com.stalepixels.Pinesy.gschema.xml`: the settings schema. The keys are `rom-folders`, `data-folder`, `debugger` (`windows` or `gdbStub`), `gdb-port`, `pi-gdb-port` and `start-paused`, as the core's settings schema names them.
 - `com.stalepixels.Pinesy.desktop`: the desktop entry, for the MIME type `application/x-pinesy`.
 - `com.stalepixels.Pinesy.mime.xml`: the MIME type for `*.pinesy` files, with the app icon.
 - `com.stalepixels.Pinesy.service`: the D-Bus service file.
@@ -72,14 +72,16 @@ The configuration window has a Mouse switch row under the window size for a mach
 
 ## Debugger
 
-Run with Debugger adds `-debug`, and with the GDB remote stub also `-debugger gdbstub -debugger_port <port>`.
+Run with Debugger adds `-debug`, and with the GDB remote stub also `-debugger gdbstub -debugger_port <port>`. A configuration with a Pi SD card also gets `-pi_gdb_port <port>` with the Pi GDB port from Preferences. `../app/README.md` ("The debugger") and `../docs/gdb.md` describe the rest.
 
 - MAME's GTK debugger windows: the engine is built with the GTK debugger, so MAME chooses it for its debugger windows. Its windows use the app's GTK display, and the app's windows stay live while the debugger has the machine stopped.
-- The GDB remote stub: the machine waits for a GDB client on the port from Preferences. While it waits, and while GDB has the machine stopped, the app does not respond, because the stub's wait loop does not run the app's events.
+- The GDB remote stub: a GDB client connects on the port from Preferences. The app's windows stay live while the machine is stopped.
+
+Preferences also has Start paused. The configuration window has a "Pi starts paused" row under the Pi's SD card, when the configuration has one. The machine window's header bar shows a Continue button while the Next is stopped in MAME's debugger or the Pi waits.
 
 ## Headless mode
 
-Any command-line arguments run MAME with them and no user interface, as on macOS. A leading `--` is dropped and the exit code is MAME's.
+Any command-line arguments run MAME with them and no user interface, as on macOS. Pinesy's switches (`--paused`, `--paused-pi`) go before `--`, and MAME's command line after it (`../app/README.md`, "Headless"). The exit code is MAME's.
 
 ```sh
 GSETTINGS_SCHEMA_DIR=<build-dir>/schemas <build-dir>/pinesy -- tbblue -video none -sound none -seconds_to_run 10

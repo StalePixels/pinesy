@@ -56,6 +56,19 @@ bool read_mouse(const json::Value *value)
 	}
 }
 
+// true or false; anything else, or no value, is the default, off.
+bool read_pi_paused(const json::Value *value)
+{
+	try
+	{
+		return value && value->boolean();
+	}
+	catch (const json::Error &)
+	{
+		return false;
+	}
+}
+
 } // anonymous namespace
 
 std::optional<Document> Document::read(std::string_view text)
@@ -75,6 +88,7 @@ std::optional<Document> Document::read(std::string_view text)
 		if (version > format_version || document.arguments.empty()) return std::nullopt;
 		document.window_size = read_window_size(root.find("windowSize"));
 		document.mouse = read_mouse(root.find("mouse"));
+		document.pi_paused = read_pi_paused(root.find("piPaused"));
 		return document;
 	}
 	catch (const json::Error &)
@@ -90,7 +104,8 @@ std::string Document::write() const
 		{ "machine", machine },
 		{ "arguments", encode::strings(arguments) },
 		{ "windowSize", window::is_window_size(window_size) ? window_size : window::fit },
-		{ "mouse", mouse } });
+		{ "mouse", mouse },
+		{ "piPaused", pi_paused } });
 }
 
 } // namespace pinesy::core

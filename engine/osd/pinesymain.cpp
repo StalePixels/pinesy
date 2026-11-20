@@ -12,9 +12,16 @@
 //============================================================
 
 #include "pinesy.h"
+#include "pinesyopts.h"
+
+// QEMU, for the nextpi card's Pi
+#include "../../qemu/include/pinesy/bridge.h"
 
 // MAME headers
 #include "emu.h"
+#include "debugger.h"
+#include "debug/debugcon.h"
+#include "debug/debugcpu.h"
 #include "main.h"
 #include "render.h"
 #include "rendlay.h"
@@ -31,6 +38,8 @@
 #include <cstdio>
 #include <memory>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 // in hostview.mm or hostlinux.cpp
@@ -39,6 +48,38 @@ int pinesy_mac_keycode(int keycode);
 
 
 namespace {
+
+// the Next waits at its first instruction under the debugger
+// (pinesy_set_start_paused)
+bool s_start_paused = false;
+
+// the host's stopped callback, for the run
+pinesy_flag_fn s_stopped_fn = nullptr;
+void *s_stopped_context = nullptr;
+
+// the Next is stopped in the debugger
+bool s_next_stopped = false;
+
+// what the host was last told: a CPU is stopped (the Next or the Pi)
+bool s_host_stopped = false;
+
+// Tells the host when a CPU stops or none is stopped any more. The Pi's
+// state is read from QEMU at each call; outside a run, no CPU counts.
+void pinesy_update_stopped(bool running)
+{
+	const bool stopped = running && (s_next_stopped || pinesy_bridge_waiting());
+	if (stopped == s_host_stopped)
+		return;
+	s_host_stopped = stopped;
+	if (s_stopped_fn != nullptr)
+		s_stopped_fn(s_stopped_context, stopped ? 1 : 0);
+}
+
+void pinesy_set_stopped(bool stopped)
+{
+	s_next_stopped = stopped;
+	pinesy_update_stopped(true);
+}
 
 // Passes each line of MAME's output to the host, then on to the OSD,
 // which prints it as usual.
@@ -65,10 +106,64 @@ private:
 // Ctrl+Shift+M on Linux. MAME's own default, Right Control + Right
 // Option, needs a key that Mac laptops do not have. MAME's Input menu
 // can still change the key.
+//
+// Under the debugger (-debug), MAME stops each new machine at its first
+// instruction. Pinesy continues it there unless the run asked for it to
+// wait (pinesy_set_start_paused). While the Next is stopped, or the Pi
+// waits, the host is told (pinesy_host.stopped). A debugger with windows waits in its own
+// event loop; for the GDB stub, Pinesy waits in place of the stub, and
+// runs the host's events (gdbstub_wait).
 class pinesy_osd_interface : public mac_osd_interface
 {
 public:
 	using mac_osd_interface::mac_osd_interface;
+
+	virtual void init_debugger() override
+	{
+		mac_osd_interface::init_debugger();
+		m_first_stop = true;
+
+		// a hard reset starts a new machine, which draws a frame before
+		// its debugger exists
+		machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate([] () { pinesy_set_stopped(false); }));
+	}
+
+	virtual void wait_for_debugger(device_t &device, bool firststop) override
+	{
+		debugger_cpu &cpu = machine().debugger().cpu();
+		if (std::exchange(m_first_stop, false) && !s_start_paused)
+		{
+			// the debugger still sees the stop, so its windows open
+			device.debug()->go();
+			mac_osd_interface::wait_for_debugger(device, firststop);
+			return;
+		}
+
+		if (std::string_view(options().debugger()) == "gdbstub")
+		{
+			gdbstub_wait(device, firststop);
+		}
+		else
+		{
+			pinesy_set_stopped(true);
+			mac_osd_interface::wait_for_debugger(device, firststop);
+		}
+		if (!cpu.is_stopped())
+			pinesy_set_stopped(false);
+	}
+
+	virtual void update(bool skip_redraw) override
+	{
+		mac_osd_interface::update(skip_redraw);
+
+		// the debugger core can resume the machine after the last wait
+		// (an exit or a reset was asked for)
+		if (s_next_stopped && !((machine().debug_flags & DEBUG_FLAG_ENABLED) && machine().debugger().cpu().is_stopped()))
+			s_next_stopped = false;
+
+		// the Pi stops and runs on QEMU's thread
+		pinesy_update_stopped(true);
+	}
 
 	virtual void customize_input_type_list(std::vector<input_type_entry> &typelist) override
 	{
@@ -86,6 +181,34 @@ public:
 						right, KEYCODE_LSHIFT, KEYCODE_M, input_seq::or_code,
 						right, KEYCODE_RSHIFT, KEYCODE_M);
 	}
+
+private:
+	// The GDB stub, at each stop, sends its stop reply to the client and
+	// then waits in a loop of its own until the machine runs again,
+	// handling only its socket. The stub is let through that loop: the
+	// machine shows as running for that one call. Then Pinesy waits one
+	// step at a time: the stub handles what its client sent, and the
+	// host's events run, so its window and its Continue button work. The
+	// debugger core calls again while the machine stays stopped.
+	void gdbstub_wait(device_t &device, bool firststop)
+	{
+		debugger_cpu &cpu = machine().debugger().cpu();
+		if (firststop)
+		{
+			cpu.set_execution_running();
+			mac_osd_interface::wait_for_debugger(device, firststop);
+			cpu.set_execution_stopped();
+		}
+		pinesy_set_stopped(true);
+		debugger_update();
+		process_events();
+		pinesy_update_stopped(true);
+		if (cpu.is_stopped())
+			osd_sleep(osd_ticks_per_second() / 1000);
+	}
+
+	// the next stop is the new machine's first
+	bool m_first_stop = false;
 };
 
 // pinesy_run() is running
@@ -151,6 +274,10 @@ extern "C" int pinesy_run(int argc, const char *const argv[], const pinesy_host 
 	pinesy_attach_host(host);
 	s_pointer_fn = host ? host->pointer : nullptr;
 	s_pointer_context = host ? host->context : nullptr;
+	s_stopped_fn = host ? host->stopped : nullptr;
+	s_stopped_context = host ? host->context : nullptr;
+	s_next_stopped = false;
+	s_host_stopped = false;
 	s_pointer_inside = false;
 	s_pointer_hidden = false;
 	s_pointer_captured = false;
@@ -161,6 +288,7 @@ extern "C" int pinesy_run(int argc, const char *const argv[], const pinesy_host 
 	s_recapture_button = -1;
 
 	mac_options options;
+	pinesy_add_options(options);
 	pinesy_osd_interface osd(options);
 	osd.register_options();
 
@@ -188,6 +316,10 @@ extern "C" int pinesy_run(int argc, const char *const argv[], const pinesy_host 
 	pinesy_set_pointer(false, false);
 	s_pointer_fn = nullptr;
 	s_pointer_context = nullptr;
+	s_next_stopped = false;
+	pinesy_update_stopped(false);
+	s_stopped_fn = nullptr;
+	s_stopped_context = nullptr;
 
 	pinesy_attach_host(nullptr);
 	return res;
@@ -366,6 +498,32 @@ extern "C" int pinesy_reset(int hard)
 		machine.schedule_hard_reset();
 	else
 		machine.schedule_soft_reset();
+	return 1;
+}
+
+
+//============================================================
+//  the debugger
+//============================================================
+
+extern "C" void pinesy_set_start_paused(int paused)
+{
+	s_start_paused = paused != 0;
+}
+
+extern "C" int pinesy_continue(void)
+{
+	// the machine has windows from its start to its exit
+	if (!s_running || osd_common_t::window_list().empty())
+		return 0;
+
+	// the Pi runs on QEMU's thread, and starts there soon after
+	const bool pi = pinesy_bridge_continue();
+
+	running_machine &machine = osd_common_t::window_list().front()->machine();
+	if (!(machine.debug_flags & DEBUG_FLAG_ENABLED) || !machine.debugger().cpu().is_stopped())
+		return pi ? 1 : 0;
+	machine.debugger().console().get_visible_cpu()->debug()->go();
 	return 1;
 }
 

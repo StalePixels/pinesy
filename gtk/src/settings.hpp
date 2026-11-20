@@ -18,6 +18,8 @@ inline constexpr const char *rom_folders = "rom-folders";
 inline constexpr const char *data_folder = "data-folder";
 inline constexpr const char *debugger = "debugger";
 inline constexpr const char *gdb_port = "gdb-port";
+inline constexpr const char *pi_gdb_port = "pi-gdb-port";
+inline constexpr const char *start_paused = "start-paused";
 } // namespace key
 
 // The settings, or nullptr when the schema is not installed. Then it

@@ -9,3 +9,8 @@
 [submodule "vendor/rpi-utils"]
 	path = vendor/rpi-utils
 	url = https://github.com/raspberrypi/utils.git
+[submodule "vendor/gdb"]
+	path = vendor/gdb
+	url = https://sourceware.org/git/binutils-gdb.git
+	shallow = true
+	update = none

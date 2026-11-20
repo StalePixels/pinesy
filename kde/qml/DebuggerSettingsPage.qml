@@ -40,12 +40,29 @@ Kirigami.ScrollablePage {
             onValueModified: Core.gdbPort = value
         }
 
+        QQC2.SpinBox {
+            Kirigami.FormData.label: i18nc("@label:spinbox", "Pi GDB port:")
+            from: Core.minGdbPort
+            to: Core.maxGdbPort
+            editable: true
+            value: Core.piGdbPort
+            textFromValue: (value, locale) => value.toString()
+            valueFromText: (text, locale) => parseInt(text)
+            onValueModified: Core.piGdbPort = value
+        }
+
+        QQC2.CheckBox {
+            text: i18nc("@option:check", "Start paused")
+            checked: Core.startPaused
+            onToggled: Core.startPaused = checked
+        }
+
         QQC2.Label {
             Layout.maximumWidth: Kirigami.Units.gridUnit * 24
             wrapMode: Text.Wrap
             color: Kirigami.Theme.disabledTextColor
             font: Kirigami.Theme.smallFont
-            text: i18n("GDB clients connect to this port.")
+            text: i18n("GDB clients connect to these ports: the Next's, and the Pi's when the configuration has a Pi SD card. With Start paused, the Next waits at its first instruction until you continue it.")
         }
     }
 }

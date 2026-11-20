@@ -122,6 +122,16 @@ int pinesy_core_set_settings(pinesy_core *core, const char *settings_json)
 				settings.gdb_port = int(port);
 		}
 		catch (const json::Error &) {}
+	if (const json::Value *v = root.find("startPaused"))
+		try { settings.start_paused = v->boolean(); } catch (const json::Error &) {}
+	if (const json::Value *v = root.find("piGdbPort"))
+		try
+		{
+			double port = v->number();
+			if (port == double(int(port)) && port >= Settings::min_gdb_port && port <= Settings::max_gdb_port)
+				settings.pi_gdb_port = int(port);
+		}
+		catch (const json::Error &) {}
 	core->core.set_settings(std::move(settings));
 	return 0;
 }
@@ -134,7 +144,9 @@ char *pinesy_core_settings(const pinesy_core *core)
 		{ "romFolders", encode::strings(s.rom_folders) },
 		{ "dataFolder", s.data_folder },
 		{ "debugger", debugger_name(s.debugger) },
-		{ "gdbPort", s.gdb_port } });
+		{ "gdbPort", s.gdb_port },
+		{ "startPaused", s.start_paused },
+		{ "piGdbPort", s.pi_gdb_port } });
 }
 
 char *pinesy_core_data_folder(const pinesy_core *core)
@@ -311,19 +323,22 @@ char *pinesy_core_read_document(const char *text)
 		{ "machine", document->machine },
 		{ "arguments", encode::strings(document->arguments) },
 		{ "windowSize", document->window_size },
-		{ "mouse", document->mouse } });
+		{ "mouse", document->mouse },
+		{ "piPaused", document->pi_paused } });
 }
 
-char *pinesy_core_write_document(const char *machine, const char *arguments, int window_size, int mouse)
+char *pinesy_core_write_document(const char *machine, const char *arguments, int window_size, int mouse, int pi_paused)
 {
 	auto args = read_arguments(arguments);
 	if (!machine || !args) return nullptr;
-	return give(Document{ machine, *args, window_size, mouse != 0 }.write());
+	return give(Document{ machine, *args, window_size, mouse != 0, pi_paused != 0 }.write());
 }
 
 //------------------------------------------------------------
 //  The machine window's size
 //------------------------------------------------------------
+
+static_assert(PINESY_CORE_DEFAULT_PI_GDB_PORT == Settings::default_pi_gdb_port);
 
 static_assert(PINESY_CORE_WINDOW_FULL_SCREEN == window::full_screen && PINESY_CORE_WINDOW_FIT == window::fit
 		&& PINESY_CORE_WINDOW_LISTED_MAGNIFICATIONS == window::listed_magnifications
@@ -364,25 +379,28 @@ int pinesy_core_window_size(int frame_width, int frame_height, int window_size, 
 //  Runs and headless mode
 //------------------------------------------------------------
 
-char *pinesy_core_debug_arguments(const pinesy_core *core, int debug)
-{
-	return core ? give(encode::strings(debug_arguments(core->core.settings(), debug != 0))) : nullptr;
-}
-
-char *pinesy_core_run_command_line(const pinesy_core *core, const char *arguments, int debug, int takes_mouse,
-		int mouse)
+char *pinesy_core_debug_arguments(const pinesy_core *core, const char *arguments, int debug)
 {
 	auto args = read_arguments(arguments);
 	if (!core || !args) return nullptr;
-	return give(encode::strings(core->core.run_command_line(*args, debug != 0, takes_mouse != 0, mouse != 0)));
+	return give(encode::strings(debug_arguments(core->core.settings(), *args, debug != 0)));
+}
+
+char *pinesy_core_run_command_line(const pinesy_core *core, const char *arguments, int debug, int takes_mouse,
+		int mouse, int pi_paused)
+{
+	auto args = read_arguments(arguments);
+	if (!core || !args) return nullptr;
+	return give(encode::strings(core->core.run_command_line(*args, debug != 0, takes_mouse != 0, mouse != 0,
+			pi_paused != 0)));
 }
 
 int pinesy_core_run(const pinesy_core *core, const char *arguments, int debug, int takes_mouse, int mouse,
-		const pinesy_host *host)
+		int pi_paused, const pinesy_host *host)
 {
 	auto args = read_arguments(arguments);
 	if (!core || !args) return -1;
-	return core->core.run(*args, debug != 0, takes_mouse != 0, mouse != 0, host);
+	return core->core.run(*args, debug != 0, takes_mouse != 0, mouse != 0, pi_paused != 0, host);
 }
 
 char *pinesy_core_copy_command_line(const pinesy_core *core, const char *executable, const char *arguments, int debug,

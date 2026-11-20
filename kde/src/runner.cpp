@@ -25,7 +25,7 @@ MachineRunner *MachineRunner::create(QQmlEngine *, QJSEngine *)
 }
 
 bool MachineRunner::start(const QString &title, const QStringList &arguments, bool debug, int windowSize, bool takesMouse,
-		bool mouse)
+		bool mouse, bool piPaused)
 {
 	if (!m_running.isEmpty() || arguments.isEmpty())
 		return false;
@@ -40,15 +40,17 @@ bool MachineRunner::start(const QString &title, const QStringList &arguments, bo
 
 	// pinesy_run() keeps its own loop; start it from the event loop, so the
 	// action that started it returns first.
-	QTimer::singleShot(0, this, [this, arguments, debug, takesMouse, mouse] { run(arguments, debug, takesMouse, mouse); });
+	QTimer::singleShot(0, this, [this, arguments, debug, takesMouse, mouse, piPaused] {
+		run(arguments, debug, takesMouse, mouse, piPaused);
+	});
 	return true;
 }
 
-void MachineRunner::run(const QStringList &arguments, bool debug, bool takesMouse, bool mouse)
+void MachineRunner::run(const QStringList &arguments, bool debug, bool takesMouse, bool mouse, bool piPaused)
 {
 	m_window->prepare();
 	const int code = pinesy_core_run(Core::instance()->handle(), Core::toJson(arguments).constData(),
-			debug ? 1 : 0, takesMouse ? 1 : 0, mouse ? 1 : 0, m_window->host());
+			debug ? 1 : 0, takesMouse ? 1 : 0, mouse ? 1 : 0, piPaused ? 1 : 0, m_window->host());
 
 	const QString title = m_running;
 	const QString errors = m_window->errors().join(QString()).trimmed();

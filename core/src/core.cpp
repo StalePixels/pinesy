@@ -18,6 +18,7 @@
 #include "pinesy.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <filesystem>
 #include <utility>
 
@@ -211,7 +212,19 @@ const Catalogue &Core::catalogue()
 //  Runs
 //------------------------------------------------------------
 
-std::vector<std::string> debug_arguments(const Settings &settings, bool debug)
+std::vector<std::string> Switches::mame_arguments() const
+{
+	if (paused_pi) return { "-pi_gdb_wait" };
+	return {};
+}
+
+std::string pi_sd_card(const std::vector<std::string> &arguments)
+{
+	std::optional<std::string> image = Arguments::parse(arguments).get("pi");
+	return image && !image->empty() ? "pi" : "";
+}
+
+std::vector<std::string> debug_arguments(const Settings &settings, const std::vector<std::string> &arguments, bool debug)
 {
 	if (!debug) return {};
 	std::vector<std::string> result{ "-debug" };
@@ -219,7 +232,18 @@ std::vector<std::string> debug_arguments(const Settings &settings, bool debug)
 	{
 		result.insert(result.end(), { "-debugger", "gdbstub", "-debugger_port", std::to_string(settings.gdb_port) });
 	}
+	if (!pi_sd_card(arguments).empty())
+		result.insert(result.end(), { "-pi_gdb_port", std::to_string(settings.pi_gdb_port) });
 	return result;
+}
+
+Switches run_switches(const Settings &settings, const std::vector<std::string> &arguments, bool debug, bool pi_paused)
+{
+	Switches switches;
+	if (!debug) return switches;
+	switches.paused = settings.start_paused;
+	switches.paused_pi = pi_paused && !pi_sd_card(arguments).empty();
+	return switches;
 }
 
 std::vector<std::string> mouse_arguments(bool takes_mouse, bool mouse)
@@ -232,23 +256,26 @@ std::vector<std::string> mouse_arguments(bool takes_mouse, bool mouse)
 }
 
 std::vector<std::string> Core::run_command_line(const std::vector<std::string> &arguments, bool debug, bool takes_mouse,
-		bool mouse) const
+		bool mouse, bool pi_paused) const
 {
 	std::vector<std::string> command = fixed_options();
 	command.insert(command.end(), arguments.begin(), arguments.end());
 	auto pointer = mouse_arguments(takes_mouse, mouse);
 	command.insert(command.end(), pointer.begin(), pointer.end());
-	auto extra = debug_arguments(m_settings, debug);
+	auto extra = debug_arguments(m_settings, arguments, debug);
 	command.insert(command.end(), extra.begin(), extra.end());
+	auto switched = run_switches(m_settings, arguments, debug, pi_paused).mame_arguments();
+	command.insert(command.end(), switched.begin(), switched.end());
 	return command;
 }
 
-int Core::run(const std::vector<std::string> &arguments, bool debug, bool takes_mouse, bool mouse,
+int Core::run(const std::vector<std::string> &arguments, bool debug, bool takes_mouse, bool mouse, bool pi_paused,
 		const pinesy_host *host) const
 {
 	create_folders();
-	std::vector<std::string> command = run_command_line(arguments, debug, takes_mouse, mouse);
+	std::vector<std::string> command = run_command_line(arguments, debug, takes_mouse, mouse, pi_paused);
 	CStrings c(command);
+	pinesy_set_start_paused(run_switches(m_settings, arguments, debug, pi_paused).paused ? 1 : 0);
 	return pinesy_run(c.argc(), c.data(), host);
 }
 
@@ -280,7 +307,7 @@ std::string Core::copy_command_line(const std::string &executable, const std::ve
 	words.insert(words.end(), arguments.begin(), arguments.end());
 	auto pointer = mouse_arguments(takes_mouse, mouse);
 	words.insert(words.end(), pointer.begin(), pointer.end());
-	auto extra = debug_arguments(m_settings, debug);
+	auto extra = debug_arguments(m_settings, arguments, debug);
 	words.insert(words.end(), extra.begin(), extra.end());
 	std::string line;
 	for (size_t i = 0; i < words.size(); i++)
@@ -314,15 +341,45 @@ bool opens_debugger_windows(const std::vector<std::string> &arguments)
 	return debugger != "none" && debugger != "gdbstub";
 }
 
+CommandLine split(const std::vector<std::string> &arguments)
+{
+	CommandLine result;
+	auto separator = std::find(arguments.begin(), arguments.end(), "--");
+	if (separator == arguments.end())
+	{
+		result.mame = arguments;
+		return result;
+	}
+	for (auto word = arguments.begin(); word != separator; ++word)
+	{
+		if (*word == "--paused")
+			result.switches.paused = true;
+		else if (*word == "--paused-pi")
+			result.switches.paused_pi = true;
+		else if (result.error.empty())
+			result.error = "unknown switch before \"--\": " + *word + " (Pinesy's switches are --paused and --paused-pi)";
+	}
+	result.mame.assign(separator + 1, arguments.end());
+	return result;
+}
+
 } // namespace headless
 
-int Core::headless(std::vector<std::string> arguments, const pinesy_host *host) const
+int Core::headless(const std::vector<std::string> &arguments, const pinesy_host *host) const
 {
-	if (!arguments.empty() && arguments.front() == "--") arguments.erase(arguments.begin());
+	const headless::CommandLine line = headless::split(arguments);
+	if (!line.error.empty())
+	{
+		std::fprintf(stderr, "Pinesy: %s\n", line.error.c_str());
+		return 6;   // MAME's EMU_ERR_INVALID_CONFIG, as for an unknown option
+	}
 	create_folders();
 	std::vector<std::string> command = fixed_options();
-	command.insert(command.end(), arguments.begin(), arguments.end());
+	command.insert(command.end(), line.mame.begin(), line.mame.end());
+	auto switched = line.switches.mame_arguments();
+	command.insert(command.end(), switched.begin(), switched.end());
 	CStrings c(command);
+	pinesy_set_start_paused(line.switches.paused ? 1 : 0);
 	return pinesy_run(c.argc(), c.data(), host);
 }
 

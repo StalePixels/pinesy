@@ -13,6 +13,7 @@ A configuration is a document: a machine, what is fitted to it, its ROM and the 
 - `arguments`: the MAME command line the configuration runs, as an array of strings. The first string is the driver to run, then options, such as `-exp intf1,bios=v1` or `-pi /path/nextpi.img`. An empty value, as in `-rs232_rpi ""`, leaves a slot empty. A string that starts with `-` is always an option name, never a value, so a flag such as `-skip_gameinfo` stays a flag. Strings that are not options stay where they are.
 - `windowSize`: the machine window's size. `-1` is Full screen, `0` is Fit to screen, and a whole number of 1 or more is that magnification of the frame. A file without this key, or with another value, opens as Fit to screen.
 - `mouse`: the mouse setting, `true` or `false` (see "The mouse"). A file without this key, or with another value, opens with it on.
+- `piPaused`: the Pi pause setting, `true` or `false` (see "The debugger"). A file without this key, or with another value, opens with it off.
 
 File > New (⌘N) opens a window and asks for the machine. A launch with no document to open does the same when there is no recent configuration. When there are recent configurations, the launch shows them in their own window instead: the files of File > Open Recent that still exist. Open opens the selected file, and Create a New Machine… opens a new window that asks for the machine. A window with no machine chosen is not restored at the next launch. The configuration window shows the machine, its model and ROM, its window size, the mouse setting for a machine that takes a mouse, its hardware and its media, and the command line. Every change is checked with MAME, and an option the machine no longer has is removed. When MAME rejects the driver itself, no option is removed. When MAME rejects the command line, the window shows MAME's error text and Run is not available. MAME's warnings are shown too, and do not stop a run. A media row with a problem shows it in red under the row's name: a file the machine needs and does not have, a file that is not found (the row shows its full path), or an SD card image that MAME's SD card cannot use. MAME takes SD cards of up to 1 GiB, and SDHC cards of up to 32 GiB that are a multiple of 512 KiB. A CHD is not checked. Choose refuses such an SD card image and says why, and a configuration that holds one cannot run. Each media row shows the file extensions MAME lists for the device, but any file can be chosen, because MAME also opens others. A hard disk device (MAME's image type `harddisk`, such as the Next's SD card) also lists `.img` and `.raw`, for raw disk images; the core adds them to the device's extension list.
 
@@ -41,9 +42,17 @@ Machine > Run (⌘R) runs the front configuration in its own window, and Machine
 Settings:
 
 - General: extra ROM folders, and the folder where MAME keeps its files (`~/Library/Application Support/Pinesy` by default).
-- Debugger: MAME's debugger windows, or the GDB remote stub (`-debugger gdbstub -debugger_port <port>`, port 23946 by default, from 1 to 65535).
+- Debugger: MAME's debugger windows, or the GDB remote stub (`-debugger gdbstub -debugger_port <port>`, port 23946 by default, from 1 to 65535); the Pi GDB port (23947 by default, same range); and Start paused (see "The debugger").
 
-Machine > Copy Command Line copies the headless command for the configuration, quoted for zsh. Headless mode adds the paths below itself.
+Machine > Copy Command Line copies the headless command for the configuration, quoted for zsh: the executable, `--`, then the command line. It is the command line of Run, so it has no switches and no debugger options. Headless mode adds the paths below itself.
+
+## The debugger
+
+Run with Debugger adds `-debug`, the options of the debugger in Settings, and, for a configuration with a Pi SD card, `-pi_gdb_port <Pi GDB port>`, which starts QEMU's GDB stub for the Pi. [../docs/gdb.md](../docs/gdb.md) describes both GDB stubs.
+
+With `-debug`, MAME stops the Next at its first instruction. Pinesy continues it there, so the Next runs from the start. With Start paused on in Settings, the Next stays stopped there (the `--paused` switch). The configuration window shows a "Pi starts paused" switch next to the Pi's SD card, when the configuration has one. With it on, a run with the debugger adds `-pi_gdb_wait`, and the Pi waits at its first instruction until a GDB client or the Continue button continues it (the `--paused-pi` switch). The setting is saved in the `.pinesy` file. A run without the debugger uses neither switch.
+
+The machine window shows a Continue button at the right of its title bar while the Next is stopped in MAME's debugger (by a breakpoint, by a GDB client or at the start), or while the Pi waits (at its first instruction, or stopped by its GDB stub). It continues both, and hides again. The engine tells the app through the host's `stopped` callback, and the button calls `pinesy_continue()`. The app's windows stay live while the Next is stopped, with either debugger, so Stop and closing the window also work then.
 
 ## The machine window
 
@@ -67,7 +76,12 @@ A machine window in headless mode sends the mouse the same way, and MAME's own o
 
 ## Headless
 
-Any arguments make the executable run MAME with them and no UI. A leading `--` is dropped. The exit code is MAME's. MAME shows no machine window here. With `-debug` and MAME's debugger windows (no `-debugger none` or `-debugger gdbstub`), the process runs as a regular app so the debugger windows can open. Headless mode does not read `.pinesy` files; the `arguments` array of one is a command line to pass.
+Any arguments make the executable run MAME with them and no UI. With `--` among the arguments, the words before the first `--` are Pinesy's switches, and the words after it are MAME's command line. Without `--`, every word is MAME's. The exit code is MAME's.
+
+- `--paused`: with `-debug`, the Next waits at its first instruction. Without it, Pinesy continues the Next there.
+- `--paused-pi`: the Pi waits at its first instruction until a GDB client or the Continue button continues it. It adds `-pi_gdb_wait`. Without `-pi_gdb_port` there is no Pi stub, and only the Continue button continues the Pi.
+
+Any other word before `--` is an error, and the exit code is 6, MAME's code for a bad option. MAME shows no machine window here. With `-debug` and MAME's debugger windows (no `-debugger none` or `-debugger gdbstub`), the process runs as a regular app so the debugger windows can open. Headless mode does not read `.pinesy` files; the `arguments` array of one is a command line to pass.
 
 ```sh
 Pinesy.app/Contents/MacOS/Pinesy -- tbblue -video none -sound none -seconds_to_run 10

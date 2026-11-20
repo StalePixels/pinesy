@@ -36,6 +36,10 @@ enum Core {
         if defaults.object(forKey: AppSettings.Key.gdbPort) != nil {
             settings["gdbPort"] = defaults.integer(forKey: AppSettings.Key.gdbPort)
         }
+        settings["startPaused"] = defaults.bool(forKey: AppSettings.Key.startPaused)
+        if defaults.object(forKey: AppSettings.Key.piGDBPort) != nil {
+            settings["piGdbPort"] = defaults.integer(forKey: AppSettings.Key.piGDBPort)
+        }
         return encode(settings)
     }
 
@@ -154,12 +158,14 @@ enum Core {
     // MARK: - Runs
 
     /// Runs a configuration with MAME's fixed options, the mouse option
-    /// and, with debug, the debugger options from the settings.
-    /// `takesMouse` is the summary's mouse and `mouse` the configuration's
-    /// mouse setting; the core turns them into the mouse option. Returns
-    /// MAME's exit code.
-    static func run(_ arguments: [String], debug: Bool, takesMouse: Bool, mouse: Bool, host: UnsafePointer<pinesy_host>?) -> Int32 {
-        pinesy_core_run(current, encode(arguments), debug ? 1 : 0, takesMouse ? 1 : 0, mouse ? 1 : 0, host)
+    /// and, with debug, the debugger options and switches from the
+    /// settings. `takesMouse` is the summary's mouse and `mouse` the
+    /// configuration's mouse setting; the core turns them into the mouse
+    /// option. `piPaused` is the configuration's Pi pause setting.
+    /// Returns MAME's exit code.
+    static func run(_ arguments: [String], debug: Bool, takesMouse: Bool, mouse: Bool, piPaused: Bool,
+                    host: UnsafePointer<pinesy_host>?) -> Int32 {
+        pinesy_core_run(current, encode(arguments), debug ? 1 : 0, takesMouse ? 1 : 0, mouse ? 1 : 0, piPaused ? 1 : 0, host)
     }
 
     /// The headless command for a configuration, quoted for zsh, with

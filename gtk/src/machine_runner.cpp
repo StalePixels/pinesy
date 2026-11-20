@@ -177,6 +177,14 @@ MachineWindow::MachineWindow(const std::string &title, int window_size) : m_wind
 	gtk_widget_set_visible(leave, FALSE);
 	g_signal_connect_swapped(leave, "clicked", G_CALLBACK(gtk_window_unfullscreen), m_window);
 	adw_header_bar_pack_end(ADW_HEADER_BAR(m_header), leave);
+	// shown while the Next is stopped in the debugger or the Pi waits
+	m_continue = gtk_button_new_from_icon_name("media-playback-start-symbolic");
+	gtk_button_set_label(GTK_BUTTON(m_continue), "Continue");
+	gtk_widget_set_tooltip_text(m_continue, "Continue the stopped Next or Pi");
+	gtk_widget_set_focusable(m_continue, FALSE);
+	gtk_widget_set_visible(m_continue, FALSE);
+	g_signal_connect(m_continue, "clicked", G_CALLBACK(+[](GtkButton *, gpointer) { pinesy_continue(); }), nullptr);
+	adw_header_bar_pack_start(ADW_HEADER_BAR(m_header), m_continue);
 	GtkWidget *toolbar = adw_toolbar_view_new();
 	adw_toolbar_view_add_top_bar(ADW_TOOLBAR_VIEW(toolbar), m_header);
 	adw_toolbar_view_set_content(ADW_TOOLBAR_VIEW(toolbar), GTK_WIDGET(m_view->gobj()));
@@ -250,8 +258,14 @@ pinesy_host MachineWindow::host()
 	host.size = on_size;
 	host.pump = on_pump;
 	host.pointer = on_pointer;
+	host.stopped = on_stopped;
 	host.context = this;
 	return host;
+}
+
+void MachineWindow::on_stopped(void *context, int stopped)
+{
+	gtk_widget_set_visible(static_cast<MachineWindow *>(context)->m_continue, stopped != 0);
 }
 
 void MachineWindow::on_frame(void *context, const void *pixels, int width, int height, int pitch)
@@ -380,7 +394,7 @@ void MachineWindow::release_keys()
 //------------------------------------------------------------
 
 void MachineRunner::start(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-		bool debug, int window_size, bool takes_mouse, bool mouse)
+		bool debug, int window_size, bool takes_mouse, bool mouse, bool pi_paused)
 {
 	if (m_running)
 		return;
@@ -390,13 +404,13 @@ void MachineRunner::start(const core::Core &core, const std::string &title, cons
 
 	// pinesy_run() keeps its own loop. Start it from an idle callback, so
 	// the action or click that asked for the run has been handled first.
-	Glib::signal_idle().connect_once([this, &core, title, arguments, debug, window_size, takes_mouse, mouse] {
-		run(core, title, arguments, debug, window_size, takes_mouse, mouse);
+	Glib::signal_idle().connect_once([this, &core, title, arguments, debug, window_size, takes_mouse, mouse, pi_paused] {
+		run(core, title, arguments, debug, window_size, takes_mouse, mouse, pi_paused);
 	});
 }
 
 void MachineRunner::run(const core::Core &core, const std::string &title, const std::vector<std::string> &arguments,
-		bool debug, int window_size, bool takes_mouse, bool mouse)
+		bool debug, int window_size, bool takes_mouse, bool mouse, bool pi_paused)
 {
 	int code = 0;
 	bool ran = false;
@@ -413,7 +427,7 @@ void MachineRunner::run(const core::Core &core, const std::string &title, const 
 				m_changed.emit();
 			});
 			window.set_running(true);
-			code = core.run(arguments, debug, takes_mouse, mouse, &host);
+			code = core.run(arguments, debug, takes_mouse, mouse, pi_paused, &host);
 			window.set_running(false);
 			ran = true;
 		}
@@ -457,9 +471,7 @@ int run_headless_in_window(const core::Core &core, const std::vector<std::string
 	Gtk::init_gtkmm_internals();
 	adw_init();
 
-	std::vector<std::string> mame = arguments;
-	if (!mame.empty() && mame.front() == "--")
-		mame.erase(mame.begin());
+	const std::vector<std::string> mame = core::headless::split(arguments).mame;
 	auto driver = std::find_if(mame.begin(), mame.end(), [](const std::string &a) { return a.empty() || a[0] != '-'; });
 	std::string title = driver != mame.end() ? *driver : "Pi/Ne-Sy";
 

@@ -384,6 +384,7 @@ Summary::Summary(const std::vector<std::string> &arguments, const MachineDescrip
 	errors = description.errors;
 	warnings = description.warnings.value_or("");
 	mouse = description.mouse;
+	pi_sd_card = core::pi_sd_card(arguments);
 
 	// the models offered, plus the reference model when a document names it
 	if (machine)

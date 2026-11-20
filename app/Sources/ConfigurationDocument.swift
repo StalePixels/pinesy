@@ -24,12 +24,16 @@ struct ConfigurationDocument: FileDocument {
     /// The mouse setting: runs of a machine that takes a mouse give it
     /// the Mac's mouse.
     var mouse: Bool
+    /// The Pi pause setting: in a run with the debugger, the Pi waits at
+    /// its first instruction until it is continued.
+    var piPaused: Bool
 
     init() {
         machine = ""
         arguments = []
         windowSize = Core.windowFit
         mouse = true
+        piPaused = false
     }
 
     private struct Contents: Decodable {
@@ -37,6 +41,7 @@ struct ConfigurationDocument: FileDocument {
         var arguments: [String]
         var windowSize: Int
         var mouse: Bool
+        var piPaused: Bool
     }
 
     init(configuration: ReadConfiguration) throws {
@@ -50,10 +55,12 @@ struct ConfigurationDocument: FileDocument {
         arguments = contents.arguments
         windowSize = contents.windowSize
         mouse = contents.mouse
+        piPaused = contents.piPaused
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        guard let text = Core.take(pinesy_core_write_document(machine, Core.encode(arguments), Int32(clamping: windowSize), mouse ? 1 : 0)) else {
+        guard let text = Core.take(pinesy_core_write_document(machine, Core.encode(arguments), Int32(clamping: windowSize), mouse ? 1 : 0,
+                                                                piPaused ? 1 : 0)) else {
             throw CocoaError(.fileWriteUnknown)
         }
         return FileWrapper(regularFileWithContents: Data(text.utf8))

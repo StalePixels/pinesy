@@ -63,7 +63,9 @@ SettingsDialog::SettingsDialog(Glib::RefPtr<Gio::Settings> settings) : m_setting
 	adw_preferences_page_set_icon_name(debugger, "system-run-symbolic");
 	auto group = ADW_PREFERENCES_GROUP(adw_preferences_group_new());
 	adw_preferences_group_set_title(group, "Run with Debugger uses");
-	adw_preferences_group_set_description(group, "GDB clients connect to this port.");
+	adw_preferences_group_set_description(group,
+			"GDB clients connect to these ports: the Next’s, and the Pi’s when the configuration has a Pi SD card. "
+			"With Start paused, the Next waits at its first instruction until you continue it.");
 
 	auto choice_row = [group](const char *title, const char *subtitle, GtkWidget *check) {
 		GtkWidget *row = adw_action_row_new();
@@ -94,6 +96,18 @@ SettingsDialog::SettingsDialog(Glib::RefPtr<Gio::Settings> settings) : m_setting
 	adw_spin_row_set_numeric(ADW_SPIN_ROW(m_port), TRUE);
 	g_settings_bind(m_settings->gobj(), key::gdb_port, m_port, "value", G_SETTINGS_BIND_DEFAULT);
 	adw_preferences_group_add(group, m_port);
+
+	GtkWidget *pi_port = adw_spin_row_new_with_range(core::Settings::min_gdb_port, core::Settings::max_gdb_port, 1);
+	adw_preferences_row_set_title(ADW_PREFERENCES_ROW(pi_port), "Pi GDB port");
+	adw_spin_row_set_digits(ADW_SPIN_ROW(pi_port), 0);
+	adw_spin_row_set_numeric(ADW_SPIN_ROW(pi_port), TRUE);
+	g_settings_bind(m_settings->gobj(), key::pi_gdb_port, pi_port, "value", G_SETTINGS_BIND_DEFAULT);
+	adw_preferences_group_add(group, pi_port);
+
+	GtkWidget *start_paused = adw_switch_row_new();
+	adw_preferences_row_set_title(ADW_PREFERENCES_ROW(start_paused), "Start paused");
+	g_settings_bind(m_settings->gobj(), key::start_paused, start_paused, "active", G_SETTINGS_BIND_DEFAULT);
+	adw_preferences_group_add(group, start_paused);
 	adw_preferences_page_add(debugger, group);
 	adw_preferences_dialog_add(m_dialog, debugger);
 	update_debugger();

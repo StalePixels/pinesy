@@ -23,9 +23,12 @@ enum AppSettings {
         static let dataFolder = "dataFolder"
         static let debugger = "debugger"
         static let gdbPort = "gdbPort"
+        static let startPaused = "startPaused"
+        static let piGDBPort = "piGdbPort"
     }
 
     static let defaultGDBPort = Int(PINESY_CORE_DEFAULT_GDB_PORT)
+    static let defaultPiGDBPort = Int(PINESY_CORE_DEFAULT_PI_GDB_PORT)
     static let gdbPorts = Int(PINESY_CORE_MIN_GDB_PORT)...Int(PINESY_CORE_MAX_GDB_PORT)
 
     /// Where MAME's files go when Settings names no folder.
@@ -131,6 +134,8 @@ private struct GeneralSettings: View {
 private struct DebuggerSettings: View {
     @AppStorage(AppSettings.Key.debugger) private var debugger = AppSettings.Debugger.windows
     @AppStorage(AppSettings.Key.gdbPort) private var gdbPort = AppSettings.defaultGDBPort
+    @AppStorage(AppSettings.Key.startPaused) private var startPaused = false
+    @AppStorage(AppSettings.Key.piGDBPort) private var piGDBPort = AppSettings.defaultPiGDBPort
 
     var body: some View {
         Form {
@@ -147,8 +152,14 @@ private struct DebuggerSettings: View {
                         let clamped = min(max(gdbPort, AppSettings.gdbPorts.lowerBound), AppSettings.gdbPorts.upperBound)
                         if clamped != gdbPort { gdbPort = clamped }
                     }
+                TextField("Pi GDB port", value: $piGDBPort, format: .number.grouping(.never))
+                    .onChange(of: piGDBPort) {
+                        let clamped = min(max(piGDBPort, AppSettings.gdbPorts.lowerBound), AppSettings.gdbPorts.upperBound)
+                        if clamped != piGDBPort { piGDBPort = clamped }
+                    }
+                Toggle("Start paused", isOn: $startPaused)
             } footer: {
-                Text("GDB clients connect to this port.")
+                Text("GDB clients connect to these ports: the Next's, and the Pi's when the configuration has a Pi SD card. With Start paused, the Next waits at its first instruction until you continue it.")
                     .foregroundStyle(.secondary)
             }
         }
