@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name=com.stalepixels.Pinesy
-Exec=pinesy --gapplication-service

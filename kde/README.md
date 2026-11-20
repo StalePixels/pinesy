@@ -8,9 +8,11 @@ To build and run it, see [docs/build-linux.md](../docs/build-linux.md).
 
 ## The resources folder
 
-The core needs a resources folder. It holds the bundled ROM sets in `roms`, and MAME's search folders (`hash`, `plugins` and the others the core names). The cache variable `PINESY_RESOURCES_FOLDER` sets it. The default is `<build-dir>/resources`, which CMake makes at configure time with symbolic links to `../roms` and to MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders in `../mame`. These are the folders `../app/build.sh` copies into the macOS bundle. The path is compiled into the executable, so a build runs from its build folder.
+The core needs a resources folder. It holds the bundled ROM sets in `roms`, and MAME's search folders (`hash`, `plugins` and the others the core names).
 
-`cmake --install` installs the executable, the `.desktop` file, the MIME type and the app icon, but the executable still reads the resources folder in the build folder. The Flatpak (below) installs its own resources folder.
+An installed copy uses `../share/pinesy/resources`, next to its own folder. `cmake --install` fills it with `../cmake/install-resources.sh`, and installs the app, `libpinesy.so`, the engine library, the `.desktop` file, the MIME type, the D-Bus service file and the app icon ([docs/build-linux.md](../docs/build-linux.md), "Install a build").
+
+When that folder does not exist, as in a run from the build folder, the app uses the folder in the cache variable `PINESY_RESOURCES_FOLDER`. Its default is `<build-dir>/resources`, which CMake makes at configure time with symbolic links to `../roms` and to MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders in `../mame`. These are the folders `../app/build.sh` copies into the macOS bundle.
 
 ## Flatpak
 
@@ -18,7 +20,8 @@ To build the package, see [docs/build-linux.md](../docs/build-linux.md). `flatpa
 
 In the Flatpak:
 
-- The resources folder is `/app/share/pinesy/resources`. `../flatpak/install-resources.sh` fills it with the content that `../app/build.sh` puts in the macOS bundle: the ROM sets from `../roms`, with the same check, and MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders.
+- The manifest builds the app and installs it into `/app` with `cmake --install`, so the Flatpak has the same files as a native install.
+- The resources folder is `/app/share/pinesy/resources`. `../cmake/install-resources.sh` fills it with the content that `../app/build.sh` puts in the macOS bundle: the ROM sets from `../roms`, with the same check, and MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders.
 - The data folder is `~/.var/app/com.stalepixels.pinesy.kde/data/pinesy`.
 - `gdb-pinesy` is `/app/bin/gdb-pinesy`, and `objcopy-pinesy` is `/app/bin/objcopy-pinesy`. The manifest builds `gdb-pinesy` from GDB's release tarball and `objcopy-pinesy` from the binutils release tarball. [../docs/gdb.md](../docs/gdb.md) says what they do.
 

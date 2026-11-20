@@ -125,6 +125,14 @@ target_link_libraries(pinesy-kde PRIVATE
 	Qt6::Core Qt6::DBus Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Widgets
 	KF6::ConfigCore KF6::CoreAddons KF6::I18n KF6::I18nQml)
 
+# Install: the app in bin, libpinesy and the engine in lib, and the
+# resources folder in share/pinesy/resources, which an installed copy
+# finds beside itself (src/main.cpp).
+include("${PINESY_PUBLIC_DIR}/cmake/PinesyInstall.cmake")
+pinesy_install(pinesy-kde
+	BINDIR "${KDE_INSTALL_BINDIR}"
+	LIBDIR "${KDE_INSTALL_LIBDIR}"
+	DATADIR "${KDE_INSTALL_DATADIR}")
 install(TARGETS pinesy-kde ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 install(FILES com.stalepixels.pinesy.kde.desktop DESTINATION ${KDE_INSTALL_APPDIR})
 install(FILES com.stalepixels.pinesy.kde.xml DESTINATION ${KDE_INSTALL_MIMEDIR})

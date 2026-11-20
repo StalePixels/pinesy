@@ -544,6 +544,12 @@ std::string user_roms(const std::string &data_folder);
 // False for a folder MAME cannot take in its ROM path (";" in the path).
 bool is_usable_rom_folder(std::string_view path);
 
+// The resources folder of a Linux front end. An installed copy has it
+// at <installed>, a path relative to the folder of the running program
+// (/proc/self/exe); when that folder exists, it is the answer.
+// Otherwise, as in a run from the build folder, it is build_folder.
+std::string resources_folder(const std::string &installed, const std::string &build_folder);
+
 } // namespace paths
 
 // "-debug" and the debugger options from the settings; empty without

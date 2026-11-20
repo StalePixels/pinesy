@@ -159,6 +159,11 @@ char *pinesy_core_user_rom_folder(const char *data_folder)
 	return data_folder ? give(paths::user_roms(data_folder)) : nullptr;
 }
 
+char *pinesy_core_resources_folder(const char *installed, const char *build_folder)
+{
+	return installed && build_folder ? give(paths::resources_folder(installed, build_folder)) : nullptr;
+}
+
 int pinesy_core_is_usable_rom_folder(const char *path)
 {
 	return path && paths::is_usable_rom_folder(path) ? 1 : 0;

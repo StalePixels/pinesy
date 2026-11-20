@@ -66,6 +66,27 @@ Run it:
 build/kde/bin/pinesy-kde
 ```
 
+## Install a build
+
+`cmake --install` copies a built app into an install prefix:
+
+```sh
+cmake --install build/gtk --prefix <prefix>
+cmake --install build/kde --prefix <prefix>
+```
+
+It installs:
+
+- the app, in `<prefix>/bin`: `pinesy` (GNOME) or `pinesy-kde` (KDE)
+- `libpinesy.so` and the engine library, in `<prefix>/lib`
+- the resources folder, in `<prefix>/share/pinesy/resources`: the ROM sets from `roms` and MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders. A file in `roms` that is not a ROM set (a zip, 7z or folder of ROM dumps), or a ROM set that holds a disk image, stops the install.
+- the desktop entry, the MIME type for `*.pinesy` files, the D-Bus service file and the app icon, under `<prefix>/share`
+- for the GNOME app, the settings schema, compiled in `<prefix>/share/glib-2.0/schemas`
+
+The installed app loads its libraries from `<prefix>/lib` and reads its resources folder from `<prefix>/share/pinesy/resources`. The GNOME app also reads its settings schema from `<prefix>/share/glib-2.0/schemas`, so it needs no `GSETTINGS_SCHEMA_DIR`. Nothing in the build folder is used, and the prefix can move as a whole.
+
+The desktop finds the desktop entry, the MIME type and the D-Bus service file only when `<prefix>/share` is in `XDG_DATA_DIRS`, as `/usr/local/share` and `/usr/share` are. The D-Bus service file holds the program's full path under `CMAKE_INSTALL_PREFIX` as it was when CMake configured the build. `--prefix` does not change that path, so configure with `-DCMAKE_INSTALL_PREFIX=<prefix>` when the desktop starts the app from that prefix.
+
 ## Update
 
 ```sh

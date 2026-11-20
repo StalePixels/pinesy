@@ -111,6 +111,12 @@ char *pinesy_core_data_folder(const pinesy_core *core);
 // The user's ROM folder in a data folder: its "roms" folder.
 char *pinesy_core_user_rom_folder(const char *data_folder);
 
+// The resources folder of a Linux front end: <installed>, relative to
+// the folder of the running program (/proc/self/exe), when that folder
+// exists, as in an installed copy; otherwise build_folder. NULL when
+// either argument is NULL.
+char *pinesy_core_resources_folder(const char *installed, const char *build_folder);
+
 // 1 when a folder can be a ROM folder, 0 when it cannot. MAME
 // separates ROM folders with ";", so a path with ";" cannot be one.
 int pinesy_core_is_usable_rom_folder(const char *path);

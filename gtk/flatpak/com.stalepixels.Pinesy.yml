@@ -175,8 +175,9 @@ modules:
         url: https://ftp.gnu.org/gnu/binutils/binutils-2.47.tar.xz
         sha256: 154ab23b60070e8f27013c22977f1129425d67d1e8acd6e13010e617811e4cff
 
-  # QEMU and the engine with the GTK debugger, and the resources folder
-  # the app gives the core
+  # QEMU and the engine with the GTK debugger, then the core and the app.
+  # cmake --install puts the app, libpinesy, the engine, the resources
+  # folder and the desktop files in /app (../CMakeLists.txt).
   - name: engine
     buildsystem: simple
     # The makefiles GENie writes for MAME add CFLAGS, CXXFLAGS and LDFLAGS
@@ -198,8 +199,11 @@ modules:
       - cp -r qemu/subprojects/packagefiles/berkeley-softfloat-3/. qemu/subprojects/berkeley-softfloat-3/
       - cp -r qemu/subprojects/packagefiles/berkeley-testfloat-3/. qemu/subprojects/berkeley-testfloat-3/
       - ./build-mame.sh --gtk
-      - install -Dm755 mame/libmame_pinesy_gtk.so /app/lib/libmame_pinesy_gtk.so
-      - flatpak/install-resources.sh /app/share/pinesy/resources
+      - cmake -S gtk -B _build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_INSTALL_PREFIX=/app -DCMAKE_INSTALL_LIBDIR=lib
+        -DPINESY_RESOURCES_DIR=/app/share/pinesy/resources
+      - cmake --build _build
+      - cmake --install _build
     sources:
       - type: dir
         path: ../..
@@ -207,7 +211,6 @@ modules:
           - .git
           - build
           - app
-          - gtk
           - kde
           - sd-images
           - vendor/gdb
@@ -245,34 +248,3 @@ modules:
         url: https://gitlab.com/qemu-project/berkeley-testfloat-3.git
         commit: e7af9751d9f9fd3b47911f51a5cfd08af256a9ab
         dest: qemu/subprojects/berkeley-testfloat-3
-
-  # the core and the app
-  - name: pinesy
-    buildsystem: simple
-    build-commands:
-      - cmake -S gtk -B _build -G Ninja -DCMAKE_BUILD_TYPE=Release
-        -DPINESY_ENGINE_LIBRARY=/app/lib/libmame_pinesy_gtk.so
-        -DPINESY_RESOURCES_DIR=/app/share/pinesy/resources
-      - cmake --build _build
-      - install -Dm755 _build/pinesy /app/bin/pinesy
-      - install -Dm755 _build/core/libpinesy.so /app/lib/libpinesy.so
-      - install -Dm644 gtk/data/com.stalepixels.Pinesy.gschema.xml /app/share/glib-2.0/schemas/com.stalepixels.Pinesy.gschema.xml
-      - glib-compile-schemas --strict /app/share/glib-2.0/schemas
-      - install -Dm644 gtk/data/com.stalepixels.Pinesy.desktop /app/share/applications/com.stalepixels.Pinesy.desktop
-      - for size in 16 24 32 48 64 128 256 512; do install -Dm644 icons/hicolor/${size}x${size}/apps/pinesy.png /app/share/icons/hicolor/${size}x${size}/apps/com.stalepixels.Pinesy.png; done
-      - install -Dm644 gtk/data/com.stalepixels.Pinesy.mime.xml /app/share/mime/packages/com.stalepixels.Pinesy.xml
-      - install -Dm644 gtk/data/com.stalepixels.Pinesy.service /app/share/dbus-1/services/com.stalepixels.Pinesy.service
-    sources:
-      - type: dir
-        path: ../..
-        skip:
-          - .git
-          - build
-          - app
-          - kde
-          - mame
-          - qemu
-          - roms
-          - sd-images
-          - vendor/gdb
-          - debuggers

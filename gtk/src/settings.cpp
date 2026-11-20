@@ -1,5 +1,6 @@
 #include "settings.hpp"
 
+#include <giomm/settingsschema.h>
 #include <giomm/settingsschemasource.h>
 #include <glibmm/miscutils.h>
 
@@ -8,12 +9,40 @@
 
 namespace pinesy::gtk {
 
+namespace {
+
+// The schema folder of an installed copy, beside the program, as a
+// source in front of GLib's own; GLib's own alone when the folder is
+// not there, as in a run from the build folder.
+Glib::RefPtr<Gio::SettingsSchemaSource> schema_source()
+{
+	auto source = Gio::SettingsSchemaSource::get_default();
+	std::error_code error;
+	auto program = std::filesystem::read_symlink("/proc/self/exe", error);
+	if (error)
+		return source;
+	auto folder = (program.parent_path() / PINESY_INSTALLED_SCHEMAS).lexically_normal();
+	if (!std::filesystem::exists(folder / "gschemas.compiled", error))
+		return source;
+	try
+	{
+		return Gio::SettingsSchemaSource::create(folder.string(), true, source);
+	}
+	catch (const Glib::Error &)
+	{
+		return source;
+	}
+}
+
+} // namespace
+
 Glib::RefPtr<Gio::Settings> open_settings()
 {
 	// Gio::Settings::create() aborts on a schema GLib cannot find, so
 	// look it up first.
-	auto source = Gio::SettingsSchemaSource::get_default();
-	if (!source || !source->lookup(PINESY_APP_ID, true))
+	auto source = schema_source();
+	auto schema = source ? source->lookup(PINESY_APP_ID, true) : Glib::RefPtr<Gio::SettingsSchema>();
+	if (!schema)
 	{
 		std::fprintf(stderr,
 				"pinesy: the settings schema %s is not installed. To run from the build folder, "
@@ -21,7 +50,7 @@ Glib::RefPtr<Gio::Settings> open_settings()
 				PINESY_APP_ID);
 		return {};
 	}
-	return Gio::Settings::create(PINESY_APP_ID);
+	return Glib::wrap(g_settings_new_full(schema->gobj(), nullptr, nullptr));
 }
 
 core::Settings core_settings(const Glib::RefPtr<Gio::Settings> &settings)
@@ -46,7 +75,7 @@ std::string default_data_folder()
 
 std::unique_ptr<core::Core> make_core(const Glib::RefPtr<Gio::Settings> &settings)
 {
-	auto result = std::make_unique<core::Core>(core::Platform{PINESY_RESOURCES_DIR, default_data_folder()});
+	auto result = std::make_unique<core::Core>(core::Platform{core::paths::resources_folder(PINESY_INSTALLED_RESOURCES, PINESY_RESOURCES_DIR), default_data_folder()});
 	result->set_settings(core_settings(settings));
 	return result;
 }

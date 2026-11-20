@@ -86,6 +86,15 @@ bool is_usable_rom_folder(std::string_view path)
 	return path.find(';') == std::string_view::npos;
 }
 
+std::string resources_folder(const std::string &installed, const std::string &build_folder)
+{
+	std::error_code error;
+	const std::filesystem::path program = std::filesystem::read_symlink("/proc/self/exe", error);
+	if (error) return build_folder;
+	const std::filesystem::path folder = (program.parent_path() / installed).lexically_normal();
+	return std::filesystem::is_directory(folder, error) ? folder.string() : build_folder;
+}
+
 } // namespace paths
 
 Core::Core(Platform platform) : m_platform(std::move(platform)) {}

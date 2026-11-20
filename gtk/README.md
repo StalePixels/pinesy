@@ -15,11 +15,11 @@ The data folder is `$XDG_DATA_HOME/pinesy` (by default `~/.local/share/pinesy`) 
 - `com.stalepixels.Pinesy.gschema.xml`: the settings schema. The keys are `rom-folders`, `data-folder`, `debugger` (`windows` or `gdbStub`), `gdb-port`, `pi-gdb-port` and `start-paused`, as the core's settings schema names them.
 - `com.stalepixels.Pinesy.desktop`: the desktop entry, for the MIME type `application/x-pinesy`.
 - `com.stalepixels.Pinesy.mime.xml`: the MIME type for `*.pinesy` files, with the app icon.
-- `com.stalepixels.Pinesy.service`: the D-Bus service file.
+- `com.stalepixels.Pinesy.service.in`: the D-Bus service file. CMake fills in the installed path of the program.
 
 The app icon is `../icons/hicolor/<size>x<size>/apps/pinesy.png`, installed as `com.stalepixels.Pinesy.png`. The desktop entry and the windows use that icon name.
 
-The CMake build does not install these files; the Flatpak does. The desktop entry sets `DBusActivatable=true`: a file manager opens a `.pinesy` file through D-Bus (`org.freedesktop.Application.Open`), not through the command line, because any command-line argument starts headless mode. The one exception is `--gapplication-service` alone, which D-Bus activation uses to start the app.
+`cmake --install` installs them with the app ([docs/build-linux.md](../docs/build-linux.md), "Install a build"), and compiles the schema where it puts it. An installed copy reads the schema from `../share/glib-2.0/schemas`, next to its own folder, before GLib's own folders, and its resources folder from `../share/pinesy/resources`. A run from the build folder uses `<build-dir>/resources` and needs `GSETTINGS_SCHEMA_DIR=<build-dir>/schemas`. The desktop entry sets `DBusActivatable=true`: a file manager opens a `.pinesy` file through D-Bus (`org.freedesktop.Application.Open`), not through the command line, because any command-line argument starts headless mode. The one exception is `--gapplication-service` alone, which D-Bus activation uses to start the app.
 
 ## Flatpak
 
@@ -27,7 +27,8 @@ To build the package, see [docs/build-linux.md](../docs/build-linux.md). `flatpa
 
 In the Flatpak:
 
-- The resources folder is `/app/share/pinesy/resources`. `../flatpak/install-resources.sh` fills it with the content that `../app/build.sh` puts in the macOS bundle: the ROM sets from `../roms`, with the same check, and MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders.
+- The manifest builds the app and installs it into `/app` with `cmake --install`, so the Flatpak has the same files as a native install.
+- The resources folder is `/app/share/pinesy/resources`. `../cmake/install-resources.sh` fills it with the content that `../app/build.sh` puts in the macOS bundle: the ROM sets from `../roms`, with the same check, and MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders.
 - The data folder is `~/.var/app/com.stalepixels.Pinesy/data/pinesy`.
 - The settings schema, the desktop entry, the MIME type, the D-Bus service file and the app icon are installed. Flatpak exports all but the schema to the desktop.
 - Copy Command Line gives `/app/bin/pinesy`, the path inside the Flatpak. Outside it, the command is `flatpak run com.stalepixels.Pinesy`.
@@ -85,6 +86,7 @@ Any command-line arguments run MAME with them and no user interface, as on macOS
 
 ```sh
 GSETTINGS_SCHEMA_DIR=<build-dir>/schemas <build-dir>/pinesy -- tbblue -video none -sound none -seconds_to_run 10
+<prefix>/bin/pinesy -- tbblue -video none -sound none -seconds_to_run 10
 ```
 
 With `-video none`, no window opens and no display is needed. Otherwise the machine gets a window, and closing it stops the machine.

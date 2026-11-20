@@ -94,3 +94,38 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 	target_compile_options(pinesy_gtk PRIVATE -Wall -Wextra)
 endif()
 add_dependencies(pinesy_gtk pinesy_schemas)
+
+# Install: the app in bin, libpinesy and the engine in lib, the resources
+# folder in share/pinesy/resources, and the files the desktop reads. An
+# installed copy finds its resources folder and its settings schema
+# beside itself (src/settings.cpp).
+include(GNUInstallDirs)
+include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/PinesyInstall.cmake")
+pinesy_install(pinesy_gtk
+	BINDIR "${CMAKE_INSTALL_BINDIR}"
+	LIBDIR "${CMAKE_INSTALL_LIBDIR}"
+	DATADIR "${CMAKE_INSTALL_DATADIR}")
+file(RELATIVE_PATH _pinesy_installed_schemas "/${CMAKE_INSTALL_BINDIR}" "/${CMAKE_INSTALL_DATADIR}/glib-2.0/schemas")
+target_compile_definitions(pinesy_gtk PRIVATE PINESY_INSTALLED_SCHEMAS="${_pinesy_installed_schemas}")
+install(TARGETS pinesy_gtk RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+
+# The settings schema, compiled where it is installed
+install(FILES "data/${_pinesy_schema}" DESTINATION "${CMAKE_INSTALL_DATADIR}/glib-2.0/schemas")
+install(CODE "execute_process(
+	COMMAND \"${GLIB_COMPILE_SCHEMAS}\" --strict \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/glib-2.0/schemas\"
+	COMMAND_ERROR_IS_FATAL ANY)")
+
+install(FILES data/${PINESY_APP_ID}.desktop DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
+install(FILES data/${PINESY_APP_ID}.mime.xml DESTINATION "${CMAKE_INSTALL_DATADIR}/mime/packages"
+	RENAME ${PINESY_APP_ID}.xml)
+# D-Bus starts the app for the desktop (DBusActivatable in the .desktop
+# file). The service file names the program by its full path under
+# CMAKE_INSTALL_PREFIX as it was when CMake configured the build.
+configure_file(data/${PINESY_APP_ID}.service.in ${PINESY_APP_ID}.service @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PINESY_APP_ID}.service" DESTINATION "${CMAKE_INSTALL_DATADIR}/dbus-1/services")
+# the app icon, from ../icons, under the app id
+foreach(_size 16 24 32 48 64 128 256 512)
+	install(FILES "${_pinesy_public}/icons/hicolor/${_size}x${_size}/apps/pinesy.png"
+		DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/${_size}x${_size}/apps"
+		RENAME ${PINESY_APP_ID}.png)
+endforeach()

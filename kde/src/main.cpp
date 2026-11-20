@@ -20,12 +20,17 @@
 namespace {
 
 // The core needs the resources folder and the platform's default data
-// folder, AppDataLocation: ~/.local/share/pinesy.
+// folder, AppDataLocation: ~/.local/share/pinesy. The resources folder
+// is an installed copy's own (PINESY_INSTALLED_RESOURCES, relative to
+// the program's folder) when it exists, otherwise this build's
+// (PINESY_RESOURCES_FOLDER).
 void createCore()
 {
 	QCoreApplication::setApplicationName(QStringLiteral("pinesy"));
 	const QString data = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-	Core::createInstance(QStringLiteral(PINESY_RESOURCES_FOLDER), data);
+	char *resources = pinesy_core_resources_folder(PINESY_INSTALLED_RESOURCES, PINESY_RESOURCES_FOLDER);
+	Core::createInstance(QString::fromUtf8(resources), data);
+	pinesy_core_free(resources);
 }
 
 // The KDE style when it is installed; Qt's own otherwise.

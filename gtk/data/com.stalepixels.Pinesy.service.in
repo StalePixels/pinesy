@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=com.stalepixels.Pinesy
+Exec=@CMAKE_INSTALL_FULL_BINDIR@/pinesy --gapplication-service

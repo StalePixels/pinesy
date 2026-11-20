@@ -110,9 +110,10 @@ modules:
         url: https://ftp.gnu.org/gnu/binutils/binutils-2.47.tar.xz
         sha256: 154ab23b60070e8f27013c22977f1129425d67d1e8acd6e13010e617811e4cff
 
-  # QEMU and the engine with MAME's Qt debugger, and the resources folder
-  # the app gives the core. The SDK has qmake, not qmake6, so MAME finds
-  # Qt through QT_HOME.
+  # QEMU and the engine with MAME's Qt debugger, then the core and the
+  # app. The SDK has qmake, not qmake6, so MAME finds Qt through QT_HOME.
+  # cmake --install puts the app, libpinesy, the engine, the resources
+  # folder and the desktop files in /app (../CMakeLists.txt).
   - name: engine
     buildsystem: simple
     # The makefiles GENie writes for MAME add CFLAGS, CXXFLAGS and LDFLAGS
@@ -134,8 +135,11 @@ modules:
       - cp -r qemu/subprojects/packagefiles/berkeley-softfloat-3/. qemu/subprojects/berkeley-softfloat-3/
       - cp -r qemu/subprojects/packagefiles/berkeley-testfloat-3/. qemu/subprojects/berkeley-testfloat-3/
       - ./build-mame.sh --qt QT_HOME=/usr
-      - install -Dm755 mame/libmame_pinesy_qt.so /app/lib/libmame_pinesy_qt.so
-      - flatpak/install-resources.sh /app/share/pinesy/resources
+      - cmake -S kde -B _build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_INSTALL_PREFIX=/app -DKDE_INSTALL_LIBDIR=lib
+        -DPINESY_RESOURCES_FOLDER=/app/share/pinesy/resources
+      - cmake --build _build
+      - cmake --install _build
     sources:
       - type: dir
         path: ../..
@@ -144,7 +148,6 @@ modules:
           - build
           - app
           - gtk
-          - kde
           - debuggers
           - sd-images
           - vendor/gdb
@@ -182,29 +185,3 @@ modules:
         url: https://gitlab.com/qemu-project/berkeley-testfloat-3.git
         commit: e7af9751d9f9fd3b47911f51a5cfd08af256a9ab
         dest: qemu/subprojects/berkeley-testfloat-3
-
-  # the core and the app
-  - name: pinesy-kde
-    buildsystem: simple
-    build-commands:
-      - cmake -S kde -B _build -G Ninja -DCMAKE_BUILD_TYPE=Release
-        -DCMAKE_INSTALL_PREFIX=/app
-        -DPINESY_ENGINE_LIBRARY=/app/lib/libmame_pinesy_qt.so
-        -DPINESY_RESOURCES_FOLDER=/app/share/pinesy/resources
-      - cmake --build _build
-      - cmake --install _build
-      - install -Dm755 _build/core/libpinesy.so /app/lib/libpinesy.so
-    sources:
-      - type: dir
-        path: ../..
-        skip:
-          - .git
-          - build
-          - app
-          - gtk
-          - mame
-          - qemu
-          - roms
-          - sd-images
-          - vendor/gdb
-          - debuggers

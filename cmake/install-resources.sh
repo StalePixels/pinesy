@@ -1,8 +1,9 @@
 #!/bin/bash
-# Installs the resources folder of a Flatpak: the content app/build.sh puts
-# in Contents/Resources of the macOS bundle.
+# Installs the resources folder of the Linux apps: the content app/build.sh
+# puts in Contents/Resources of the macOS bundle. `cmake --install` of the
+# GNOME app and of the KDE app runs it (PinesyInstall.cmake).
 #
-#   flatpak/install-resources.sh <resources-dir>
+#   cmake/install-resources.sh <resources-dir>
 #
 # <resources-dir>/roms gets the ROM sets in ../roms, with the same rule as
 # app/build.sh: one zip, 7z or folder of ROM dumps per set, and no disk
@@ -44,7 +45,7 @@ if [ -d "$roms" ]; then
 		esac
 	done
 	if [ -n "$bad" ]; then
-		echo "install-resources.sh: only ROM sets (a zip, 7z or folder of ROM dumps) go in the Flatpak:" >&2
+		echo "install-resources.sh: only ROM sets (a zip, 7z or folder of ROM dumps) go in the resources folder:" >&2
 		printf '%s' "$bad" >&2
 		exit 1
 	fi
