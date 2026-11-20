@@ -7,6 +7,7 @@ import AppKit
 let arguments = Array(CommandLine.arguments.dropFirst())
 
 if arguments.isEmpty {
+    RecentConfigurations.takeOpenApplicationEvent()
     PinesyApp.main()
 } else {
     exit(Headless.run(arguments))

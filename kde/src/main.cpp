@@ -3,6 +3,7 @@
 // app.
 
 #include "core.h"
+#include "desktopservice.h"
 #include "headless.h"
 
 #include <KAboutData>
@@ -68,6 +69,17 @@ int main(int argc, char **argv)
 	engine.loadFromModule("Pinesy", "Main");
 	if (engine.rootObjects().isEmpty())
 		return 1;
+
+	QObject *root = engine.rootObjects().constFirst();
+	DesktopService desktop;
+	QObject::connect(&desktop, &DesktopService::activateRequested, root, [root] {
+		QMetaObject::invokeMethod(root, "activate");
+	});
+	QObject::connect(&desktop, &DesktopService::openRequested, root, [root](const QList<QUrl> &urls) {
+		for (const QUrl &url : urls)
+			QMetaObject::invokeMethod(root, "openFromDesktop", Q_ARG(QVariant, QVariant(url)));
+	});
+	desktop.registerOnBus();
 
 	const int code = app.exec();
 	Core::destroyInstance();

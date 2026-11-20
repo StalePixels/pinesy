@@ -8,8 +8,9 @@ struct PinesyApp: App {
     init() {
         // At a launch with no document to open, AppKit shows an Open panel
         // instead of a new document while this default is true, which it is
-        // when iCloud Drive is on. Pinesy opens a new configuration, which
-        // starts with the machine picker. A value the user sets still wins.
+        // when iCloud Drive is on. Pinesy shows its recent configurations
+        // or a new configuration (RecentConfigurations). A value the user
+        // sets still wins.
         UserDefaults.standard.register(defaults: ["NSShowAppCentricOpenPanelInsteadOfUntitledFile": false])
     }
 

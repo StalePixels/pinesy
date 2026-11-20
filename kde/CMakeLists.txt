@@ -56,7 +56,7 @@ include(KDECMakeSettings)
 include(KDECompilerSettings NO_POLICY_SCOPE)
 # the executable is <build-dir>/bin/pinesy-kde
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Widgets)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core DBus Gui Qml Quick QuickControls2 Widgets)
 find_package(KF6 6.8 REQUIRED COMPONENTS Kirigami Config CoreAddons I18n)
 qt_standard_project_setup(REQUIRES 6.8)
 qt_policy(SET QTP0004 NEW)
@@ -91,6 +91,8 @@ add_executable(pinesy-kde
 	src/main.cpp
 	src/core.cpp
 	src/core.h
+	src/desktopservice.cpp
+	src/desktopservice.h
 	src/document.cpp
 	src/document.h
 	src/headless.cpp
@@ -120,12 +122,15 @@ target_compile_definitions(pinesy-kde PRIVATE
 target_include_directories(pinesy-kde PRIVATE src)
 target_link_libraries(pinesy-kde PRIVATE
 	pinesy
-	Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Widgets
+	Qt6::Core Qt6::DBus Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Widgets
 	KF6::ConfigCore KF6::CoreAddons KF6::I18n KF6::I18nQml)
 
 install(TARGETS pinesy-kde ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 install(FILES com.stalepixels.pinesy.kde.desktop DESTINATION ${KDE_INSTALL_APPDIR})
 install(FILES com.stalepixels.pinesy.kde.xml DESTINATION ${KDE_INSTALL_MIMEDIR})
+# D-Bus starts the app for the desktop (DBusActivatable in the .desktop file)
+configure_file(com.stalepixels.pinesy.kde.service.in com.stalepixels.pinesy.kde.service @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/com.stalepixels.pinesy.kde.service" DESTINATION ${KDE_INSTALL_DBUSSERVICEDIR})
 # the app icon, from ../icons, under the app id
 foreach(_size 16 24 32 48 64 128 256 512)
 	install(FILES "${PINESY_PUBLIC_DIR}/icons/hicolor/${_size}x${_size}/apps/pinesy.png"

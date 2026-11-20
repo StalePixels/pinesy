@@ -34,6 +34,36 @@ QtObject {
         addWindow(url)
     }
 
+    // A file the desktop hands over, as from a file manager. A file
+    // already open comes to the front; an untouched new configuration
+    // takes the file; otherwise it opens in a new window.
+    function openFromDesktop(url) {
+        for (const window of windows) {
+            if (window.document.url.toString() === url.toString()) {
+                window.raise()
+                window.requestActivate()
+                return
+            }
+        }
+        for (const window of windows) {
+            if (window.takeFile(url))
+                return
+        }
+        addWindow(url)
+    }
+
+    // The desktop asks for the app: the newest window comes to the
+    // front, or a new configuration opens when there is none.
+    function activate() {
+        if (windows.length === 0) {
+            newDocument()
+            return
+        }
+        const window = windows[windows.length - 1]
+        window.raise()
+        window.requestActivate()
+    }
+
     function addWindow(url) {
         const window = documentWindow.createObject(null, { app: app, fileToOpen: url ?? "" })
         windows = windows.concat([window])

@@ -81,9 +81,9 @@ With `-video none` there is no window and Qt is not started. Otherwise the machi
 
 ## Desktop file and MIME type
 
-`com.stalepixels.pinesy.kde.desktop` starts the app. The app icon is `../icons/hicolor/<size>x<size>/apps/pinesy.png`, installed as `com.stalepixels.pinesy.kde.png`; the desktop file and the windows use that icon name. `com.stalepixels.pinesy.kde.xml` defines the MIME type `application/x-pinesy-configuration` for `*.pinesy` files, a kind of `application/json`, with the app icon.
+`com.stalepixels.pinesy.kde.desktop` starts the app. The app icon is `../icons/hicolor/<size>x<size>/apps/pinesy.png`, installed as `com.stalepixels.pinesy.kde.png`; the desktop file and the windows use that icon name. `com.stalepixels.pinesy.kde.xml` defines the MIME type `application/x-pinesy` for `*.pinesy` files, a kind of `application/json`, with the app icon. The GNOME app defines the same MIME type.
 
-The desktop file does not list the MIME type, so a file manager does not open `.pinesy` files with the app. Any argument starts headless mode, so a file path from a file manager would go to MAME as its command line.
+The desktop file lists the MIME type and sets `DBusActivatable=true`, so a file manager opens `.pinesy` files with the app over D-Bus, not on the command line, where any argument starts headless mode. CMake installs the D-Bus service file, `com.stalepixels.pinesy.kde.service`, made from `com.stalepixels.pinesy.kde.service.in` with the installed path of the executable; the Flatpak exports it. The app registers `org.freedesktop.Application` under the app id on the session bus (`src/desktopservice.cpp`). Open brings a file that is already open to the front; otherwise an untouched new configuration window takes the file, or the file opens in a new window. Activate brings the newest window to the front, or opens a new configuration when there is none. When another instance has the name, the app runs without it.
 
 ## Known limits
 

@@ -174,6 +174,18 @@ Kirigami.ApplicationWindow {
         }
     }
 
+    // An untouched new configuration gives way to a file: it loads the
+    // file and returns true. Any other window returns false.
+    function takeFile(url) {
+        if (!document.empty || running)
+            return false
+        report(document.load(url))
+        picker.close()
+        raise()
+        requestActivate()
+        return true
+    }
+
     // Configurations with unsaved changes ask before they close.
     onClosing: close => {
         if (document.modified && !closeConfirmed) {
@@ -188,7 +200,11 @@ Kirigami.ApplicationWindow {
             if (document.empty)
                 Qt.callLater(close)
         } else {
-            Qt.callLater(picker.open)
+            // a file the desktop hands over can arrive first
+            Qt.callLater(() => {
+                if (document.empty)
+                    picker.open()
+            })
         }
     }
 
@@ -209,13 +225,8 @@ Kirigami.ApplicationWindow {
         fileMode: FileDialog.OpenFile
         nameFilters: [i18nc("@item:inlistbox file type", "Pinesy configurations (*.pinesy)")]
         onAccepted: {
-            // An untouched new configuration gives way to the file
-            if (window.document.empty && !window.running) {
-                window.report(window.document.load(selectedFile))
-                picker.close()
-            } else {
+            if (!window.takeFile(selectedFile))
                 window.app.openDocument(selectedFile)
-            }
         }
     }
 

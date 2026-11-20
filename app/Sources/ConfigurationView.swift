@@ -97,6 +97,10 @@ struct ConfigurationView: View {
                                                 canClearNVRAM: canClearNVRAM,
                                                 clearNVRAM: { if canClearNVRAM { confirmingClearNVRAM = true } }))
         .background(WindowReader { window = $0 })
+        // A configuration with no machine is not restored at the next
+        // launch, which shows the recent configurations instead.
+        .onChange(of: window, initial: true) { window?.isRestorable = !document.arguments.isEmpty }
+        .onChange(of: document.arguments.isEmpty) { window?.isRestorable = !document.arguments.isEmpty }
         .sheet(isPresented: $choosingMachine) {
             MachinePicker(catalogue: Catalogue.shared,
                           canChoose: runner.running == nil,

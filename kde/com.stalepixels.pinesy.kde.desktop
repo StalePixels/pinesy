@@ -7,3 +7,5 @@ Exec=pinesy-kde
 Icon=com.stalepixels.pinesy.kde
 Terminal=false
 Categories=Qt;KDE;Game;Emulator;
+MimeType=application/x-pinesy;
+DBusActivatable=true
