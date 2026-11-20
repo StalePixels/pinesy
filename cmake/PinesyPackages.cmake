@@ -17,14 +17,16 @@
 
 # The version in a library's pkg-config file, read without pkg-config, so
 # libraries can be checked when pkg-config itself is missing. Empty when
-# the file is not there.
+# the file is not there. /app is where a Flatpak build installs the
+# libraries its manifest builds.
 function(pinesy_pc_version module out)
 	set(${out} "" PARENT_SCOPE)
 	file(GLOB _files
 		/usr/lib/pkgconfig/${module}.pc /usr/lib/*/pkgconfig/${module}.pc
 		/usr/lib64/pkgconfig/${module}.pc /usr/share/pkgconfig/${module}.pc
 		/usr/local/lib/pkgconfig/${module}.pc /usr/local/lib/*/pkgconfig/${module}.pc
-		/usr/local/share/pkgconfig/${module}.pc)
+		/usr/local/share/pkgconfig/${module}.pc
+		/app/lib/pkgconfig/${module}.pc /app/share/pkgconfig/${module}.pc)
 	if(_files)
 		list(GET _files 0 _file)
 		file(STRINGS "${_file}" _lines REGEX "^Version:")
