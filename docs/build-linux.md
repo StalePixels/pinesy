@@ -10,7 +10,7 @@ For both apps:
 - GNU `make`, `cmake` 3.20 or later, `ninja`, `pkg-config` and `git`
 - `python3` with its `venv` module
 - The development files for GLib 2, ALSA, PulseAudio and PipeWire
-- For `gdb-pinesy` and `objcopy-pinesy`: a C++17 compiler, `bison` 3.0 or later, and the development files for GMP, MPFR, expat, zlib and ncurses
+- For `gdb-pinesy` and `objcopy-pinesy`: a C++17 compiler, `bison` 3.0 or later, `flex`, and the development files for GMP, MPFR, expat, zlib and ncurses
 - Network access on the first build
 
 For the GNOME app:
@@ -108,6 +108,6 @@ flatpak run com.stalepixels.pinesy.kde
 
 Put `<state-dir>` and `<build-dir>` outside the `pinesy` folder. Run `git submodule update --init` again after every `git pull`.
 
-Each package has `gdb-pinesy` and `objcopy-pinesy` in `/app/bin`. The manifest builds `gdb-pinesy` from GDB's release tarball, with GMP and MPFR built beside it, and `objcopy-pinesy` from the binutils release tarball. A package build needs no `bison`.
+Each package has `gdb-pinesy` and `objcopy-pinesy` in `/app/bin`. The manifest builds `gdb-pinesy` from GDB's release tarball, with GMP and MPFR built beside it, and `objcopy-pinesy` from the binutils release tarball. A package build needs no `bison` or `flex`.
 
 A package runs only on processors like the one that built it, because the build optimises for that processor.

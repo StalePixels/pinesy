@@ -55,9 +55,10 @@ if [ ! -f "$src/configure" ]; then
 	exit 1
 fi
 
-# A git checkout does not carry GDB's parsers, which are generated from
-# .y files and need bison 3.0 or later. macOS has bison 2.3. A release
-# tarball carries the parsers, so it needs no bison.
+# A git checkout does not carry GDB's parsers and lexer, which are
+# generated from .y files with bison 3.0 or later and from .l files with
+# flex. macOS has bison 2.3 and flex. A release tarball carries them, so it
+# needs neither.
 if [ ! -f "$src/gdb/c-exp.c" ]; then
 	bison_major=$(bison --version 2>/dev/null | sed -n '1s/.* //p')
 	bison_major=${bison_major%%.*}
@@ -71,6 +72,10 @@ if [ ! -f "$src/gdb/c-exp.c" ]; then
 			exit 1
 		fi
 	fi
+fi
+if [ ! -f "$src/gdb/ada-lex.c" ] && ! command -v flex >/dev/null 2>&1; then
+	echo "build-gdb: flex is needed. Install the flex package of your distribution." >&2
+	exit 1
 fi
 
 extra=()

@@ -36,6 +36,10 @@ modules:
   # here, so the build does not depend on what the SDK carries.
   - name: gmp
     buildsystem: autotools
+    # GMP 6.3.0's configure test fails under the SDK compiler's default, C23
+    build-options:
+      env:
+        CC: gcc -std=gnu17
     config-opts:
       - --disable-static
     cleanup:
