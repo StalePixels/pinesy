@@ -207,7 +207,8 @@ void Updates::notice(const QString &build, bool newerKnown)
 		return;
 	const QVariantMap texts = core->updateTexts(build, newerKnown);
 
-	auto *box = new QMessageBox(QMessageBox::Information, text(texts, "title"), text(texts, "message"));
+	auto *box = new QMessageBox(QMessageBox::Information, text(texts, "title"), text(texts, "title"));
+	box->setInformativeText(text(texts, "message"));
 	box->setAttribute(Qt::WA_DeleteOnClose);
 	QPushButton *never = box->addButton(text(texts, "neverRemind"), QMessageBox::RejectRole);
 	QPushButton *ignore = box->addButton(text(texts, "ignoreBuild"), QMessageBox::NoRole);
