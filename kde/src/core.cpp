@@ -273,9 +273,19 @@ bool Core::updateNotice(const QString &build, bool newerKnown) const
 
 QVariantMap Core::updateTexts(const QString &build, bool newerKnown) const
 {
-	return QJsonDocument::fromJson(take(pinesy_core_update_texts(build.toUtf8().constData(), newerKnown ? 1 : 0)))
+	return QJsonDocument::fromJson(take(pinesy_core_update_texts(m_core, build.toUtf8().constData(), newerKnown ? 1 : 0)))
 			.object()
 			.toVariantMap();
+}
+
+QString Core::buildKind() const
+{
+	return QJsonDocument::fromJson(take(pinesy_core_build_identity(m_core))).object().value(QLatin1String("kind")).toString();
+}
+
+QString Core::aptPackagesUrl() const
+{
+	return QString::fromUtf8(take(pinesy_core_apt_packages_url(m_core)));
 }
 
 void Core::updateChoice(int choice, const QString &build)

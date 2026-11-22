@@ -97,7 +97,11 @@ std::string resources_folder(const std::string &installed, const std::string &bu
 
 } // namespace paths
 
-Core::Core(Platform platform) : m_platform(std::move(platform)) {}
+Core::Core(Platform platform)
+	: m_platform(std::move(platform))
+	, m_identity(updates::read_identity(m_platform.resources_folder))
+{
+}
 
 std::string Core::data_folder() const
 {

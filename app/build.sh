@@ -25,10 +25,11 @@
 # sparkle.sh gets it (SPARKLE_DIR overrides the folder it is in).
 #
 # A CI build that is published sets PINESY_BUILD_TRACK (ci, nightly or
-# release) and PINESY_BUILD_VERSION. They go into the core (with the kind
-# "macos") and into Info.plist as CFBundleVersion and
-# CFBundleShortVersionString, which Sparkle compares. A local build sets
-# neither, and never looks for updates.
+# release) and PINESY_BUILD_VERSION. They go into
+# Contents/Resources/build-identity.json, where the core reads the
+# build's identity (with the kind "macos"), and into Info.plist as
+# CFBundleVersion and CFBundleShortVersionString, which Sparkle compares.
+# A local build sets neither, and never looks for updates.
 #
 # The bundle is signed ad hoc. With CODESIGN_IDENTITY, it is signed with
 # that identity instead (from CODESIGN_KEYCHAIN, when set), with the
@@ -54,11 +55,11 @@ frameworks=$contents/Frameworks
 rm -rf "$app"
 mkdir -p "$contents/MacOS" "$contents/Resources" "$frameworks"
 cp "$here/Info.plist" "$contents/Info.plist"
-identity=()
 if [ -n "$track" ] && [ -n "$version" ]; then
 	plutil -replace CFBundleVersion -string "$version" "$contents/Info.plist"
 	plutil -replace CFBundleShortVersionString -string "$version" "$contents/Info.plist"
-	identity=(-DPINESY_BUILD_TRACK="\"$track\"" -DPINESY_BUILD_VERSION="\"$version\"" -DPINESY_BUILD_KIND='"macos"')
+	printf '{"track": "%s", "version": "%s", "kind": "macos"}\n' "$track" "$version" \
+		>"$contents/Resources/build-identity.json"
 fi
 cp "$here/Pinesy.icns" "$here/PinesyDocument.icns" "$contents/Resources/"
 
@@ -118,7 +119,6 @@ clang++ -std=c++20 -O2 -Wall -Wextra \
 	-target arm64-apple-macos26.0 \
 	-dynamiclib -install_name @rpath/libpinesy.dylib \
 	-I "$core/include" -I "$core/src" -I "$here/../engine/include" \
-	${identity[@]+"${identity[@]}"} \
 	-L "$(dirname "$mame_lib")" -lmame_pinesy \
 	-o "$core_lib" "$core"/src/*.cpp
 

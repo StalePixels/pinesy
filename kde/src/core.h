@@ -91,6 +91,10 @@ public:
 	bool updateChecks() const;
 	bool updateNotice(const QString &build, bool newerKnown) const;
 	QVariantMap updateTexts(const QString &build, bool newerKnown) const;
+	// The build's kind ("flatpak", "deb", ...), empty for a local build,
+	// and the track's apt index for a "deb" build.
+	QString buildKind() const;
+	QString aptPackagesUrl() const;
 	void updateChoice(int choice, const QString &build);
 
 	// Turns a file URL from a dialog into a local path.

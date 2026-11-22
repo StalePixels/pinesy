@@ -649,8 +649,9 @@ bool restorable(const std::vector<std::string> &arguments);
 //  Updates
 //
 //  A CI build carries its identity: the track it came from,
-//  its version and how it was delivered. A local build has
-//  none, and never looks for updates. Each front end finds the
+//  its version and how it was delivered, in the file
+//  build-identity.json in its resources folder. A local build
+//  has none, and never looks for updates. Each front end finds the
 //  newest build in its own way (Sparkle, the Flatpak portal,
 //  the apt repository); these rules decide what it shows.
 //------------------------------------------------------------
@@ -669,9 +670,13 @@ struct Identity
 	bool operator==(const Identity &) const = default;
 };
 
-// The identity CI stamped into this build (PINESY_BUILD_TRACK,
-// PINESY_BUILD_VERSION and PINESY_BUILD_KIND); empty for a local build.
-Identity build_identity();
+// The file in the resources folder that holds a CI build's identity: a
+// JSON object with track, version and kind.
+inline constexpr const char *identity_file = "build-identity.json";
+
+// The identity in a resources folder's identity_file; empty when the
+// file is missing or is not such an object, as for a local build.
+Identity read_identity(const std::string &resources_folder);
 
 // Compares two versions the way Sparkle's SUStandardVersionComparator
 // does: <0 when a is older than b, 0 when they are the same, >0 when a
@@ -743,6 +748,9 @@ public:
 	explicit Core(Platform platform);
 
 	const Platform &platform() const { return m_platform; }
+	// The build's identity, read from the resources folder when the
+	// core is made (updates::read_identity()).
+	const updates::Identity &identity() const { return m_identity; }
 	const Settings &settings() const { return m_settings; }
 	void set_settings(Settings settings) { m_settings = std::move(settings); }
 
@@ -809,6 +817,7 @@ public:
 
 private:
 	Platform m_platform;
+	updates::Identity m_identity;
 	Settings m_settings;
 	std::optional<Catalogue> m_catalogue;
 };

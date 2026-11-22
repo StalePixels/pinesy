@@ -98,13 +98,13 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 add_dependencies(pinesy_gtk pinesy_schemas)
 
-# Install: the app in bin, libpinesy and the engine in lib, the resources
+# Install: the app in bin, libpinesy and the engine in lib/pinesy, the resources
 # folder in share/pinesy/resources, and the files the desktop reads. An
 # installed copy finds its resources folder and its settings schema
 # beside itself (src/settings.cpp).
 include(GNUInstallDirs)
 include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/PinesyInstall.cmake")
-pinesy_install(pinesy_gtk
+pinesy_install(pinesy_gtk NAME pinesy
 	BINDIR "${CMAKE_INSTALL_BINDIR}"
 	LIBDIR "${CMAKE_INSTALL_LIBDIR}"
 	DATADIR "${CMAKE_INSTALL_DATADIR}")
@@ -114,13 +114,9 @@ install(TARGETS pinesy_gtk RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 
 # The settings schema, compiled where it is installed
 install(FILES "data/${_pinesy_schema}" DESTINATION "${CMAKE_INSTALL_DATADIR}/glib-2.0/schemas")
-# A Debian package leaves the compiling to the system (PinesyDeb.cmake).
-option(PINESY_INSTALL_COMPILED_SCHEMAS "Compile the installed settings schemas" ON)
-if(PINESY_INSTALL_COMPILED_SCHEMAS)
-	install(CODE "execute_process(
-		COMMAND \"${GLIB_COMPILE_SCHEMAS}\" --strict \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/glib-2.0/schemas\"
-		COMMAND_ERROR_IS_FATAL ANY)")
-endif()
+install(CODE "execute_process(
+	COMMAND \"${GLIB_COMPILE_SCHEMAS}\" --strict \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/glib-2.0/schemas\"
+	COMMAND_ERROR_IS_FATAL ANY)")
 
 install(FILES data/${PINESY_APP_ID}.desktop DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
 install(FILES data/${PINESY_APP_ID}.mime.xml DESTINATION "${CMAKE_INSTALL_DATADIR}/mime/packages"
@@ -136,10 +132,3 @@ foreach(_size 16 24 32 48 64 128 256 512)
 		DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/${_size}x${_size}/apps"
 		RENAME ${PINESY_APP_ID}.png)
 endforeach()
-
-# The Debian package (../cmake/PinesyDeb.cmake): cpack -G DEB
-include("${_pinesy_public}/cmake/PinesyDeb.cmake")
-string(REGEX REPLACE "^/" "" _pinesy_prefix "${CMAKE_INSTALL_PREFIX}")
-pinesy_deb(NAME pinesy SUMMARY "Pi/Ne-Sy, a Pi/Next-System emulator: the GNOME app"
-	LIBDIR "${_pinesy_prefix}/${CMAKE_INSTALL_LIBDIR}" DEPENDS pinesy-gdb)
-include(CPack)

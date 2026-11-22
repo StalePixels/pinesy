@@ -497,15 +497,17 @@ int pinesy_core_restorable(const char *arguments);
 //  A CI build carries its identity: its track ("ci", "nightly"
 //  or "release"), its version, and its kind: "macos" (Sparkle
 //  updates it), "flatpak" (the Flatpak portal) or "deb" (the
-//  user updates it with the system's package manager). A local
-//  build has none and never looks for updates. The front end
+//  user updates it with the system's package manager). It is
+//  the JSON object in build-identity.json in the resources
+//  folder, which the core reads when it is made. A local build
+//  has no such file and never looks for updates. The front end
 //  finds the newest build in its kind's own way, then asks the
 //  core whether to show the out-of-date notice.
 //------------------------------------------------------------
 
 // The build's identity, as a JSON object with track, version and
 // kind; an empty object for a local build.
-char *pinesy_core_build_identity(void);
+char *pinesy_core_build_identity(const pinesy_core *core);
 
 // Compares two versions as Sparkle does: -1 when a is older than b, 0
 // when they are the same, 1 when a is newer. 0 when either is NULL.
@@ -540,17 +542,17 @@ char *pinesy_core_update_choice(pinesy_core *core, int choice, const char *build
 // Update), newPermissions (the Flatpak portal refused an update that
 // needs more permissions) and failed (the update failed; the update
 // tool's error follows it). build and newer_known as for
-// pinesy_core_update_notice(). NULL when build is NULL.
-char *pinesy_core_update_texts(const char *build, int newer_known);
+// pinesy_core_update_notice(). NULL when core or build is NULL.
+char *pinesy_core_update_texts(const pinesy_core *core, const char *build, int newer_known);
 
 // Sparkle's appcast for the build's track, <server>/<track>/macos/appcast.xml.
 // NULL for a local build.
-char *pinesy_core_appcast_url(void);
+char *pinesy_core_appcast_url(const pinesy_core *core);
 
 // The apt Packages index for the build's track and the architecture
 // it runs on, <server>/<track>/dists/sid/main/binary-<arch>/Packages.
 // NULL for a local build.
-char *pinesy_core_apt_packages_url(void);
+char *pinesy_core_apt_packages_url(const pinesy_core *core);
 
 // The newest version of a package in the text of an apt Packages
 // index; NULL when the index does not list it.

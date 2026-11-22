@@ -875,7 +875,7 @@ void test_updates(pinesy_core *core)
 	check(updates::texts(ci, "0.1.11", false).message == "Pi/Ne-Sy 0.1.11 is available. You have 0.1.10."
 			&& updates::texts(ci, "4f3a", true).message == "A newer build of Pi/Ne-Sy is available. You have 0.1.10.",
 			"the notice names the new version, or only says that a newer build exists");
-	const json::Value texts = parse(pinesy_core_update_texts("0.1.11", 0));
+	const json::Value texts = parse(pinesy_core_update_texts(core, "0.1.11", 0));
 	check(text_of(texts, "neverRemind") == "Never Remind Again" && text_of(texts, "ignoreBuild") == "Never Remind for This Version"
 			&& text_of(texts, "update") == "Update" && !text_of(texts, "packageManager").empty()
 			&& !text_of(texts, "newPermissions").empty() && !text_of(texts, "failed").empty(),
@@ -893,9 +893,9 @@ void test_updates(pinesy_core *core)
 			&& take(pinesy_core_apt_newest_version(packages, "gone")) == "<NULL>",
 			"pinesy_core_apt_newest_version() gives the same answers");
 
-	// this build is a local one: no identity, no checks, no URLs
-	check(take(pinesy_core_build_identity()) == "{}", "a local build has no identity");
-	check(take(pinesy_core_appcast_url()) == "<NULL>" && take(pinesy_core_apt_packages_url()) == "<NULL>",
+	// the test core is a local build: no identity, no checks, no URLs
+	check(take(pinesy_core_build_identity(core)) == "{}", "a local build has no identity");
+	check(take(pinesy_core_appcast_url(core)) == "<NULL>" && take(pinesy_core_apt_packages_url(core)) == "<NULL>",
 			"a local build has no appcast and no apt index");
 	check(pinesy_core_update_checks(core) == 0 && pinesy_core_update_notice(core, "99", 0) == 0,
 			"a local build never looks for updates");
@@ -906,6 +906,36 @@ void test_updates(pinesy_core *core)
 	check(member(never, "updateChecks") && !member(never, "updateChecks")->boolean(),
 			"pinesy_core_update_choice() turns update checks off for Never remind again");
 	check(take(pinesy_core_update_choice(core, 7, "x")) == "<NULL>", "pinesy_core_update_choice() refuses an unknown choice");
+	// a CI build's identity is build-identity.json in its resources folder
+	namespace fs = std::filesystem;
+	const fs::path resources = fs::path(PINESY_TEST_DATA) / "ci-resources";
+	fs::create_directories(resources);
+	auto write_identity = [&](const char *text) {
+		FILE *f = std::fopen((resources / updates::identity_file).string().c_str(), "w");
+		std::fputs(text, f);
+		std::fclose(f);
+	};
+	write_identity(R"({"track": "nightly", "version": "0.1.20261122.1900", "kind": "deb"})");
+	check(updates::read_identity(resources.string()) == updates::Identity{ "nightly", "0.1.20261122.1900", "deb" },
+			"read_identity() reads build-identity.json");
+	pinesy_core *ci_core = pinesy_core_create(resources.string().c_str(), PINESY_TEST_DATA);
+	const json::Value identity = parse(pinesy_core_build_identity(ci_core));
+	check(text_of(identity, "track") == "nightly" && text_of(identity, "version") == "0.1.20261122.1900"
+			&& text_of(identity, "kind") == "deb",
+			"pinesy_core_build_identity() gives the identity from the resources folder");
+	check(pinesy_core_update_checks(ci_core) == 1 && pinesy_core_update_notice(ci_core, "0.1.20261122.1901", 0) == 1
+			&& pinesy_core_update_notice(ci_core, "0.1.20261122.1859", 0) == 0,
+			"a CI build looks for updates and gives the notice for a newer version only");
+	check(take(pinesy_core_apt_packages_url(ci_core)).starts_with("https://pinesy.zx.immo/nightly/dists/sid/main/binary-")
+			&& take(pinesy_core_appcast_url(ci_core)) == "https://pinesy.zx.immo/nightly/macos/appcast.xml",
+			"a CI build's URLs are on its own track");
+	pinesy_core_destroy(ci_core);
+	write_identity(R"({"track": "nightly", "version": "0.1.20261122.1900"})");
+	check(updates::read_identity(resources.string()) == updates::Identity{}, "an identity without a kind is no identity");
+	write_identity("not json");
+	check(updates::read_identity(resources.string()) == updates::Identity{}, "a file that is not JSON is no identity");
+	check(updates::read_identity((resources / "missing").string()) == updates::Identity{}, "no file, no identity");
+
 	pinesy_core_set_settings(core, "{}");
 	const json::Value fresh = parse(pinesy_core_settings(core));
 	check(member(fresh, "updateChecks") && member(fresh, "updateChecks")->boolean() && text_of(fresh, "ignoredBuild").empty(),

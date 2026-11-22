@@ -5,26 +5,19 @@
 //  updates.cpp - the build's identity and the rules of the
 //  out-of-date notice
 //
-//  CI stamps the identity in with the compile definitions
-//  PINESY_BUILD_TRACK, PINESY_BUILD_VERSION and
-//  PINESY_BUILD_KIND. A local build has none of them.
+//  CI writes the identity into build-identity.json in the
+//  build's resources folder. A local build has no such file.
 //
 //============================================================
 
 #include "pinesy_core.hpp"
+#include "json.hpp"
 
 #include <cctype>
 #include <cstdlib>
-
-#ifndef PINESY_BUILD_TRACK
-#define PINESY_BUILD_TRACK ""
-#endif
-#ifndef PINESY_BUILD_VERSION
-#define PINESY_BUILD_VERSION ""
-#endif
-#ifndef PINESY_BUILD_KIND
-#define PINESY_BUILD_KIND ""
-#endif
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 
 namespace pinesy::core::updates {
 
@@ -111,10 +104,26 @@ long long number_of(const std::string &part)
 
 } // anonymous namespace
 
-Identity build_identity()
+Identity read_identity(const std::string &resources_folder)
 {
-	Identity identity{ PINESY_BUILD_TRACK, PINESY_BUILD_VERSION, PINESY_BUILD_KIND };
-	return identity.ci_build() ? identity : Identity{};
+	std::ifstream in(std::filesystem::path(resources_folder) / identity_file, std::ios::binary);
+	if (!in) return {};
+	std::stringstream text;
+	text << in.rdbuf();
+	try
+	{
+		const json::Value root = json::parse(text.str());
+		auto member = [&](const char *key) {
+			const json::Value *v = root.find(key);
+			return v ? v->string() : std::string();
+		};
+		Identity identity{ member("track"), member("version"), member("kind") };
+		return identity.ci_build() ? identity : Identity{};
+	}
+	catch (const json::Error &)
+	{
+		return {};
+	}
 }
 
 int compare_versions(std::string_view version_a, std::string_view version_b)

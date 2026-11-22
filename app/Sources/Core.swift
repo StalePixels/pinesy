@@ -120,8 +120,8 @@ enum Core {
     }
 
     /// Sparkle's appcast for this build's track; nil for a local build.
-    nonisolated static var appcastURL: String? {
-        take(pinesy_core_appcast_url())
+    static var appcastURL: String? {
+        take(pinesy_core_appcast_url(core))
     }
 
     /// True when the out-of-date notice shows for a version on the server.
@@ -131,7 +131,7 @@ enum Core {
 
     /// What the out-of-date notice says.
     static func updateTexts(_ version: String) -> UpdateTexts? {
-        decode(pinesy_core_update_texts(version, 0))
+        decode(pinesy_core_update_texts(core, version, 0))
     }
 
     enum UpdateChoice {

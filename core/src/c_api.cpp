@@ -482,9 +482,10 @@ int pinesy_core_headless(const pinesy_core *core, int argc, const char *const ar
 //  Updates
 //------------------------------------------------------------
 
-char *pinesy_core_build_identity(void)
+char *pinesy_core_build_identity(const pinesy_core *core)
 {
-	const updates::Identity identity = updates::build_identity();
+	if (!core) return nullptr;
+	const updates::Identity &identity = core->core.identity();
 	if (!identity.ci_build()) return give(json::Object{});
 	return give(json::Object{ { "track", identity.track }, { "version", identity.version }, { "kind", identity.kind } });
 }
@@ -496,13 +497,13 @@ int pinesy_core_compare_versions(const char *a, const char *b)
 
 int pinesy_core_update_checks(const pinesy_core *core)
 {
-	return core && updates::checks(updates::build_identity(), core->core.settings()) ? 1 : 0;
+	return core && updates::checks(core->core.identity(), core->core.settings()) ? 1 : 0;
 }
 
 int pinesy_core_update_notice(const pinesy_core *core, const char *build, int newer_known)
 {
 	if (!core || !build) return 0;
-	return updates::notice(updates::build_identity(), core->core.settings(), build, newer_known != 0) ? 1 : 0;
+	return updates::notice(core->core.identity(), core->core.settings(), build, newer_known != 0) ? 1 : 0;
 }
 
 char *pinesy_core_update_choice(pinesy_core *core, int choice, const char *build)
@@ -520,10 +521,10 @@ char *pinesy_core_update_choice(pinesy_core *core, int choice, const char *build
 	return pinesy_core_settings(core);
 }
 
-char *pinesy_core_update_texts(const char *build, int newer_known)
+char *pinesy_core_update_texts(const pinesy_core *core, const char *build, int newer_known)
 {
-	if (!build) return nullptr;
-	const updates::Texts t = updates::texts(updates::build_identity(), build, newer_known != 0);
+	if (!core || !build) return nullptr;
+	const updates::Texts t = updates::texts(core->core.identity(), build, newer_known != 0);
 	return give(json::Object{
 		{ "title", t.title },
 		{ "message", t.message },
@@ -535,15 +536,17 @@ char *pinesy_core_update_texts(const char *build, int newer_known)
 		{ "failed", t.failed } });
 }
 
-char *pinesy_core_appcast_url(void)
+char *pinesy_core_appcast_url(const pinesy_core *core)
 {
-	const updates::Identity identity = updates::build_identity();
+	if (!core) return nullptr;
+	const updates::Identity &identity = core->core.identity();
 	return identity.ci_build() ? give(updates::appcast_url(identity)) : nullptr;
 }
 
-char *pinesy_core_apt_packages_url(void)
+char *pinesy_core_apt_packages_url(const pinesy_core *core)
 {
-	const updates::Identity identity = updates::build_identity();
+	if (!core) return nullptr;
+	const updates::Identity &identity = core->core.identity();
 	return identity.ci_build() ? give(updates::apt_packages_url(identity, updates::debian_architecture())) : nullptr;
 }
 

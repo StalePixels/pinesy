@@ -137,7 +137,7 @@ modules:
       - ./build-mame.sh --qt QT_HOME=/usr
       - cmake -S kde -B _build -G Ninja -DCMAKE_BUILD_TYPE=Release
         -DCMAKE_INSTALL_PREFIX=/app -DKDE_INSTALL_LIBDIR=lib
-        -DPINESY_RESOURCES_FOLDER=/app/share/pinesy/resources
+        -DPINESY_RESOURCES_FOLDER=/app/share/pinesy-kde/resources
       - cmake --build _build
       - cmake --install _build
     sources:

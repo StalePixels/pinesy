@@ -44,17 +44,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 	target_compile_options(pinesy PRIVATE -Wall -Wextra)
 endif()
 
-# The build's identity (src/updates.cpp). CI sets all three for a build
-# it publishes; a local build leaves them empty, and never looks for
-# updates.
-set(PINESY_BUILD_TRACK "" CACHE STRING "The track a CI build is published to: ci, nightly or release")
-set(PINESY_BUILD_VERSION "" CACHE STRING "The version of a CI build")
-set(PINESY_BUILD_KIND "" CACHE STRING "How a CI build is delivered and updated: flatpak or deb")
-set_property(SOURCE src/updates.cpp APPEND PROPERTY COMPILE_DEFINITIONS
-	"PINESY_BUILD_TRACK=\"${PINESY_BUILD_TRACK}\""
-	"PINESY_BUILD_VERSION=\"${PINESY_BUILD_VERSION}\""
-	"PINESY_BUILD_KIND=\"${PINESY_BUILD_KIND}\"")
-
 # Tests: the rules checked against the real engine.
 option(PINESY_CORE_TESTS "Build the core's tests" ON)
 if(PINESY_CORE_TESTS)

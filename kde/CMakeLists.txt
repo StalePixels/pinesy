@@ -131,11 +131,11 @@ target_link_libraries(pinesy-kde PRIVATE
 	Qt6::Core Qt6::DBus Qt6::Gui Qt6::Network Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Widgets
 	KF6::ConfigCore KF6::CoreAddons KF6::I18n KF6::I18nQml)
 
-# Install: the app in bin, libpinesy and the engine in lib, and the
-# resources folder in share/pinesy/resources, which an installed copy
+# Install: the app in bin, libpinesy and the engine in lib/pinesy-kde, and the
+# resources folder in share/pinesy-kde/resources, which an installed copy
 # finds beside itself (src/main.cpp).
 include("${PINESY_PUBLIC_DIR}/cmake/PinesyInstall.cmake")
-pinesy_install(pinesy-kde
+pinesy_install(pinesy-kde NAME pinesy-kde
 	BINDIR "${KDE_INSTALL_BINDIR}"
 	LIBDIR "${KDE_INSTALL_LIBDIR}"
 	DATADIR "${KDE_INSTALL_DATADIR}")
@@ -151,12 +151,3 @@ foreach(_size 16 24 32 48 64 128 256 512)
 		DESTINATION "${KDE_INSTALL_ICONDIR}/hicolor/${_size}x${_size}/apps"
 		RENAME com.stalepixels.pinesy.kde.png)
 endforeach()
-
-# The Debian package (../cmake/PinesyDeb.cmake): cpack -G DEB
-include("${PINESY_PUBLIC_DIR}/cmake/PinesyDeb.cmake")
-string(REGEX REPLACE "^/" "" _pinesy_prefix "${CMAKE_INSTALL_PREFIX}")
-pinesy_deb(NAME pinesy-kde SUMMARY "Pi/Ne-Sy, a Pi/Next-System emulator: the KDE Plasma app"
-	LIBDIR "${_pinesy_prefix}/${KDE_INSTALL_LIBDIR}"
-	# the QML modules qml/ imports, which dpkg-shlibdeps cannot see
-	DEPENDS "pinesy-gdb, qml6-module-org-kde-kirigami, qml6-module-qtcore, qml6-module-qtqml-models, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-dialogs, qml6-module-qtquick-layouts, qml6-module-qtquick-window")
-include(CPack)

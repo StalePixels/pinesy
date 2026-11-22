@@ -53,7 +53,7 @@ Updates::Updates(Application &app) : m_app(app)
 
 void Updates::start()
 {
-	const updates::Identity identity = updates::build_identity();
+	const updates::Identity identity = m_app.core().identity();
 	if (!updates::checks(identity, m_app.core().settings())) return;
 	if (identity.kind == "flatpak")
 		start_flatpak();
@@ -170,7 +170,7 @@ void Updates::progress(const Glib::VariantContainerBase &parameters)
 
 void Updates::failed(const std::string &error, const std::string &message)
 {
-	const updates::Texts texts = updates::texts(updates::build_identity(), "", true);
+	const updates::Texts texts = updates::texts(m_app.core().identity(), "", true);
 	if (error == "org.freedesktop.DBus.Error.NotSupported")
 		m_app.alert(texts.title, texts.new_permissions);
 	else
@@ -215,7 +215,7 @@ void Updates::spawn_latest()
 
 void Updates::start_deb()
 {
-	const updates::Identity identity = updates::build_identity();
+	const updates::Identity identity = m_app.core().identity();
 	const std::string url = updates::apt_packages_url(identity, updates::debian_architecture());
 	SoupSession *session = soup_session_new();
 	SoupMessage *message = soup_message_new("GET", url.c_str());
@@ -255,7 +255,7 @@ void Updates::start_deb()
 
 void Updates::notice(const std::string &build, bool newer_known)
 {
-	const updates::Identity identity = updates::build_identity();
+	const updates::Identity identity = m_app.core().identity();
 	if (!updates::notice(identity, m_app.core().settings(), build, newer_known)) return;
 	const updates::Texts texts = updates::texts(identity, build, newer_known);
 
@@ -288,7 +288,7 @@ void Updates::notice(const std::string &build, bool newer_known)
 
 void Updates::chosen(const std::string &response, const std::string &build)
 {
-	const updates::Identity identity = updates::build_identity();
+	const updates::Identity identity = m_app.core().identity();
 	updates::Choice choice;
 	if (response == "never-remind")
 		choice = updates::Choice::never_remind;

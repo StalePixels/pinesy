@@ -78,12 +78,12 @@ cmake --install build/kde --prefix <prefix>
 It installs:
 
 - the app, in `<prefix>/bin`: `pinesy` (GNOME) or `pinesy-kde` (KDE)
-- `libpinesy.so` and the engine library, in `<prefix>/lib`
-- the resources folder, in `<prefix>/share/pinesy/resources`: the ROM sets from `roms` and MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders. A file in `roms` that is not a ROM set (a zip, 7z or folder of ROM dumps), or a ROM set that holds a disk image, stops the install.
+- `libpinesy.so` and the engine library, in `<prefix>/lib/pinesy` (GNOME) or `<prefix>/lib/pinesy-kde` (KDE)
+- the resources folder, in `<prefix>/share/pinesy/resources` (GNOME) or `<prefix>/share/pinesy-kde/resources` (KDE): the ROM sets from `roms` and MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders. A file in `roms` that is not a ROM set (a zip, 7z or folder of ROM dumps), or a ROM set that holds a disk image, stops the install.
 - the desktop entry, the MIME type for `*.pinesy` files, the D-Bus service file and the app icon, under `<prefix>/share`
 - for the GNOME app, the settings schema, compiled in `<prefix>/share/glib-2.0/schemas`
 
-The installed app loads its libraries from `<prefix>/lib` and reads its resources folder from `<prefix>/share/pinesy/resources`. The GNOME app also reads its settings schema from `<prefix>/share/glib-2.0/schemas`, so it needs no `GSETTINGS_SCHEMA_DIR`. Nothing in the build folder is used, and the prefix can move as a whole.
+Each app has its own library and resources folders, so both can be installed in one prefix. The installed app loads its libraries from its library folder and reads its resources folder from beside itself. The GNOME app also reads its settings schema from `<prefix>/share/glib-2.0/schemas`, so it needs no `GSETTINGS_SCHEMA_DIR`. Nothing in the build folder is used, and the prefix can move as a whole.
 
 The desktop finds the desktop entry, the MIME type and the D-Bus service file only when `<prefix>/share` is in `XDG_DATA_DIRS`, as `/usr/local/share` and `/usr/share` are. The D-Bus service file holds the program's full path under `CMAKE_INSTALL_PREFIX` as it was when CMake configured the build. `--prefix` does not change that path, so configure with `-DCMAKE_INSTALL_PREFIX=<prefix>` when the desktop starts the app from that prefix.
 
@@ -137,21 +137,12 @@ A package runs only on processors like the one that built it, because the build 
 
 ## Debian packages
 
-On Debian, CPack makes `.deb` packages from a build installed into `/usr`. It also needs `dpkg-dev`, for `dpkg-shlibdeps`. There are three packages: `pinesy` (the GNOME app), `pinesy-kde` (the KDE app) and `pinesy-gdb` (`gdb-pinesy` and `objcopy-pinesy`), which both apps depend on. Each app keeps its own `libpinesy`, engine and resources folder, so both can be installed at once. Build the apps first, as above, then:
+On Debian, `cmake/make-deb.sh` makes a `.deb` from a build that `build.sh` made, without compiling. It also needs `dpkg-dev`, for `dpkg-shlibdeps`. There are three packages: `pinesy` (the GNOME app, from `build/gtk`), `pinesy-kde` (the KDE app, from `build/kde`) and `pinesy-gdb` (`gdb-pinesy` and `objcopy-pinesy`), which both apps depend on. Build the apps first, as above, then:
 
 ```sh
-cmake -S gtk -B build/deb-gtk -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
-    -DCMAKE_INSTALL_LIBDIR=lib/pinesy -DPINESY_INSTALL_COMPILED_SCHEMAS=OFF
-cmake --build build/deb-gtk
-(cd build/deb-gtk && cpack -G DEB)
-
-cmake -S kde -B build/deb-kde -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
-    -DKDE_INSTALL_LIBDIR=lib/pinesy-kde -DPINESY_INSTALL_NAME=pinesy-kde
-cmake --build build/deb-kde
-(cd build/deb-kde && cpack -G DEB)
-
-cmake -S cmake/gdb-deb -B build/deb-gdb -DCMAKE_INSTALL_PREFIX=/usr
-(cd build/deb-gdb && cpack -G DEB)
+cmake/make-deb.sh gtk <out-dir>
+cmake/make-deb.sh kde <out-dir>
+cmake/make-deb.sh gdb <out-dir>
 ```
 
-A package built like this has version 0 and no track, so it never looks for updates. CI's packages carry their track and version (`../app/README.md`, "Updates").
+The script installs the build into a staging folder with the prefix `/usr`, and leaves out the compiled schemas file: the system compiles its schemas when the package is installed. A package made like this has version 0 and no track, so it never looks for updates. CI gives its packages a version and a track (`../app/README.md`, "Updates"): `cmake/make-deb.sh <app> <out-dir> <version> <track>`.

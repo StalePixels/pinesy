@@ -9,8 +9,6 @@
 #include <QDBusPendingReply>
 #include <QDBusUnixFileDescriptor>
 #include <QDir>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QMessageBox>
 #include <QNetworkReply>
 #include <QPushButton>
@@ -30,14 +28,6 @@ constexpr uint statusFailed = 3;
 using Fds = QMap<uint, QDBusUnixFileDescriptor>;
 using Envs = QMap<QString, QString>;
 
-QString kindOfBuild()
-{
-	char *identity = pinesy_core_build_identity();
-	const QJsonObject object = QJsonDocument::fromJson(identity ? identity : "{}").object();
-	pinesy_core_free(identity);
-	return object.value(QLatin1String("kind")).toString();
-}
-
 QString text(const QVariantMap &texts, const char *key)
 {
 	return texts.value(QLatin1String(key)).toString();
@@ -50,7 +40,7 @@ Q_DECLARE_METATYPE(Envs)
 
 Updates::Updates(QObject *parent)
 	: QObject(parent)
-	, m_kind(kindOfBuild())
+	, m_kind(Core::instance()->buildKind())
 {
 }
 
@@ -179,11 +169,10 @@ void Updates::spawnLatest()
 
 void Updates::startDeb()
 {
-	char *url = pinesy_core_apt_packages_url();
-	if (!url)
+	const QString url = Core::instance()->aptPackagesUrl();
+	if (url.isEmpty())
 		return;
-	QNetworkReply *reply = m_network.get(QNetworkRequest(QUrl(QString::fromUtf8(url))));
-	pinesy_core_free(url);
+	QNetworkReply *reply = m_network.get(QNetworkRequest(QUrl(url)));
 	connect(reply, &QNetworkReply::finished, this, [this, reply] {
 		reply->deleteLater();
 		if (reply->error() != QNetworkReply::NoError)
