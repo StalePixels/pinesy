@@ -512,6 +512,8 @@ struct Settings
 	int gdb_port = default_gdb_port;
 	bool start_paused = false;                // the Next waits at its first instruction (run_switches)
 	int pi_gdb_port = default_pi_gdb_port;    // the Pi's GDB stub (QEMU), same range as gdb_port
+	bool update_checks = true;                // false: Never remind again (updates::notice)
+	std::string ignored_build;                // Never remind for this version: the build it ignores
 };
 
 // Pinesy's own switches, before "--" on its command line.
@@ -642,6 +644,96 @@ Launch launch(bool files_to_open, std::size_t recent_count);
 bool restorable(const std::vector<std::string> &arguments);
 
 } // namespace recent
+
+//------------------------------------------------------------
+//  Updates
+//
+//  A CI build carries its identity: the track it came from,
+//  its version and how it was delivered. A local build has
+//  none, and never looks for updates. Each front end finds the
+//  newest build in its own way (Sparkle, the Flatpak portal,
+//  the apt repository); these rules decide what it shows.
+//------------------------------------------------------------
+
+namespace updates {
+
+// The download server; each track is a folder on it.
+inline constexpr const char *server = "https://pinesy.zx.immo";
+
+struct Identity
+{
+	std::string track;     // "ci", "nightly" or "release"
+	std::string version;   // compared with compare_versions()
+	std::string kind;      // "macos" (Sparkle), "flatpak" or "deb"
+	bool ci_build() const { return !track.empty() && !version.empty() && !kind.empty(); }
+	bool operator==(const Identity &) const = default;
+};
+
+// The identity CI stamped into this build (PINESY_BUILD_TRACK,
+// PINESY_BUILD_VERSION and PINESY_BUILD_KIND); empty for a local build.
+Identity build_identity();
+
+// Compares two versions the way Sparkle's SUStandardVersionComparator
+// does: <0 when a is older than b, 0 when they are the same, >0 when a
+// is newer.
+int compare_versions(std::string_view a, std::string_view b);
+
+// True when the app looks for updates at startup: a CI build, with
+// update checks on in the settings.
+bool checks(const Identity &identity, const Settings &settings);
+
+// True when the app shows the out-of-date notice for a build found on
+// the server: it looks for updates (checks()), the build is not the
+// one the settings ignore, and the build is newer. newer_known: the
+// update tool already decided that the build is newer (the Flatpak
+// portal, where build is the remote commit); otherwise build is a
+// version, newer when compare_versions() says so.
+bool notice(const Identity &identity, const Settings &settings, const std::string &build, bool newer_known);
+
+// The choices of the out-of-date notice.
+enum class Choice { never_remind, ignore_build, update };
+
+// The settings after a choice: never_remind turns update checks off,
+// ignore_build ignores build, update changes nothing.
+Settings after_choice(Settings settings, Choice choice, const std::string &build);
+
+// What the out-of-date notice and its follow-ups say, the same in
+// every app.
+struct Texts
+{
+	std::string title;            // the notice's title
+	std::string message;          // the notice's text
+	std::string never_remind;     // the button of Choice::never_remind
+	std::string ignore_build;     // the button of Choice::ignore_build
+	std::string update;           // the button of Choice::update
+	std::string package_manager;  // a "deb" build's answer to Update
+	std::string new_permissions;  // the Flatpak portal refused: the build needs more permissions
+	std::string failed;           // the update failed; the tool's error follows it
+};
+
+// The texts for a build found on the server: build is its version, or
+// with newer_known the update tool's name for it, which the text does
+// not show.
+Texts texts(const Identity &identity, const std::string &build, bool newer_known);
+
+// The folder of a track on the server, with a trailing "/".
+std::string track_url(const Identity &identity);
+
+// Sparkle's appcast of the track: <track>/macos/appcast.xml.
+std::string appcast_url(const Identity &identity);
+
+// The Debian architecture this build runs on ("amd64", "arm64").
+std::string debian_architecture();
+
+// The apt index of the track for an architecture:
+// <track>/dists/sid/main/binary-<architecture>/Packages.
+std::string apt_packages_url(const Identity &identity, const std::string &architecture);
+
+// The newest Version of a package in an apt Packages index, by
+// compare_versions(). Empty when the index does not list the package.
+std::string apt_newest_version(std::string_view packages, std::string_view package);
+
+} // namespace updates
 
 // The core: a platform, the settings, and the catalogue, built from
 // the engine on first use.

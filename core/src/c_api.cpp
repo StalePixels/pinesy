@@ -132,6 +132,10 @@ int pinesy_core_set_settings(pinesy_core *core, const char *settings_json)
 				settings.pi_gdb_port = int(port);
 		}
 		catch (const json::Error &) {}
+	if (const json::Value *v = root.find("updateChecks"))
+		try { settings.update_checks = v->boolean(); } catch (const json::Error &) {}
+	if (const json::Value *v = root.find("ignoredBuild"))
+		try { settings.ignored_build = v->string(); } catch (const json::Error &) {}
 	core->core.set_settings(std::move(settings));
 	return 0;
 }
@@ -146,7 +150,9 @@ char *pinesy_core_settings(const pinesy_core *core)
 		{ "debugger", debugger_name(s.debugger) },
 		{ "gdbPort", s.gdb_port },
 		{ "startPaused", s.start_paused },
-		{ "piGdbPort", s.pi_gdb_port } });
+		{ "piGdbPort", s.pi_gdb_port },
+		{ "updateChecks", s.update_checks },
+		{ "ignoredBuild", s.ignored_build } });
 }
 
 char *pinesy_core_data_folder(const pinesy_core *core)
@@ -470,6 +476,82 @@ int pinesy_core_headless(const pinesy_core *core, int argc, const char *const ar
 {
 	if (!core) return -1;
 	return core->core.headless(read_argv(argc, argv), host);
+}
+
+//------------------------------------------------------------
+//  Updates
+//------------------------------------------------------------
+
+char *pinesy_core_build_identity(void)
+{
+	const updates::Identity identity = updates::build_identity();
+	if (!identity.ci_build()) return give(json::Object{});
+	return give(json::Object{ { "track", identity.track }, { "version", identity.version }, { "kind", identity.kind } });
+}
+
+int pinesy_core_compare_versions(const char *a, const char *b)
+{
+	return a && b ? updates::compare_versions(a, b) : 0;
+}
+
+int pinesy_core_update_checks(const pinesy_core *core)
+{
+	return core && updates::checks(updates::build_identity(), core->core.settings()) ? 1 : 0;
+}
+
+int pinesy_core_update_notice(const pinesy_core *core, const char *build, int newer_known)
+{
+	if (!core || !build) return 0;
+	return updates::notice(updates::build_identity(), core->core.settings(), build, newer_known != 0) ? 1 : 0;
+}
+
+char *pinesy_core_update_choice(pinesy_core *core, int choice, const char *build)
+{
+	if (!core) return nullptr;
+	updates::Choice c;
+	switch (choice)
+	{
+	case PINESY_CORE_UPDATE_NEVER_REMIND: c = updates::Choice::never_remind; break;
+	case PINESY_CORE_UPDATE_IGNORE_BUILD: c = updates::Choice::ignore_build; break;
+	case PINESY_CORE_UPDATE_NOW: c = updates::Choice::update; break;
+	default: return nullptr;
+	}
+	core->core.set_settings(updates::after_choice(core->core.settings(), c, build ? build : ""));
+	return pinesy_core_settings(core);
+}
+
+char *pinesy_core_update_texts(const char *build, int newer_known)
+{
+	if (!build) return nullptr;
+	const updates::Texts t = updates::texts(updates::build_identity(), build, newer_known != 0);
+	return give(json::Object{
+		{ "title", t.title },
+		{ "message", t.message },
+		{ "neverRemind", t.never_remind },
+		{ "ignoreBuild", t.ignore_build },
+		{ "update", t.update },
+		{ "packageManager", t.package_manager },
+		{ "newPermissions", t.new_permissions },
+		{ "failed", t.failed } });
+}
+
+char *pinesy_core_appcast_url(void)
+{
+	const updates::Identity identity = updates::build_identity();
+	return identity.ci_build() ? give(updates::appcast_url(identity)) : nullptr;
+}
+
+char *pinesy_core_apt_packages_url(void)
+{
+	const updates::Identity identity = updates::build_identity();
+	return identity.ci_build() ? give(updates::apt_packages_url(identity, updates::debian_architecture())) : nullptr;
+}
+
+char *pinesy_core_apt_newest_version(const char *packages, const char *package)
+{
+	if (!packages || !package) return nullptr;
+	const std::string version = updates::apt_newest_version(packages, package);
+	return version.empty() ? nullptr : give(version);
 }
 
 } // extern "C"

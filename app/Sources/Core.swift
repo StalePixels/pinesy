@@ -40,6 +40,10 @@ enum Core {
         if defaults.object(forKey: AppSettings.Key.piGDBPort) != nil {
             settings["piGdbPort"] = defaults.integer(forKey: AppSettings.Key.piGDBPort)
         }
+        if defaults.object(forKey: AppSettings.Key.updateChecks) != nil {
+            settings["updateChecks"] = defaults.bool(forKey: AppSettings.Key.updateChecks)
+        }
+        settings["ignoredBuild"] = defaults.string(forKey: AppSettings.Key.ignoredBuild) ?? ""
         return encode(settings)
     }
 
@@ -106,6 +110,51 @@ enum Core {
 
     nonisolated static func isUsableROMFolder(_ path: String) -> Bool {
         pinesy_core_is_usable_rom_folder(path) != 0
+    }
+
+    // MARK: - Updates
+
+    /// True when this is a CI build with update checks on.
+    static var updateChecks: Bool {
+        pinesy_core_update_checks(current) != 0
+    }
+
+    /// Sparkle's appcast for this build's track; nil for a local build.
+    nonisolated static var appcastURL: String? {
+        take(pinesy_core_appcast_url())
+    }
+
+    /// True when the out-of-date notice shows for a version on the server.
+    static func updateNotice(_ version: String) -> Bool {
+        pinesy_core_update_notice(current, version, 0) != 0
+    }
+
+    /// What the out-of-date notice says.
+    static func updateTexts(_ version: String) -> UpdateTexts? {
+        decode(pinesy_core_update_texts(version, 0))
+    }
+
+    enum UpdateChoice {
+        case neverRemind, ignoreBuild, update
+
+        var code: Int32 {
+            switch self {
+            case .neverRemind: return PINESY_CORE_UPDATE_NEVER_REMIND
+            case .ignoreBuild: return PINESY_CORE_UPDATE_IGNORE_BUILD
+            case .update: return PINESY_CORE_UPDATE_NOW
+            }
+        }
+    }
+
+    /// Records a choice of the notice in UserDefaults, as the core sets it.
+    static func updateChoice(_ choice: UpdateChoice, version: String) {
+        struct Changed: Decodable {
+            let updateChecks: Bool
+            let ignoredBuild: String
+        }
+        guard let changed: Changed = decode(pinesy_core_update_choice(current, choice.code, version)) else { return }
+        UserDefaults.standard.set(changed.updateChecks, forKey: AppSettings.Key.updateChecks)
+        UserDefaults.standard.set(changed.ignoredBuild, forKey: AppSettings.Key.ignoredBuild)
     }
 
     // MARK: - The machine window

@@ -21,10 +21,12 @@ class DesktopService : public QObject
 public:
 	explicit DesktopService(QObject *parent = nullptr);
 
-	// Takes the app id's name on the session bus. False when the bus is
-	// not reachable or another instance has the name; the app then runs
-	// without it.
-	bool registerOnBus();
+	// Takes the app id's name on the session bus, and lets a later
+	// instance take it over. With replace, it takes the name from the
+	// instance that has it (the new build an update starts). False when
+	// the bus is not reachable or another instance keeps the name; the
+	// app then runs without it.
+	bool registerOnBus(bool replace);
 
 Q_SIGNALS:
 	void activateRequested();

@@ -12,7 +12,7 @@ The data folder is `$XDG_DATA_HOME/pinesy` (by default `~/.local/share/pinesy`) 
 
 `data/` holds the files a desktop needs:
 
-- `com.stalepixels.Pinesy.gschema.xml`: the settings schema. The keys are `rom-folders`, `data-folder`, `debugger` (`windows` or `gdbStub`), `gdb-port`, `pi-gdb-port` and `start-paused`, as the core's settings schema names them.
+- `com.stalepixels.Pinesy.gschema.xml`: the settings schema. The keys are `rom-folders`, `data-folder`, `debugger` (`windows` or `gdbStub`), `gdb-port`, `pi-gdb-port`, `start-paused`, `update-checks` and `ignored-build`, as the core's settings schema names them.
 - `com.stalepixels.Pinesy.desktop`: the desktop entry, for the MIME type `application/x-pinesy`.
 - `com.stalepixels.Pinesy.mime.xml`: the MIME type for `*.pinesy` files, with the app icon.
 - `com.stalepixels.Pinesy.service.in`: the D-Bus service file. CMake fills in the installed path of the program.
@@ -41,6 +41,13 @@ The permissions:
 - `--device=input`: joysticks and gamepads, which MAME reads from `/dev/input/event*`.
 - `--filesystem=home`: a `.pinesy` file names its media files by path, and the ROM folders in Preferences are paths. The file chooser portal gives the app only the file chosen, so MAME could not open the media named in a configuration that was opened later. Media outside the home folder is not reachable.
 - `--share=network`: the GDB remote stub listens on a TCP port. Without this permission, the Flatpak has its own network, and a GDB on the host cannot connect.
+
+## Updates
+
+`../app/README.md` ("Updates") says when the app looks for a newer build and what the notice offers. The notice is a libadwaita alert dialog. The rest depends on how the app was installed:
+
+- A Flatpak from a track's repository asks the Flatpak portal (`org.freedesktop.portal.Flatpak`, version 2 or later). At startup the app makes an update monitor with `CreateUpdateMonitor`. Its `UpdateAvailable` signal means that the repository has a newer commit, and the notice shows; Never Remind for This Version ignores that commit. Update calls the monitor's `Update`. When its `Progress` signal reports that the update is done, the app starts the new build with the portal's `Spawn` and the flag `FLATPAK_SPAWN_FLAGS_LATEST_VERSION`, and quits. The new build gets `PINESY_REPLACE=1`, and takes the app's name on the session bus from the old one (`G_APPLICATION_REPLACE`; the app allows replacement). When the update failed, an alert shows the error. When the new build needs more permissions, the portal refuses with `org.freedesktop.DBus.Error.NotSupported`, and the alert says to update with the system's software tools.
+- A Debian package from a track's apt repository reads the track's index for its architecture, `https://pinesy.zx.immo/<track>/dists/sid/main/binary-<arch>/Packages`, and compares the newest `pinesy` there with its own version. Update shows how to update: with the system's package manager.
 
 ## How it maps to the macOS app
 

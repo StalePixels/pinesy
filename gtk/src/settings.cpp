@@ -65,6 +65,8 @@ core::Settings core_settings(const Glib::RefPtr<Gio::Settings> &settings)
 	result.gdb_port = settings->get_int(key::gdb_port);
 	result.pi_gdb_port = settings->get_int(key::pi_gdb_port);
 	result.start_paused = settings->get_boolean(key::start_paused);
+	result.update_checks = settings->get_boolean(key::update_checks);
+	result.ignored_build = settings->get_string(key::ignored_build);
 	return result;
 }
 

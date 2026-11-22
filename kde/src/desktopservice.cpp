@@ -1,6 +1,8 @@
 #include "desktopservice.h"
 
 #include <QDBusConnection>
+#include <QDBusConnectionInterface>
+#include <QDBusReply>
 
 namespace {
 
@@ -24,11 +26,15 @@ DesktopService::DesktopService(QObject *parent)
 	new DesktopServiceAdaptor(this);
 }
 
-bool DesktopService::registerOnBus()
+bool DesktopService::registerOnBus(bool replace)
 {
 	QDBusConnection bus = QDBusConnection::sessionBus();
-	return bus.isConnected() && bus.registerObject(objectPath, this, QDBusConnection::ExportAdaptors)
-			&& bus.registerService(serviceName);
+	if (!bus.isConnected() || !bus.registerObject(objectPath, this, QDBusConnection::ExportAdaptors))
+		return false;
+	const QDBusReply<QDBusConnectionInterface::RegisterServiceReply> reply = bus.interface()->registerService(serviceName,
+			replace ? QDBusConnectionInterface::ReplaceExistingService : QDBusConnectionInterface::DontQueueService,
+			QDBusConnectionInterface::AllowReplacement);
+	return reply.isValid() && reply.value() == QDBusConnectionInterface::ServiceRegistered;
 }
 
 DesktopServiceAdaptor::DesktopServiceAdaptor(DesktopService *service)

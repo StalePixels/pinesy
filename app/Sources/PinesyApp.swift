@@ -62,6 +62,12 @@ struct MachineCommands: Commands {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        MainActor.assumeIsolated {
+            Updates.shared.start()
+        }
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         // MAME must leave pinesy_run() first; the runner quits after that.
         MainActor.assumeIsolated {

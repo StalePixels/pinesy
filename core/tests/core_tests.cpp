@@ -829,12 +829,96 @@ void test_switches(pinesy_core *core)
 	check(pinesy_core_headless(core, 3, bad, nullptr) == 6, "headless mode refuses an unknown switch with 6");
 }
 
+void test_updates(pinesy_core *core)
+{
+	// Sparkle's own cases (SUVersionComparisonTest)
+	struct Case { const char *a, *b; int result; };
+	const Case cases[] = {
+		{ "1.0", "1.1", -1 }, { "1.0", "1.0", 0 }, { "2.0", "1.1", 1 }, { "0.1", "0.0.1", 1 },
+		{ "1.0", "1.0.0", 0 }, { "1.0.0", "1.0", 0 }, { "1.0", "1.0.1", -1 }, { "1.10", "1.9", 1 },
+		{ "1.0b1", "1.0", -1 }, { "1.0", "1.0b1", 1 }, { "1.0a1", "1.0b1", -1 }, { "1.0b5", "1.0b10", -1 },
+		{ "1.0 (1234)", "1.0 (1235)", -1 }, { "1.0", "1.0a", 1 }, { "1.0.1", "1.0a", 1 },
+		{ "1.0b2", "1.0b2 (1234)", -1 }, { "0.1.99", "0.1.100", -1 }, { "", "1", -1 },
+		// CI's versions, 0.1.YYYYMMDD.HHMM in UTC
+		{ "0.1.20261122.0105", "0.1.20261122.1230", -1 }, { "0.1.20261122.2359", "0.1.20261123.0000", -1 },
+		{ "0.1.20261122.0930", "0.1.20261122.0930", 0 },
+	};
+	for (const Case &c : cases)
+	{
+		const int got = updates::compare_versions(c.a, c.b);
+		check(got == c.result, std::string("compare_versions(\"") + c.a + "\", \"" + c.b + "\") is " + std::to_string(c.result)
+				+ ": " + std::to_string(got));
+	}
+	check(pinesy_core_compare_versions("0.1.2", "0.1.10") == -1 && pinesy_core_compare_versions(nullptr, "1") == 0,
+			"pinesy_core_compare_versions() compares as Sparkle does");
+
+	const updates::Identity ci{ "ci", "0.1.10", "deb" };   // any version; CI's are dates
+	Settings on;
+	check(updates::checks(ci, on) && !updates::checks(updates::Identity{}, on), "only a CI build looks for updates");
+	Settings off = updates::after_choice(on, updates::Choice::never_remind, "0.1.11");
+	check(!off.update_checks && !updates::checks(ci, off), "Never remind again turns update checks off");
+	check(!updates::notice(ci, off, "0.1.11", false), "with update checks off there is no notice");
+	check(updates::notice(ci, on, "0.1.11", false), "a newer version gives the notice");
+	check(!updates::notice(ci, on, "0.1.10", false) && !updates::notice(ci, on, "0.1.9", false),
+			"the same or an older version gives no notice");
+	check(!updates::notice(updates::Identity{}, on, "9.9", false), "a local build never gives the notice");
+	Settings ignoring = updates::after_choice(on, updates::Choice::ignore_build, "0.1.11");
+	check(ignoring.update_checks && ignoring.ignored_build == "0.1.11", "Never remind for this version ignores that build only");
+	check(!updates::notice(ci, ignoring, "0.1.11", false) && updates::notice(ci, ignoring, "0.1.12", false),
+			"an ignored build gives no notice, and a newer one does");
+	const Settings updated = updates::after_choice(on, updates::Choice::update, "0.1.11");
+	check(updated.update_checks && updated.ignored_build.empty(), "Update changes no setting");
+	check(updates::notice(ci, on, "4f3a", true) && !updates::notice(updates::Identity{ "ci", "0.1.10", "flatpak" },
+			updates::after_choice(on, updates::Choice::ignore_build, "4f3a"), "4f3a", true),
+			"a build the update tool found newer gives the notice unless it is ignored");
+
+	check(updates::texts(ci, "0.1.11", false).message == "Pi/Ne-Sy 0.1.11 is available. You have 0.1.10."
+			&& updates::texts(ci, "4f3a", true).message == "A newer build of Pi/Ne-Sy is available. You have 0.1.10.",
+			"the notice names the new version, or only says that a newer build exists");
+	const json::Value texts = parse(pinesy_core_update_texts("0.1.11", 0));
+	check(text_of(texts, "neverRemind") == "Never Remind Again" && text_of(texts, "ignoreBuild") == "Never Remind for This Version"
+			&& text_of(texts, "update") == "Update" && !text_of(texts, "packageManager").empty()
+			&& !text_of(texts, "newPermissions").empty() && !text_of(texts, "failed").empty(),
+			"pinesy_core_update_texts() gives the notice's texts");
+	check(updates::appcast_url(ci) == "https://pinesy.zx.immo/ci/macos/appcast.xml", "the appcast is in the track's macos folder");
+	check(updates::apt_packages_url(ci, "amd64") == "https://pinesy.zx.immo/ci/dists/sid/main/binary-amd64/Packages",
+			"the apt index is the track's sid main index for the architecture");
+	const char *packages = "Package: pinesy\nVersion: 0.1.9\nArchitecture: amd64\n\n"
+			"Package: pinesy-kde\nVersion: 0.1.30\n\n"
+			"Package: pinesy\r\nVersion: 0.1.12\r\n\r\n"
+			"Package: pinesy\nVersion: 0.1.11\n";
+	check(updates::apt_newest_version(packages, "pinesy") == "0.1.12", "the newest version of a package in an apt index");
+	check(updates::apt_newest_version(packages, "gone").empty(), "a package the index does not list has no version");
+	check(take(pinesy_core_apt_newest_version(packages, "pinesy-kde")) == "0.1.30"
+			&& take(pinesy_core_apt_newest_version(packages, "gone")) == "<NULL>",
+			"pinesy_core_apt_newest_version() gives the same answers");
+
+	// this build is a local one: no identity, no checks, no URLs
+	check(take(pinesy_core_build_identity()) == "{}", "a local build has no identity");
+	check(take(pinesy_core_appcast_url()) == "<NULL>" && take(pinesy_core_apt_packages_url()) == "<NULL>",
+			"a local build has no appcast and no apt index");
+	check(pinesy_core_update_checks(core) == 0 && pinesy_core_update_notice(core, "99", 0) == 0,
+			"a local build never looks for updates");
+	const json::Value after = parse(pinesy_core_update_choice(core, PINESY_CORE_UPDATE_IGNORE_BUILD, "0.1.11"));
+	check(text_of(after, "ignoredBuild") == "0.1.11" && member(after, "updateChecks") && member(after, "updateChecks")->boolean(),
+			"pinesy_core_update_choice() gives the settings with the build ignored");
+	const json::Value never = parse(pinesy_core_update_choice(core, PINESY_CORE_UPDATE_NEVER_REMIND, nullptr));
+	check(member(never, "updateChecks") && !member(never, "updateChecks")->boolean(),
+			"pinesy_core_update_choice() turns update checks off for Never remind again");
+	check(take(pinesy_core_update_choice(core, 7, "x")) == "<NULL>", "pinesy_core_update_choice() refuses an unknown choice");
+	pinesy_core_set_settings(core, "{}");
+	const json::Value fresh = parse(pinesy_core_settings(core));
+	check(member(fresh, "updateChecks") && member(fresh, "updateChecks")->boolean() && text_of(fresh, "ignoredBuild").empty(),
+			"update checks are on and no build is ignored by default");
+}
+
 int run_rules()
 {
 	pinesy_core *core = make_core();
 	test_documents();
 	test_window_size();
 	test_recent();
+	test_updates(core);
 	test_paths(core);
 	test_catalogue(core);
 	test_starting(core);

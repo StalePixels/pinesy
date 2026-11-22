@@ -13,7 +13,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/PinesyPackages.cmake")
 set(_missing "")
 set(_old "")
-foreach(_package IN ITEMS "gtkmm-4.0|4.10|gtkmm" "libadwaita-1|1.6|libadwaita")
+foreach(_package IN ITEMS "gtkmm-4.0|4.10|gtkmm" "libadwaita-1|1.6|libadwaita" "libsoup-3.0|3.0|libsoup")
 	string(REPLACE "|" ";" _package "${_package}")
 	list(GET _package 0 _module)
 	list(GET _package 1 _version)
@@ -39,6 +39,7 @@ endif()
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTKMM REQUIRED IMPORTED_TARGET gtkmm-4.0>=4.10)
 pkg_check_modules(ADWAITA REQUIRED IMPORTED_TARGET libadwaita-1>=1.6)
+pkg_check_modules(SOUP REQUIRED IMPORTED_TARGET libsoup-3.0>=3.0)
 find_program(GLIB_COMPILE_SCHEMAS glib-compile-schemas REQUIRED)
 
 # The core, libpinesy, built from ../core. Its tests are not part of
@@ -85,12 +86,13 @@ add_executable(pinesy_gtk
 	src/recent_window.cpp
 	src/settings.cpp
 	src/settings_dialog.cpp
-	src/signals.cpp)
+	src/signals.cpp
+	src/updates.cpp)
 target_compile_definitions(pinesy_gtk PRIVATE
 	PINESY_APP_ID="${PINESY_APP_ID}"
 	PINESY_RESOURCES_DIR="${PINESY_RESOURCES_DIR}")
 set_target_properties(pinesy_gtk PROPERTIES OUTPUT_NAME pinesy)
-target_link_libraries(pinesy_gtk PRIVATE pinesy PkgConfig::GTKMM PkgConfig::ADWAITA)
+target_link_libraries(pinesy_gtk PRIVATE pinesy PkgConfig::GTKMM PkgConfig::ADWAITA PkgConfig::SOUP)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 	target_compile_options(pinesy_gtk PRIVATE -Wall -Wextra)
 endif()
@@ -112,9 +114,13 @@ install(TARGETS pinesy_gtk RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 
 # The settings schema, compiled where it is installed
 install(FILES "data/${_pinesy_schema}" DESTINATION "${CMAKE_INSTALL_DATADIR}/glib-2.0/schemas")
-install(CODE "execute_process(
-	COMMAND \"${GLIB_COMPILE_SCHEMAS}\" --strict \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/glib-2.0/schemas\"
-	COMMAND_ERROR_IS_FATAL ANY)")
+# A Debian package leaves the compiling to the system (PinesyDeb.cmake).
+option(PINESY_INSTALL_COMPILED_SCHEMAS "Compile the installed settings schemas" ON)
+if(PINESY_INSTALL_COMPILED_SCHEMAS)
+	install(CODE "execute_process(
+		COMMAND \"${GLIB_COMPILE_SCHEMAS}\" --strict \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/glib-2.0/schemas\"
+		COMMAND_ERROR_IS_FATAL ANY)")
+endif()
 
 install(FILES data/${PINESY_APP_ID}.desktop DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
 install(FILES data/${PINESY_APP_ID}.mime.xml DESTINATION "${CMAKE_INSTALL_DATADIR}/mime/packages"
@@ -130,3 +136,10 @@ foreach(_size 16 24 32 48 64 128 256 512)
 		DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/${_size}x${_size}/apps"
 		RENAME ${PINESY_APP_ID}.png)
 endforeach()
+
+# The Debian package (../cmake/PinesyDeb.cmake): cpack -G DEB
+include("${_pinesy_public}/cmake/PinesyDeb.cmake")
+string(REGEX REPLACE "^/" "" _pinesy_prefix "${CMAKE_INSTALL_PREFIX}")
+pinesy_deb(NAME pinesy SUMMARY "Pi/Ne-Sy, a Pi/Next-System emulator: the GNOME app"
+	LIBDIR "${_pinesy_prefix}/${CMAKE_INSTALL_LIBDIR}" DEPENDS pinesy-gdb)
+include(CPack)

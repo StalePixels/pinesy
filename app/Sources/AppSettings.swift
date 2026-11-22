@@ -25,6 +25,8 @@ enum AppSettings {
         static let gdbPort = "gdbPort"
         static let startPaused = "startPaused"
         static let piGDBPort = "piGdbPort"
+        static let updateChecks = "updateChecks"
+        static let ignoredBuild = "ignoredBuild"
     }
 
     static let defaultGDBPort = Int(PINESY_CORE_DEFAULT_GDB_PORT)

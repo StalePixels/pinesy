@@ -15,11 +15,11 @@ For both apps:
 
 For the GNOME app:
 
-- The development files for GTK 4, gtkmm 4.10 or later and libadwaita 1.6 or later
+- The development files for GTK 4, gtkmm 4.10 or later, libadwaita 1.6 or later and libsoup 3
 
 For the KDE app:
 
-- Qt 6.8 or later: the development files for the Qt modules qtbase (Core, Gui, Widgets) and qtdeclarative (Qml, Quick, QuickControls2), and `qmake6` on the `PATH`
+- Qt 6.8 or later: the development files for the Qt modules qtbase (Core, DBus, Gui, Network, Widgets) and qtdeclarative (Qml, Quick, QuickControls2), and `qmake6` on the `PATH`
 - extra-cmake-modules (CMake calls it ECM)
 - KDE Frameworks 6.8 or later: Kirigami, KConfig, KCoreAddons and KI18n
 
@@ -134,3 +134,24 @@ Put `<state-dir>` and `<build-dir>` outside the `pinesy` folder. Run `git submod
 Each package has `gdb-pinesy` and `objcopy-pinesy` in `/app/bin`. The manifest builds `gdb-pinesy` from GDB's release tarball, with GMP and MPFR built beside it, and `objcopy-pinesy` from the binutils release tarball. A package build needs no `bison` or `flex`.
 
 A package runs only on processors like the one that built it, because the build optimises for that processor.
+
+## Debian packages
+
+On Debian, CPack makes `.deb` packages from a build installed into `/usr`. It also needs `dpkg-dev`, for `dpkg-shlibdeps`. There are three packages: `pinesy` (the GNOME app), `pinesy-kde` (the KDE app) and `pinesy-gdb` (`gdb-pinesy` and `objcopy-pinesy`), which both apps depend on. Each app keeps its own `libpinesy`, engine and resources folder, so both can be installed at once. Build the apps first, as above, then:
+
+```sh
+cmake -S gtk -B build/deb-gtk -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_INSTALL_LIBDIR=lib/pinesy -DPINESY_INSTALL_COMPILED_SCHEMAS=OFF
+cmake --build build/deb-gtk
+(cd build/deb-gtk && cpack -G DEB)
+
+cmake -S kde -B build/deb-kde -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
+    -DKDE_INSTALL_LIBDIR=lib/pinesy-kde -DPINESY_INSTALL_NAME=pinesy-kde
+cmake --build build/deb-kde
+(cd build/deb-kde && cpack -G DEB)
+
+cmake -S cmake/gdb-deb -B build/deb-gdb -DCMAKE_INSTALL_PREFIX=/usr
+(cd build/deb-gdb && cpack -G DEB)
+```
+
+A package built like this has version 0 and no track, so it never looks for updates. CI's packages carry their track and version (`../app/README.md`, "Updates").

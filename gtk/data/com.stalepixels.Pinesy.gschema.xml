@@ -37,5 +37,15 @@
       <summary>Start paused</summary>
       <description>In a run with the debugger, the Next waits at its first instruction until it is continued.</description>
     </key>
+    <key name="update-checks" type="b">
+      <default>true</default>
+      <summary>Look for updates</summary>
+      <description>A CI build looks for a newer build of its track at startup. Never Remind Again in the out-of-date notice turns this off.</description>
+    </key>
+    <key name="ignored-build" type="s">
+      <default>''</default>
+      <summary>Ignored build</summary>
+      <description>The build that Never Remind for This Version ignores: a version, or a Flatpak commit. Empty for none.</description>
+    </key>
   </schema>
 </schemalist>

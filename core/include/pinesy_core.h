@@ -9,7 +9,8 @@
 //  machine catalogue, configurations and .pinesy files, the
 //  starting configuration, option checking, MAME's paths, the
 //  settings schema, the machine window's size, recent configurations,
-//  the copied command line and headless mode. It calls the engine, libmame_pinesy (pinesy.h).
+//  the copied command line, the rules of the out-of-date notice and
+//  headless mode. It calls the engine, libmame_pinesy (pinesy.h).
 //
 //  Conventions:
 //
@@ -91,13 +92,20 @@ void pinesy_core_free(char *text);
 //               first instruction (the --paused switch)
 //   piGdbPort   the port of the Pi's GDB stub (QEMU), for a run with
 //               the debugger of a configuration with a Pi SD card
+//   updateChecks
+//               false: the app does not look for updates (Never remind
+//               again)
+//   ignoredBuild
+//               the build the out-of-date notice ignores (Never remind
+//               for this version); "" for none
 //
 // The front end stores the settings; the core reads them only from
 // here. A missing or unusable value takes its default: no ROM
 // folders, the default data folder, "windows", false,
 // PINESY_CORE_DEFAULT_GDB_PORT and PINESY_CORE_DEFAULT_PI_GDB_PORT
 // for a port outside PINESY_CORE_MIN_GDB_PORT to
-// PINESY_CORE_MAX_GDB_PORT. Returns 0, or -1 when the text is not a
+// PINESY_CORE_MAX_GDB_PORT, true for updateChecks and "" for
+// ignoredBuild. Returns 0, or -1 when the text is not a
 // JSON object.
 int pinesy_core_set_settings(pinesy_core *core, const char *settings_json);
 
@@ -482,6 +490,71 @@ int pinesy_core_launch(int files_to_open, int recent_count);
 // configuration has a machine. 0 for a window with no machine, or when
 // arguments is not a JSON array of strings.
 int pinesy_core_restorable(const char *arguments);
+
+//------------------------------------------------------------
+//  Updates
+//
+//  A CI build carries its identity: its track ("ci", "nightly"
+//  or "release"), its version, and its kind: "macos" (Sparkle
+//  updates it), "flatpak" (the Flatpak portal) or "deb" (the
+//  user updates it with the system's package manager). A local
+//  build has none and never looks for updates. The front end
+//  finds the newest build in its kind's own way, then asks the
+//  core whether to show the out-of-date notice.
+//------------------------------------------------------------
+
+// The build's identity, as a JSON object with track, version and
+// kind; an empty object for a local build.
+char *pinesy_core_build_identity(void);
+
+// Compares two versions as Sparkle does: -1 when a is older than b, 0
+// when they are the same, 1 when a is newer. 0 when either is NULL.
+int pinesy_core_compare_versions(const char *a, const char *b);
+
+// 1 when the app looks for updates at startup: a CI build with
+// updateChecks on in the settings. Else 0.
+int pinesy_core_update_checks(const pinesy_core *core);
+
+// 1 when the app shows the out-of-date notice for a build found on the
+// server. The app looks for updates, the build is not the settings'
+// ignoredBuild, and it is newer. With newer_known 0, build is a
+// version, newer when pinesy_core_compare_versions() says so. With
+// newer_known 1, the update tool has already found it newer: the
+// Flatpak portal, where build is the remote commit. Else 0.
+int pinesy_core_update_notice(const pinesy_core *core, const char *build, int newer_known);
+
+// The choices of the out-of-date notice.
+#define PINESY_CORE_UPDATE_NEVER_REMIND 0   // Never remind again
+#define PINESY_CORE_UPDATE_IGNORE_BUILD 1   // Never remind for this version
+#define PINESY_CORE_UPDATE_NOW 2            // Update
+
+// Applies a choice to the core's settings and gives the settings, as
+// pinesy_core_settings() does, for the front end to store:
+// NEVER_REMIND turns updateChecks off, IGNORE_BUILD sets ignoredBuild
+// to build, NOW changes nothing. NULL for another choice.
+char *pinesy_core_update_choice(pinesy_core *core, int choice, const char *build);
+
+// What the out-of-date notice and its follow-ups say, as a JSON object
+// of strings: title, message, neverRemind, ignoreBuild and update (the
+// notice and its buttons), packageManager (a "deb" build's answer to
+// Update), newPermissions (the Flatpak portal refused an update that
+// needs more permissions) and failed (the update failed; the update
+// tool's error follows it). build and newer_known as for
+// pinesy_core_update_notice(). NULL when build is NULL.
+char *pinesy_core_update_texts(const char *build, int newer_known);
+
+// Sparkle's appcast for the build's track, <server>/<track>/macos/appcast.xml.
+// NULL for a local build.
+char *pinesy_core_appcast_url(void);
+
+// The apt Packages index for the build's track and the architecture
+// it runs on, <server>/<track>/dists/sid/main/binary-<arch>/Packages.
+// NULL for a local build.
+char *pinesy_core_apt_packages_url(void);
+
+// The newest version of a package in the text of an apt Packages
+// index; NULL when the index does not list it.
+char *pinesy_core_apt_newest_version(const char *packages, const char *package);
 
 //------------------------------------------------------------
 //  Headless mode

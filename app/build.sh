@@ -21,7 +21,19 @@
 # Contents/Resources, and libmame_pinesy.dylib and every library it needs outside /usr/lib
 # and /System in Contents/Frameworks, with libpinesy.dylib. Their install
 # names are rewritten to @rpath, which the executable points at
-# Contents/Frameworks. The bundle is signed ad hoc.
+# Contents/Frameworks. Sparkle.framework, the updater, goes there too;
+# sparkle.sh gets it (SPARKLE_DIR overrides the folder it is in).
+#
+# A CI build that is published sets PINESY_BUILD_TRACK (ci, nightly or
+# release) and PINESY_BUILD_VERSION. They go into the core (with the kind
+# "macos") and into Info.plist as CFBundleVersion and
+# CFBundleShortVersionString, which Sparkle compares. A local build sets
+# neither, and never looks for updates.
+#
+# The bundle is signed ad hoc. With CODESIGN_IDENTITY, it is signed with
+# that identity instead (from CODESIGN_KEYCHAIN, when set), with the
+# hardened runtime, a secure timestamp and Pinesy.entitlements on the
+# executable, as notarisation needs.
 
 set -euo pipefail
 
@@ -31,6 +43,10 @@ mame_lib=${MAME_LIB:-$here/../mame/libmame_pinesy.dylib}
 gdb_bin=${GDB_BIN:-$here/../build/gdb/install/bin/gdb-pinesy}
 objcopy_bin=${OBJCOPY_BIN:-$here/../build/gdb/install/bin/objcopy-pinesy}
 
+sparkle=${SPARKLE_DIR:-$("$here/sparkle.sh")}
+track=${PINESY_BUILD_TRACK:-}
+version=${PINESY_BUILD_VERSION:-}
+
 app=$out/Pinesy.app
 contents=$app/Contents
 frameworks=$contents/Frameworks
@@ -38,6 +54,12 @@ frameworks=$contents/Frameworks
 rm -rf "$app"
 mkdir -p "$contents/MacOS" "$contents/Resources" "$frameworks"
 cp "$here/Info.plist" "$contents/Info.plist"
+identity=()
+if [ -n "$track" ] && [ -n "$version" ]; then
+	plutil -replace CFBundleVersion -string "$version" "$contents/Info.plist"
+	plutil -replace CFBundleShortVersionString -string "$version" "$contents/Info.plist"
+	identity=(-DPINESY_BUILD_TRACK="\"$track\"" -DPINESY_BUILD_VERSION="\"$version\"" -DPINESY_BUILD_KIND='"macos"')
+fi
 cp "$here/Pinesy.icns" "$here/PinesyDocument.icns" "$contents/Resources/"
 
 # The ROM sets ship in the bundle: one zip, 7z or folder of ROM dumps per
@@ -96,6 +118,7 @@ clang++ -std=c++20 -O2 -Wall -Wextra \
 	-target arm64-apple-macos26.0 \
 	-dynamiclib -install_name @rpath/libpinesy.dylib \
 	-I "$core/include" -I "$core/src" -I "$here/../engine/include" \
+	${identity[@]+"${identity[@]}"} \
 	-L "$(dirname "$mame_lib")" -lmame_pinesy \
 	-o "$core_lib" "$core"/src/*.cpp
 
@@ -105,6 +128,7 @@ swiftc -swift-version 6 -O \
 	-Xcc -I"$here/../engine/include" \
 	-L "$out/core" -lpinesy \
 	-L "$(dirname "$mame_lib")" -lmame_pinesy \
+	-F "$sparkle" -framework Sparkle \
 	-Xlinker -rpath -Xlinker @executable_path/../Frameworks \
 	-o "$contents/MacOS/Pinesy" \
 	"$here"/Sources/*.swift
@@ -139,6 +163,7 @@ is_system() {
 	esac
 }
 
+ditto "$sparkle/Sparkle.framework" "$frameworks/Sparkle.framework"
 cp "$mame_lib" "$core_lib" "$frameworks/"
 chmod u+w "$frameworks/$(basename "$mame_lib")" "$frameworks/libpinesy.dylib"
 
@@ -185,11 +210,23 @@ for bin in "$contents/MacOS/Pinesy" "$contents/MacOS/gdb-pinesy" "$contents/MacO
 	done
 done
 
+# Inside out: each library and helper first, the bundle last.
+sign=(codesign --force --sign -)
+if [ -n "${CODESIGN_IDENTITY:-}" ]; then
+	sign=(codesign --force --sign "$CODESIGN_IDENTITY" --options runtime --timestamp)
+	[ -z "${CODESIGN_KEYCHAIN:-}" ] || sign+=(--keychain "$CODESIGN_KEYCHAIN")
+fi
 for lib in "$frameworks"/*.dylib; do
-	codesign --force --sign - "$lib"
+	"${sign[@]}" "$lib"
 done
-codesign --force --sign - "$contents/MacOS/gdb-pinesy"
-codesign --force --sign - "$contents/MacOS/objcopy-pinesy"
-codesign --force --sign - "$app"
+"${sign[@]}" "$contents/MacOS/gdb-pinesy"
+"${sign[@]}" "$contents/MacOS/objcopy-pinesy"
+sparkle_b=$frameworks/Sparkle.framework/Versions/B
+"${sign[@]}" "$sparkle_b/XPCServices/Installer.xpc"
+"${sign[@]}" --preserve-metadata=entitlements "$sparkle_b/XPCServices/Downloader.xpc"
+"${sign[@]}" "$sparkle_b/Autoupdate"
+"${sign[@]}" "$sparkle_b/Updater.app"
+"${sign[@]}" "$frameworks/Sparkle.framework"
+"${sign[@]}" --entitlements "$here/Pinesy.entitlements" "$app"
 
 echo "built $app"

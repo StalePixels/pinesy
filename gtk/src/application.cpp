@@ -7,6 +7,7 @@
 #include "signals.hpp"
 
 #include <adwaita.h>
+#include <glibmm/miscutils.h>
 #include <gtkmm/filedialog.h>
 #include <gtkmm/filefilter.h>
 #include <giomm/liststore.h>
@@ -42,7 +43,10 @@ Glib::RefPtr<Application> Application::create(Glib::RefPtr<Gio::Settings> settin
 }
 
 Application::Application(Glib::RefPtr<Gio::Settings> settings)
-	: Gtk::Application(PINESY_APP_ID, Gio::Application::Flags::HANDLES_OPEN)
+	: Gtk::Application(PINESY_APP_ID,
+			  Gio::Application::Flags::HANDLES_OPEN | Gio::Application::Flags::ALLOW_REPLACEMENT
+					  | (Glib::getenv(replace_variable).empty() ? Gio::Application::Flags::DEFAULT_FLAGS
+																: Gio::Application::Flags::REPLACE))
 	, m_settings(std::move(settings))
 	, m_core(make_core(m_settings))
 	, m_runner(*this)
@@ -114,6 +118,8 @@ void Application::on_startup()
 	// The machine list comes from the engine, which must not be asked
 	// while a machine runs, so it is built before anything can run.
 	m_core->catalogue();
+
+	m_updates.start();
 }
 
 void Application::on_activate()

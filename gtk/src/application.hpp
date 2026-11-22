@@ -5,6 +5,7 @@
 
 #include "machine_runner.hpp"
 #include "pinesy_core.hpp"
+#include "updates.hpp"
 
 #include <giomm/menu.h>
 #include <giomm/settings.h>
@@ -53,6 +54,9 @@ public:
 	// its own when there is none.
 	void alert(const std::string &heading, const std::string &body, Gtk::Window *window = nullptr);
 
+	// Quits after an update started the new build, as Quit does.
+	void quit_after_update() { quit_app(); }
+
 protected:
 	explicit Application(Glib::RefPtr<Gio::Settings> settings);
 
@@ -64,6 +68,7 @@ private:
 	Glib::RefPtr<Gio::Settings> m_settings;
 	std::unique_ptr<core::Core> m_core;
 	MachineRunner m_runner;
+	Updates m_updates{ *this };
 	Glib::RefPtr<Gtk::RecentManager> m_recent;
 	Glib::RefPtr<Gio::Menu> m_recent_menu;
 	Glib::RefPtr<Gio::SimpleAction> m_clear_recent;

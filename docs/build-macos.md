@@ -16,7 +16,7 @@ cd pinesy
 ./build.sh
 ```
 
-The first build downloads the submodules before it compiles, and prints nothing while it does. `build-gdb.sh` also downloads GDB's source, about 100 MB, and builds `gdb-pinesy` and `objcopy-pinesy`, which go in the app. Later builds get only what changed.
+The first build downloads the submodules before it compiles, and prints nothing while it does. `build-gdb.sh` also downloads GDB's source, about 100 MB, and builds `gdb-pinesy` and `objcopy-pinesy`, which go in the app. `app/sparkle.sh` downloads Sparkle, the app's updater, from Sparkle's GitHub releases. Later builds get only what changed.
 
 The app is `app/build/Pinesy.app`. To install it, copy it to `/Applications`.
 

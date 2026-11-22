@@ -5,6 +5,7 @@
 #include "core.h"
 #include "desktopservice.h"
 #include "headless.h"
+#include "updates.h"
 
 #include <KAboutData>
 #include <KLocalizedQmlContext>
@@ -84,7 +85,13 @@ int main(int argc, char **argv)
 		for (const QUrl &url : urls)
 			QMetaObject::invokeMethod(root, "openFromDesktop", Q_ARG(QVariant, QVariant(url)));
 	});
-	desktop.registerOnBus();
+	desktop.registerOnBus(!qEnvironmentVariableIsEmpty(replaceVariable));
+
+	Updates updates;
+	QObject::connect(&updates, &Updates::quitRequested, root, [root] {
+		QMetaObject::invokeMethod(root, "quit");
+	});
+	updates.start();
 
 	const int code = app.exec();
 	Core::destroyInstance();

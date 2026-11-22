@@ -20,6 +20,8 @@ inline constexpr const char *debugger = "debugger";
 inline constexpr const char *gdb_port = "gdb-port";
 inline constexpr const char *pi_gdb_port = "pi-gdb-port";
 inline constexpr const char *start_paused = "start-paused";
+inline constexpr const char *update_checks = "update-checks";
+inline constexpr const char *ignored_build = "ignored-build";
 } // namespace key
 
 // The settings, or nullptr when the schema is not installed. Then it

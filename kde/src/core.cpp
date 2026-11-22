@@ -217,6 +217,9 @@ void Core::loadSettings()
 	m_gdbPort = debugger.readEntry("gdbPort", int(PINESY_CORE_DEFAULT_GDB_PORT));
 	m_piGdbPort = debugger.readEntry("piGdbPort", int(PINESY_CORE_DEFAULT_PI_GDB_PORT));
 	m_startPaused = debugger.readEntry("startPaused", false);
+	const KConfigGroup updates = settingsGroup("Updates");
+	m_updateChecks = updates.readEntry("updateChecks", true);
+	m_ignoredBuild = updates.readEntry("ignoredBuild", QString());
 }
 
 void Core::storeSettings()
@@ -229,6 +232,9 @@ void Core::storeSettings()
 	debugger.writeEntry("gdbPort", m_gdbPort);
 	debugger.writeEntry("piGdbPort", m_piGdbPort);
 	debugger.writeEntry("startPaused", m_startPaused);
+	KConfigGroup updates = settingsGroup("Updates");
+	updates.writeEntry("updateChecks", m_updateChecks);
+	updates.writeEntry("ignoredBuild", m_ignoredBuild);
 	general.sync();
 }
 
@@ -243,6 +249,8 @@ void Core::applySettings()
 	settings.insert(QLatin1String("gdbPort"), m_gdbPort);
 	settings.insert(QLatin1String("piGdbPort"), m_piGdbPort);
 	settings.insert(QLatin1String("startPaused"), m_startPaused);
+	settings.insert(QLatin1String("updateChecks"), m_updateChecks);
+	settings.insert(QLatin1String("ignoredBuild"), m_ignoredBuild);
 	pinesy_core_set_settings(m_core, QJsonDocument(settings).toJson(QJsonDocument::Compact).constData());
 
 	const QJsonObject used = QJsonDocument::fromJson(take(pinesy_core_settings(m_core))).object();
@@ -251,6 +259,35 @@ void Core::applySettings()
 	m_piGdbPort = used.value(QLatin1String("piGdbPort")).toInt();
 	m_startPaused = used.value(QLatin1String("startPaused")).toBool();
 	Q_EMIT settingsChanged();
+}
+
+bool Core::updateChecks() const
+{
+	return pinesy_core_update_checks(m_core) != 0;
+}
+
+bool Core::updateNotice(const QString &build, bool newerKnown) const
+{
+	return pinesy_core_update_notice(m_core, build.toUtf8().constData(), newerKnown ? 1 : 0) != 0;
+}
+
+QVariantMap Core::updateTexts(const QString &build, bool newerKnown) const
+{
+	return QJsonDocument::fromJson(take(pinesy_core_update_texts(build.toUtf8().constData(), newerKnown ? 1 : 0)))
+			.object()
+			.toVariantMap();
+}
+
+void Core::updateChoice(int choice, const QString &build)
+{
+	const QJsonObject changed
+			= QJsonDocument::fromJson(take(pinesy_core_update_choice(m_core, choice, build.toUtf8().constData()))).object();
+	if (changed.isEmpty())
+		return;
+	m_updateChecks = changed.value(QLatin1String("updateChecks")).toBool(true);
+	m_ignoredBuild = changed.value(QLatin1String("ignoredBuild")).toString();
+	storeSettings();
+	applySettings();
 }
 
 QString Core::dataFolder() const

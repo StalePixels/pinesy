@@ -47,6 +47,10 @@
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUEnableAutomaticChecks</key>
+	<false/>
+	<key>SUPublicEDKey</key>
+	<string>Pu+jxaE+ygSOh4LSBwP4r7YmG06uZslGUY5Ye6DrCXE=</string>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

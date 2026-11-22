@@ -18,6 +18,7 @@ foreach(_package IN ITEMS
 		"Qt6Core|6.8|qtbase (Qt)"
 		"Qt6Gui|6.8|qtbase (Qt)"
 		"Qt6Widgets|6.8|qtbase (Qt)"
+		"Qt6Network|6.8|qtbase (Qt)"
 		"Qt6Qml|6.8|qtdeclarative (Qt)"
 		"Qt6Quick|6.8|qtdeclarative (Qt)"
 		"Qt6QuickControls2|6.8|qtdeclarative (Qt)"
@@ -56,7 +57,7 @@ include(KDECMakeSettings)
 include(KDECompilerSettings NO_POLICY_SCOPE)
 # the executable is <build-dir>/bin/pinesy-kde
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core DBus Gui Qml Quick QuickControls2 Widgets)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core DBus Gui Network Qml Quick QuickControls2 Widgets)
 find_package(KF6 6.8 REQUIRED COMPONENTS Kirigami Config CoreAddons I18n)
 qt_standard_project_setup(REQUIRES 6.8)
 qt_policy(SET QTP0004 NEW)
@@ -104,7 +105,9 @@ add_executable(pinesy-kde
 	src/runner.cpp
 	src/runner.h
 	src/runwindow.cpp
-	src/runwindow.h)
+	src/runwindow.h
+	src/updates.cpp
+	src/updates.h)
 
 qt_add_qml_module(pinesy-kde
 	URI Pinesy
@@ -125,7 +128,7 @@ target_compile_definitions(pinesy-kde PRIVATE
 target_include_directories(pinesy-kde PRIVATE src)
 target_link_libraries(pinesy-kde PRIVATE
 	pinesy
-	Qt6::Core Qt6::DBus Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Widgets
+	Qt6::Core Qt6::DBus Qt6::Gui Qt6::Network Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Widgets
 	KF6::ConfigCore KF6::CoreAddons KF6::I18n KF6::I18nQml)
 
 # Install: the app in bin, libpinesy and the engine in lib, and the
@@ -148,3 +151,12 @@ foreach(_size 16 24 32 48 64 128 256 512)
 		DESTINATION "${KDE_INSTALL_ICONDIR}/hicolor/${_size}x${_size}/apps"
 		RENAME com.stalepixels.pinesy.kde.png)
 endforeach()
+
+# The Debian package (../cmake/PinesyDeb.cmake): cpack -G DEB
+include("${PINESY_PUBLIC_DIR}/cmake/PinesyDeb.cmake")
+string(REGEX REPLACE "^/" "" _pinesy_prefix "${CMAKE_INSTALL_PREFIX}")
+pinesy_deb(NAME pinesy-kde SUMMARY "Pi/Ne-Sy, a Pi/Next-System emulator: the KDE Plasma app"
+	LIBDIR "${_pinesy_prefix}/${KDE_INSTALL_LIBDIR}"
+	# the QML modules qml/ imports, which dpkg-shlibdeps cannot see
+	DEPENDS "pinesy-gdb, qml6-module-org-kde-kirigami, qml6-module-qtcore, qml6-module-qtqml-models, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-dialogs, qml6-module-qtquick-layouts, qml6-module-qtquick-window")
+include(CPack)

@@ -86,6 +86,20 @@ With `-mouse`, MAME hides the pointer while it is over the machine's view, and h
 
 A machine window in headless mode sends the mouse the same way, and MAME's own options decide: with `-mouse` it hides and holds the pointer, and without `-mouse_device none` a machine with mouse inputs gets the mouse.
 
+## Updates
+
+A build that CI made and https://pinesy.zx.immo delivered looks for a newer build of its own track (`ci`, `nightly` or `release`) once, at startup. It never moves to another track. A build made with `build.sh` has no track and never looks. The core holds the build's identity (its track, its version and how it updates) and the rules below, so the GNOME and KDE apps follow them too.
+
+When a newer build exists, the app says that it is out of date, and offers three choices:
+
+- Never Remind Again: the app stops looking for updates.
+- Never Remind for This Version: the app ignores this build. A newer build gets a new notice.
+- Update: the app updates.
+
+A CI build's version is `0.1.YYYYMMDD.HHMM`, the date and time in UTC when CI built it. A build is newer when its version is newer, compared as Sparkle compares versions: part by part, with numbers as numbers.
+
+On macOS, Sparkle does the update. The app reads its track's appcast, `https://pinesy.zx.immo/<track>/macos/appcast.xml`. The notice is the app's own; after Update, Sparkle's windows show the download, and Sparkle checks the update's EdDSA signature (`SUPublicEDKey` in `Info.plist`), installs it and starts the new app. Sparkle checks only when the app asks it to, and schedules nothing (`SUEnableAutomaticChecks` is false).
+
 ## Headless
 
 Any arguments make the executable run MAME with them and no UI. With `--` among the arguments, the words before the first `--` are Pinesy's switches, and the words after it are MAME's command line. Without `--`, every word is MAME's. The exit code is MAME's.
@@ -110,5 +124,7 @@ Pinesy is not MAME. It reads no `mame.ini` and uses nothing in `~/.mame`. Every 
 - `-skip_gameinfo`: MAME does not show its machine information screen at start, because the machine was chosen in the app.
 
 `build.sh` compiles the core's sources in `../core/src` with `clang++` into `libpinesy.dylib`, and puts it in `Contents/Frameworks` with `libmame_pinesy.dylib` and the libraries that one needs. It copies the app icon, `Pinesy.icns`, and the icon of `.pinesy` files, `PinesyDocument.icns`, into `Contents/Resources`. The `.pinesy` type conforms to `public.data`, not `public.json`, because Finder shows a JSON type's Quick Look text preview in place of its icon. It copies `../roms` into the bundle. Each entry there must be a ROM set: a zip, a 7z or a folder of ROM dumps. The script stops on anything else, and on a disk image (SD card, hard disk or floppy) loose in a folder or inside a zip. It cannot list a 7z, so it does not check what one holds. It also copies MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders from `../mame`; the other search paths have no folder in the bundle. It puts `gdb-pinesy` and `objcopy-pinesy`, which `../build-gdb.sh` builds, in `Contents/MacOS`, and stops when either is missing. [../docs/gdb.md](../docs/gdb.md) says what they do.
+
+`build.sh` also puts `Sparkle.framework` in `Contents/Frameworks`. `sparkle.sh` downloads the Sparkle release it names into `../build/sparkle`, once, and checks its SHA-256. A CI build that is published gets its track and version from `PINESY_BUILD_TRACK` and `PINESY_BUILD_VERSION`: they go into the core, and into `Info.plist` as `CFBundleVersion` and `CFBundleShortVersionString`, which Sparkle compares. Without them the bundle is signed ad hoc. With `CODESIGN_IDENTITY` (and `CODESIGN_KEYCHAIN`), `build.sh` signs it with that identity instead, with the hardened runtime, a secure timestamp and `Pinesy.entitlements`: the engine's recompilers and QEMU write code at run time, which the hardened runtime allows only with `com.apple.security.cs.allow-jit` and `com.apple.security.cs.allow-unsigned-executable-memory`.
 
 `Pinesy -- -showconfig` prints every path a run uses.

@@ -83,6 +83,16 @@ public:
 	void setPiGdbPort(int port);
 	void setStartPaused(bool paused);
 
+	// Updates (the core's rules): true when this CI build looks for
+	// updates; true when the out-of-date notice shows for a build found
+	// on the server (a version, or with newerKnown the Flatpak portal's
+	// remote commit); the notice's texts (pinesy_core_update_texts());
+	// and a choice of the notice (PINESY_CORE_UPDATE_*), stored.
+	bool updateChecks() const;
+	bool updateNotice(const QString &build, bool newerKnown) const;
+	QVariantMap updateTexts(const QString &build, bool newerKnown) const;
+	void updateChoice(int choice, const QString &build);
+
 	// Turns a file URL from a dialog into a local path.
 	Q_INVOKABLE static QString localPath(const QUrl &url);
 
@@ -109,5 +119,7 @@ private:
 	QString m_debugger;
 	int m_gdbPort = PINESY_CORE_DEFAULT_GDB_PORT;
 	int m_piGdbPort = PINESY_CORE_DEFAULT_PI_GDB_PORT;
+	bool m_updateChecks = true;
+	QString m_ignoredBuild;
 	bool m_startPaused = false;
 };
