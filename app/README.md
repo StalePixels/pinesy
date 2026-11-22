@@ -98,7 +98,7 @@ When a newer build exists, the app says that it is out of date, and offers three
 
 A CI build's version is `0.1.YYYYMMDD.HHMM`, the date and time in UTC when CI built it. A build is newer when its version is newer, compared as Sparkle compares versions: part by part, with numbers as numbers.
 
-On macOS, Sparkle does the update. The app reads its track's appcast, `https://pinesy.zx.immo/<track>/macos/appcast.xml`. The notice is the app's own; after Update, Sparkle's windows show the download, and Sparkle checks the update's EdDSA signature (`SUPublicEDKey` in `Info.plist`), installs it and starts the new app. Sparkle checks only when the app asks it to, and schedules nothing (`SUEnableAutomaticChecks` is false).
+On macOS, Sparkle does the update. The app reads its track's appcast, `https://pinesy.zx.immo/<track>/macos/appcast.xml`. The notice is the app's own; after Update, Sparkle's windows show the download, and Sparkle checks the update's EdDSA signature (`SUPublicEDKey` in `Info.plist`), installs it and starts the new app. Sparkle checks only when the app asks it to, and schedules nothing (`SUEnableAutomaticChecks` is false). Sparkle names its download folder after `SUBundleName`, `Pinesy`, because the app's display name has a slash.
 
 ## Headless
 
