@@ -133,7 +133,15 @@ private final class UpdateDriver: NSObject, SPUUserDriver {
     }
 
     func showReady(toInstallAndRelaunch reply: @escaping (SPUUserUpdateChoice) -> Void) {
-        // The user chose Update: install and start the new build.
+        // The user chose Update: install and start the new build. Sparkle
+        // asks the app to quit, and AppKit does not close a document
+        // window that has a sheet, such as the machine picker, so the
+        // sheets end first. A document with unsaved changes still asks.
+        for window in NSApp.windows {
+            if let sheet = window.attachedSheet {
+                window.endSheet(sheet)
+            }
+        }
         reply(.install)
     }
 
