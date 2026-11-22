@@ -7,8 +7,8 @@
 //  Every rule the front ends share: the machine catalogue,
 //  the configuration model and .pinesy files, the starting
 //  configuration, option checking, MAME's paths, the settings
-//  schema, the machine window's size, the copied command line
-//  and headless mode. The front ends hold only UI.
+//  schema, the machine window's size, recent configurations,
+//  the copied command line and headless mode. The front ends hold only UI.
 //
 //  The C interface in pinesy_core.h wraps this one.
 //
@@ -596,6 +596,52 @@ struct CommandLine
 CommandLine split(const std::vector<std::string> &arguments);
 
 } // namespace headless
+
+//------------------------------------------------------------
+//  Recent configurations
+//
+//  Each front end keeps its list of recent .pinesy files in
+//  the platform's own store, newest first; these rules decide
+//  what of it is shown, and what a launch opens.
+//------------------------------------------------------------
+
+namespace recent {
+
+// The most recent configurations shown, and kept by a front end that
+// keeps the list itself.
+constexpr int limit = 10;
+
+struct Entry
+{
+	std::string path;
+	std::string name;     // the file's name without its extension
+	std::string folder;   // the folder the file is in
+	bool operator==(const Entry &) const = default;
+};
+
+// The recent configurations to show, from the platform's list, newest
+// first: each path that names an existing file, once (the first time
+// it is listed), and at most limit of them. An empty path is left out.
+std::vector<Entry> entries(const std::vector<std::string> &paths);
+
+// The list to keep after a configuration is opened or saved: path
+// first, then the other paths in their order without it, at most
+// limit. An empty path leaves the list as it is.
+std::vector<std::string> noted(const std::vector<std::string> &paths, const std::string &path);
+
+// What a launch opens. A launch with files to open opens them. One
+// with none shows the recent configurations when there is at least
+// one (entries() is not empty), and otherwise a new configuration,
+// which asks for the machine.
+enum class Launch { files, recent, new_configuration };
+Launch launch(bool files_to_open, std::size_t recent_count);
+
+// True when a configuration window is restored at the next launch: the
+// configuration has a machine. A window with no machine is not, and
+// the launch shows the recent configurations in its place.
+bool restorable(const std::vector<std::string> &arguments);
+
+} // namespace recent
 
 // The core: a platform, the settings, and the catalogue, built from
 // the engine on first use.

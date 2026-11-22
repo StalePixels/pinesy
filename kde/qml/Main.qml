@@ -8,6 +8,8 @@ QtObject {
 
     property var windows: []
     property var settingsWindow: null
+    // the recent configurations window, while it is open
+    property var recentWindow: null
 
     property Component documentWindow: Component {
         DocumentWindow {}
@@ -17,9 +19,43 @@ QtObject {
         SettingsWindow {}
     }
 
+    property Component recentComponent: Component {
+        RecentWindow {}
+    }
+
+    // A launch with no file to open: the recent configurations, or a
+    // new configuration when there is none (the core's rule).
+    function launch() {
+        if (RecentConfigurations.launchShowsRecent()) {
+            recentWindow = recentComponent.createObject(null, { app: app, entries: RecentConfigurations.entries })
+            recentWindow.closing.connect(() => {
+                const closed = recentWindow
+                recentWindow = null
+                Qt.callLater(() => closed.destroy())
+            })
+            recentWindow.show()
+        } else {
+            newDocument()
+        }
+    }
+
+    // The recent configurations window gives way to a configuration.
+    function closeRecent() {
+        if (recentWindow)
+            recentWindow.close()
+    }
+
     // A new configuration, which starts with the machine picker.
     function newDocument() {
-        return addWindow(null)
+        const window = addWindow(null)
+        closeRecent()
+        return window
+    }
+
+    // A recent configuration, from the recent configurations window or
+    // File > Open Recent: as a file the desktop hands over.
+    function openRecent(url) {
+        openFromDesktop(url)
     }
 
     // A window for a .pinesy file. A file already open comes to the front.
@@ -28,10 +64,19 @@ QtObject {
             if (window.document.url.toString() === url.toString()) {
                 window.raise()
                 window.requestActivate()
+                closeRecent()
                 return
             }
         }
-        addWindow(url)
+        openWindow(url)
+    }
+
+    // A window for a file; the recent configurations window closes when
+    // the file opens.
+    function openWindow(url) {
+        const window = addWindow(url)
+        if (!window.document.empty)
+            closeRecent()
     }
 
     // A file the desktop hands over, as from a file manager. A file
@@ -42,6 +87,7 @@ QtObject {
             if (window.document.url.toString() === url.toString()) {
                 window.raise()
                 window.requestActivate()
+                closeRecent()
                 return
             }
         }
@@ -49,14 +95,19 @@ QtObject {
             if (window.takeFile(url))
                 return
         }
-        addWindow(url)
+        openWindow(url)
     }
 
     // The desktop asks for the app: the newest window comes to the
-    // front, or a new configuration opens when there is none.
+    // front. With none, it is as a launch with no file to open.
     function activate() {
+        if (recentWindow) {
+            recentWindow.raise()
+            recentWindow.requestActivate()
+            return
+        }
         if (windows.length === 0) {
-            newDocument()
+            launch()
             return
         }
         const window = windows[windows.length - 1]
@@ -90,9 +141,10 @@ QtObject {
             if (!window.close())
                 return
         }
+        closeRecent()
         if (!MachineRunner.quitWhenStopped())
             Qt.quit()
     }
 
-    Component.onCompleted: newDocument()
+    Component.onCompleted: launch()
 }

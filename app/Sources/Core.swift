@@ -147,6 +147,41 @@ enum Core {
         return NSSize(width: Int(width), height: Int(height))
     }
 
+    // MARK: - Recent configurations
+
+    /// A recent configuration as the core gives it: the file, its name
+    /// without the extension, and the folder it is in.
+    struct RecentEntry: Decodable, Hashable {
+        let path: String
+        let name: String
+        let folder: String
+    }
+
+    /// The recent configurations to show, from the platform's list,
+    /// newest first: the files that exist, each once, at most the
+    /// core's limit.
+    nonisolated static func recentConfigurations(_ paths: [String]) -> [RecentEntry] {
+        decode(pinesy_core_recent_configurations(encode(paths))) ?? []
+    }
+
+    /// What a launch opens.
+    enum Launch {
+        case files, recent, newConfiguration
+    }
+
+    nonisolated static func launch(filesToOpen: Bool, recentCount: Int) -> Launch {
+        switch pinesy_core_launch(filesToOpen ? 1 : 0, Int32(clamping: recentCount)) {
+        case PINESY_CORE_LAUNCH_FILES: .files
+        case PINESY_CORE_LAUNCH_RECENT: .recent
+        default: .newConfiguration
+        }
+    }
+
+    /// Whether a configuration window is restored at the next launch.
+    nonisolated static func restorable(_ arguments: [String]) -> Bool {
+        pinesy_core_restorable(encode(arguments)) != 0
+    }
+
     // MARK: - NVRAM
 
     /// Deletes the NVRAM MAME saved for the configuration's driver, and

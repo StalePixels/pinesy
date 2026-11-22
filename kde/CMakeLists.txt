@@ -99,6 +99,8 @@ add_executable(pinesy-kde
 	src/headless.h
 	src/machineview.cpp
 	src/machineview.h
+	src/recent.cpp
+	src/recent.h
 	src/runner.cpp
 	src/runner.h
 	src/runwindow.cpp
@@ -112,6 +114,7 @@ qt_add_qml_module(pinesy-kde
 		qml/DocumentWindow.qml
 		qml/ConfigurationPage.qml
 		qml/MachinePicker.qml
+		qml/RecentWindow.qml
 		qml/SettingsWindow.qml
 		qml/GeneralSettingsPage.qml
 		qml/DebuggerSettingsPage.qml)

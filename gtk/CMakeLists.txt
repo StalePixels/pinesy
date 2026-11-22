@@ -82,6 +82,7 @@ add_executable(pinesy_gtk
 	src/machine_picker.cpp
 	src/machine_runner.cpp
 	src/main.cpp
+	src/recent_window.cpp
 	src/settings.cpp
 	src/settings_dialog.cpp
 	src/signals.cpp)

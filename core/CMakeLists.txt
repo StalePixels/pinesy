@@ -33,6 +33,7 @@ add_library(pinesy SHARED
 	src/document.cpp
 	src/json.cpp
 	src/mame_data.cpp
+	src/recent.cpp
 	src/window.cpp)
 target_include_directories(pinesy
 	PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"

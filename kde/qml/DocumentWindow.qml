@@ -2,6 +2,7 @@
 
 import QtCore
 import QtQuick
+import QtQml.Models
 import QtQuick.Controls as QQC2
 import QtQuick.Dialogs
 import org.kde.kirigami as Kirigami
@@ -73,6 +74,32 @@ Kirigami.ApplicationWindow {
                 icon.name: "document-open"
                 shortcut: StandardKey.Open
                 onTriggered: openDialog.open()
+            }
+            QQC2.Menu {
+                id: recentMenu
+                title: i18nc("@title:menu", "Open Recent")
+                icon.name: "document-open-recent"
+
+                Instantiator {
+                    model: RecentConfigurations.entries
+                    delegate: QQC2.MenuItem {
+                        required property var modelData
+                        text: modelData.name.replace(/&/g, "&&")
+                        onTriggered: {
+                            if (!window.takeFile(modelData.url))
+                                window.app.openRecent(modelData.url)
+                        }
+                    }
+                    onObjectAdded: (index, object) => recentMenu.insertItem(index, object)
+                    onObjectRemoved: (index, object) => recentMenu.removeItem(object)
+                }
+                QQC2.MenuSeparator {}
+                QQC2.Action {
+                    text: i18nc("@action", "Clear List")
+                    icon.name: "edit-clear-history"
+                    enabled: RecentConfigurations.entries.length > 0
+                    onTriggered: RecentConfigurations.clear()
+                }
             }
             QQC2.MenuSeparator {}
             QQC2.Action {

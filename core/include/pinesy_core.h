@@ -8,8 +8,8 @@
 //  The core holds every rule the front ends share: the
 //  machine catalogue, configurations and .pinesy files, the
 //  starting configuration, option checking, MAME's paths, the
-//  settings schema, the machine window's size, the copied
-//  command line and headless mode. It calls the engine, libmame_pinesy (pinesy.h).
+//  settings schema, the machine window's size, recent configurations,
+//  the copied command line and headless mode. It calls the engine, libmame_pinesy (pinesy.h).
 //
 //  Conventions:
 //
@@ -441,6 +441,47 @@ int pinesy_core_run(const pinesy_core *core, const char *arguments, int debug, i
 // included, is put in single quotes.
 char *pinesy_core_copy_command_line(const pinesy_core *core, const char *executable, const char *arguments, int debug,
 		int takes_mouse, int mouse);
+
+//------------------------------------------------------------
+//  Recent configurations
+//
+//  Each front end keeps its list of recent .pinesy files in the
+//  platform's own store, newest first. A list of paths is a JSON
+//  array of strings.
+//------------------------------------------------------------
+
+// The most recent configurations shown, and kept by a front end that
+// keeps the list itself.
+#define PINESY_CORE_RECENT_LIMIT 10
+
+// The recent configurations to show, from the platform's list of
+// paths, newest first: each path that names an existing file, once
+// (the first time it is listed), and at most PINESY_CORE_RECENT_LIMIT
+// of them. An empty path is left out. A JSON array of objects, each
+// with path, name (the file's name without its extension) and folder
+// (the folder the file is in).
+char *pinesy_core_recent_configurations(const char *paths);
+
+// The list of paths to keep after a configuration is opened or saved:
+// path first, then the other paths in their order without it, at most
+// PINESY_CORE_RECENT_LIMIT. An empty path leaves the list as it is.
+char *pinesy_core_note_recent(const char *paths, const char *path);
+
+// What a launch opens.
+#define PINESY_CORE_LAUNCH_FILES 0
+#define PINESY_CORE_LAUNCH_RECENT 1
+#define PINESY_CORE_LAUNCH_NEW_CONFIGURATION 2
+
+// What a launch opens: with files to open (files_to_open not 0), the
+// files; with none, the recent configurations when recent_count (the
+// entries of pinesy_core_recent_configurations()) is more than 0,
+// otherwise a new configuration, which asks for the machine.
+int pinesy_core_launch(int files_to_open, int recent_count);
+
+// 1 when a configuration window is restored at the next launch: the
+// configuration has a machine. 0 for a window with no machine, or when
+// arguments is not a JSON array of strings.
+int pinesy_core_restorable(const char *arguments);
 
 //------------------------------------------------------------
 //  Headless mode

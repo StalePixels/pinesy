@@ -16,6 +16,8 @@
 #include <gtkmm/filedialog.h>
 #include <gtkmm/filefilter.h>
 
+#include <algorithm>
+
 namespace pinesy::gtk {
 
 namespace {
@@ -121,6 +123,7 @@ ConfigurationWindow::ConfigurationWindow(Application &app) : m_app(app)
 	auto files = Gio::Menu::create();
 	files->append("_New Configuration", "app.new");
 	files->append("_Open…", "app.open");
+	files->append_submenu("Open _Recent", app.recent_menu());
 	menu->append_section(files);
 	auto saving = Gio::Menu::create();
 	saving->append("_Save", "win.save");
@@ -153,12 +156,6 @@ ConfigurationWindow::ConfigurationWindow(Application &app) : m_app(app)
 	adw_status_page_set_icon_name(ADW_STATUS_PAGE(empty), "computer-symbolic");
 	adw_status_page_set_title(ADW_STATUS_PAGE(empty), "No Machine");
 	adw_status_page_set_description(ADW_STATUS_PAGE(empty), "Choose a machine for this configuration.");
-	GtkWidget *choose = gtk_button_new_with_mnemonic("_Choose Machine…");
-	gtk_widget_set_halign(choose, GTK_ALIGN_CENTER);
-	gtk_widget_add_css_class(choose, "pill");
-	gtk_widget_add_css_class(choose, "suggested-action");
-	connect(choose, "clicked", [this] { choose_machine(); });
-	adw_status_page_set_child(ADW_STATUS_PAGE(empty), choose);
 	gtk_stack_add_named(m_stack, empty, "empty");
 
 	GtkWidget *waiting = adw_status_page_new();
@@ -279,6 +276,10 @@ void ConfigurationWindow::choose_machine()
 			return;
 		m_document.machine = machine.id;
 		set_arguments(core::editor::new_configuration(machine, m_app.core().catalogue()));
+	}, [this, alive] {
+		// a new configuration with no machine closes with its picker
+		if (!alive.expired() && is_empty())
+			gtk_window_close(GTK_WINDOW(m_window));
 	});
 }
 
@@ -310,6 +311,7 @@ bool ConfigurationWindow::load(const Glib::RefPtr<Gio::File> &file, std::string 
 	m_modified = false;
 	m_summary.reset();
 	refresh();
+	m_app.note_recent(file);
 	return true;
 }
 
@@ -684,13 +686,20 @@ AdwPreferencesGroup *ConfigurationWindow::media_group(const core::Summary &summa
 			adw_action_row_add_suffix(ADW_ACTION_ROW(item), warning_icon(problem));
 		}
 
-		GtkWidget *file = gtk_label_new(media.current.empty() ? "Empty" : Glib::path_get_basename(media.current).c_str());
+		const std::string shown = media.current.empty() ? "Empty" : Glib::path_get_basename(media.current);
+		GtkWidget *file = gtk_label_new(shown.c_str());
 		if (media.current.empty())
 			gtk_widget_add_css_class(file, "dim-label");
 		else
 			gtk_widget_set_tooltip_text(file, media.current.c_str());
+		// An ellipsized label's minimum width is only the ellipsis, and the
+		// row shares spare width evenly between the title and the suffixes,
+		// so the name would shrink while the title still had room to wrap.
+		// The minimum width is the whole name, up to the cap.
+		constexpr int file_chars = 24;
 		gtk_label_set_ellipsize(GTK_LABEL(file), PANGO_ELLIPSIZE_MIDDLE);
-		gtk_label_set_max_width_chars(GTK_LABEL(file), 24);
+		gtk_label_set_width_chars(GTK_LABEL(file), std::min<int>(g_utf8_strlen(shown.c_str(), -1), file_chars));
+		gtk_label_set_max_width_chars(GTK_LABEL(file), file_chars);
 		adw_action_row_add_suffix(ADW_ACTION_ROW(item), file);
 
 		GtkWidget *choose = gtk_button_new_with_label("Choose…");
@@ -865,6 +874,7 @@ bool ConfigurationWindow::write(const Glib::RefPtr<Gio::File> &file)
 	m_file = file;
 	m_modified = false;
 	update_title();
+	m_app.note_recent(file);
 	return true;
 }
 

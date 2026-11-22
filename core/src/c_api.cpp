@@ -416,6 +416,46 @@ char *pinesy_core_copy_command_line(const pinesy_core *core, const char *executa
 	return give(core->core.copy_command_line(executable, *args, debug != 0, takes_mouse != 0, mouse != 0));
 }
 
+//------------------------------------------------------------
+//  Recent configurations
+//------------------------------------------------------------
+
+static_assert(PINESY_CORE_RECENT_LIMIT == recent::limit);
+static_assert(PINESY_CORE_LAUNCH_FILES == int(recent::Launch::files)
+		&& PINESY_CORE_LAUNCH_RECENT == int(recent::Launch::recent)
+		&& PINESY_CORE_LAUNCH_NEW_CONFIGURATION == int(recent::Launch::new_configuration));
+
+char *pinesy_core_recent_configurations(const char *paths)
+{
+	auto list = read_arguments(paths);
+	if (!list) return nullptr;
+	json::Array entries;
+	for (const recent::Entry &entry : recent::entries(*list))
+		entries.push_back(json::Object{
+			{ "path", entry.path },
+			{ "name", entry.name },
+			{ "folder", entry.folder } });
+	return give(json::Value(std::move(entries)));
+}
+
+char *pinesy_core_note_recent(const char *paths, const char *path)
+{
+	auto list = read_arguments(paths);
+	if (!list || !path) return nullptr;
+	return give(encode::strings(recent::noted(*list, path)));
+}
+
+int pinesy_core_launch(int files_to_open, int recent_count)
+{
+	return int(recent::launch(files_to_open != 0, recent_count > 0 ? std::size_t(recent_count) : 0));
+}
+
+int pinesy_core_restorable(const char *arguments)
+{
+	auto args = read_arguments(arguments);
+	return args && recent::restorable(*args) ? 1 : 0;
+}
+
 int pinesy_core_video_none(int argc, const char *const argv[])
 {
 	return headless::video_none(read_argv(argc, argv)) ? 1 : 0;

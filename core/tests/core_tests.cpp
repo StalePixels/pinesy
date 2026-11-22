@@ -6,8 +6,9 @@
 //  real engine
 //
 //  core_tests rules     the catalogue, configurations, .pinesy
-//                       files, the window size, checking and
-//                       the fixed options
+//                       files, the window size, recent
+//                       configurations, checking and the fixed
+//                       options
 //  core_tests headless  one headless run with -video none
 //
 //  The expected values are the rules in public/app/README.md.
@@ -593,6 +594,66 @@ void test_checking(pinesy_core *core)
 //  Paths, settings and command lines
 //------------------------------------------------------------
 
+void test_recent()
+{
+	namespace fs = std::filesystem;
+	const fs::path folder = fs::path(PINESY_TEST_DATA) / "recent";
+	fs::create_directories(folder);
+	const std::string a = (folder / "a.pinesy").string();
+	const std::string b = (folder / "b.pinesy").string();
+	const std::string gone = (folder / "gone.pinesy").string();
+	for (const std::string &path : { a, b })
+		std::fclose(std::fopen(path.c_str(), "w"));
+	fs::remove(gone);
+
+	const auto shown = recent::entries({ a, gone, "", b, a });
+	check(shown == std::vector<recent::Entry>{ { a, "a", folder.string() }, { b, "b", folder.string() } },
+			"the recent configurations shown are the files that exist, newest first, each once, without empty paths");
+	check(recent::entries({ folder.string() }).empty(), "a folder is not a recent configuration");
+
+	Strings many;
+	for (int i = 0; i < recent::limit + 2; i++) many.push_back(a);
+	many.push_back(b);
+	check(recent::entries(many).size() == 2, "a path listed again does not count toward the limit");
+	Strings files;
+	for (int i = 0; i < recent::limit + 2; i++)
+	{
+		files.push_back((folder / ("f" + std::to_string(i) + ".pinesy")).string());
+		std::fclose(std::fopen(files.back().c_str(), "w"));
+	}
+	const auto limited = recent::entries(files);
+	check(limited.size() == std::size_t(recent::limit) && limited.front().path == files.front(),
+			"at most " + std::to_string(recent::limit) + " recent configurations are shown, the newest");
+
+	check(recent::noted({ a, b, gone }, b) == Strings{ b, a, gone }, "a configuration opened again moves to the front");
+	check(recent::noted({ a }, "") == Strings{ a }, "an empty path leaves the recent list as it is");
+	check(recent::noted(files, b).size() == std::size_t(recent::limit) && recent::noted(files, b).front() == b,
+			"the recent list keeps at most " + std::to_string(recent::limit) + " paths, the newest first");
+
+	check(recent::launch(true, 3) == recent::Launch::files && recent::launch(true, 0) == recent::Launch::files,
+			"a launch with files to open opens them");
+	check(recent::launch(false, 1) == recent::Launch::recent,
+			"a launch with no file to open shows the recent configurations when there are any");
+	check(recent::launch(false, 0) == recent::Launch::new_configuration,
+			"a launch with no file to open and no recent configuration opens a new configuration");
+	check(recent::restorable({ "tbblue" }) && !recent::restorable({}),
+			"a configuration window is restored only when it has a machine");
+
+	// the C interface
+	const json::Value list = parse(pinesy_core_recent_configurations(args_json({ gone, a }).c_str()));
+	check(list.is_array() && list.array().size() == 1 && text_of(list.array()[0], "path") == a
+			&& text_of(list.array()[0], "name") == "a" && text_of(list.array()[0], "folder") == folder.string(),
+			"pinesy_core_recent_configurations() gives path, name and folder of each file that exists");
+	check(take(pinesy_core_recent_configurations("not json")) == "<NULL>", "pinesy_core_recent_configurations() refuses a list that is not JSON");
+	check(strings(parse(pinesy_core_note_recent(args_json({ a, b }).c_str(), b.c_str()))) == Strings{ b, a },
+			"pinesy_core_note_recent() puts the path first");
+	check(pinesy_core_launch(0, 2) == PINESY_CORE_LAUNCH_RECENT && pinesy_core_launch(0, 0) == PINESY_CORE_LAUNCH_NEW_CONFIGURATION
+			&& pinesy_core_launch(1, 0) == PINESY_CORE_LAUNCH_FILES,
+			"pinesy_core_launch() gives the same answers");
+	check(pinesy_core_restorable(R"(["tbblue"])") == 1 && pinesy_core_restorable("[]") == 0 && pinesy_core_restorable(nullptr) == 0,
+			"pinesy_core_restorable() gives the same answers");
+}
+
 void test_paths(pinesy_core *core)
 {
 	const std::string res = PINESY_TEST_RESOURCES;
@@ -773,6 +834,7 @@ int run_rules()
 	pinesy_core *core = make_core();
 	test_documents();
 	test_window_size();
+	test_recent();
 	test_paths(core);
 	test_catalogue(core);
 	test_starting(core);

@@ -2,6 +2,9 @@
 // recent configurations: the recent .pinesy files, and a button to
 // create a new machine. With no recent configuration that still exists,
 // the launch opens a new configuration, which asks for the machine.
+// The core decides which files show and what the launch opens
+// (pinesy_core_recent_configurations(), pinesy_core_launch()); the list
+// is AppKit's, the one File > Open Recent shows.
 
 import AppKit
 import SwiftUI
@@ -11,12 +14,10 @@ enum RecentConfigurations {
     private static var window: NSWindow?
     private static let handler = OpenApplicationHandler()
 
-    /// The recent configurations, newest first, as AppKit's Open Recent
-    /// menu lists them, without files that no longer exist.
-    static var urls: [URL] {
-        NSDocumentController.shared.recentDocumentURLs.filter {
-            FileManager.default.fileExists(atPath: $0.path)
-        }
+    /// The recent configurations to show, from AppKit's Open Recent
+    /// list, newest first.
+    static var entries: [Core.RecentEntry] {
+        Core.recentConfigurations(NSDocumentController.shared.recentDocumentURLs.map { $0.path(percentEncoded: false) })
     }
 
     /// A launch with no document to open gets the Open Application Apple
@@ -39,18 +40,23 @@ enum RecentConfigurations {
     final class OpenApplicationHandler: NSObject {
         @objc func openApplication(_ event: NSAppleEventDescriptor, reply: NSAppleEventDescriptor) {
             MainActor.assumeIsolated {
-                if !RecentConfigurations.show() {
-                    NSDocumentController.shared.newDocument(nil)
-                }
+                RecentConfigurations.launch()
             }
         }
     }
 
-    /// Shows the window. False when there is no recent configuration.
-    static func show() -> Bool {
-        let urls = urls
-        guard !urls.isEmpty else { return false }
-        let content = NSHostingController(rootView: RecentConfigurationsView(urls: urls))
+    /// A launch with no document to open: the recent configurations, or
+    /// a new configuration when there is none.
+    static func launch() {
+        let entries = entries
+        switch Core.launch(filesToOpen: false, recentCount: entries.count) {
+        case .recent: show(entries)
+        default: NSDocumentController.shared.newDocument(nil)
+        }
+    }
+
+    static func show(_ entries: [Core.RecentEntry]) {
+        let content = NSHostingController(rootView: RecentConfigurationsView(entries: entries))
         if let window {
             window.contentViewController = content
         } else {
@@ -63,7 +69,6 @@ enum RecentConfigurations {
             self.window = window
         }
         window?.makeKeyAndOrderFront(nil)
-        return true
     }
 
     static func open(_ url: URL) {
@@ -82,15 +87,15 @@ enum RecentConfigurations {
 }
 
 private struct RecentConfigurationsView: View {
-    let urls: [URL]
+    let entries: [Core.RecentEntry]
 
     @State private var selection: URL?
 
     var body: some View {
         VStack(spacing: 0) {
-            List(urls, id: \.self, selection: $selection) { url in
-                RecentRow(url: url)
-                    .tag(url)
+            List(entries, id: \.self, selection: $selection) { entry in
+                RecentRow(entry: entry)
+                    .tag(URL(filePath: entry.path))
             }
             .contextMenu(forSelectionType: URL.self, menu: { _ in EmptyView() }) { urls in
                 if let url = urls.first {
@@ -113,22 +118,22 @@ private struct RecentConfigurationsView: View {
         }
         .frame(width: 560, height: 400)
         .onAppear {
-            selection = urls.first
+            selection = entries.first.map { URL(filePath: $0.path) }
         }
     }
 }
 
 private struct RecentRow: View {
-    let url: URL
+    let entry: Core.RecentEntry
 
     var body: some View {
         HStack {
-            Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
+            Image(nsImage: NSWorkspace.shared.icon(forFile: entry.path))
                 .resizable()
                 .frame(width: 32, height: 32)
             VStack(alignment: .leading, spacing: 2) {
-                Text(url.deletingPathExtension().lastPathComponent)
-                Text(url.deletingLastPathComponent().path(percentEncoded: false))
+                Text(entry.name)
+                Text(entry.folder)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

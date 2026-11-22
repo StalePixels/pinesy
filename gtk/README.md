@@ -2,7 +2,7 @@
 
 The GNOME app for Pi/Ne-Sy. It is a GTK 4 and libadwaita app, written in C++ with gtkmm. It links `libpinesy`, the core in `../core`, and the MAME library `../mame/libmame_pinesy_gtk.so`, the engine with the GTK debugger. The core holds every rule the app follows (the machine list, configurations, `.pinesy` files, MAME's paths, the settings and headless mode). This folder holds only the user interface.
 
-What the app does is described in `../app/README.md`, the README of the macOS app. This README describes how the GNOME app differs.
+`../app/README.md`, the README of the macOS app, describes what the app does. This README describes how the GNOME app differs.
 
 To build and run it, see [docs/build-linux.md](../docs/build-linux.md).
 
@@ -19,7 +19,7 @@ The data folder is `$XDG_DATA_HOME/pinesy` (by default `~/.local/share/pinesy`) 
 
 The app icon is `../icons/hicolor/<size>x<size>/apps/pinesy.png`, installed as `com.stalepixels.Pinesy.png`. The desktop entry and the windows use that icon name.
 
-`cmake --install` installs them with the app ([docs/build-linux.md](../docs/build-linux.md), "Install a build"), and compiles the schema where it puts it. An installed copy reads the schema from `../share/glib-2.0/schemas`, next to its own folder, before GLib's own folders, and its resources folder from `../share/pinesy/resources`. A run from the build folder uses `<build-dir>/resources` and needs `GSETTINGS_SCHEMA_DIR=<build-dir>/schemas`. The desktop entry sets `DBusActivatable=true`: a file manager opens a `.pinesy` file through D-Bus (`org.freedesktop.Application.Open`), not through the command line, because any command-line argument starts headless mode. The one exception is `--gapplication-service` alone, which D-Bus activation uses to start the app.
+`cmake --install` installs them with the app ([docs/build-linux.md](../docs/build-linux.md), "Install a build"), and compiles the schema where it puts it. An installed copy reads the schema from `../share/glib-2.0/schemas`, next to its own folder, before GLib's own folders, and its resources folder from `../share/pinesy/resources`. A run from the build folder uses `<build-dir>/resources` and needs `GSETTINGS_SCHEMA_DIR=<build-dir>/schemas`. The desktop entry sets `DBusActivatable=true`, so a file manager opens a `.pinesy` file through D-Bus (`org.freedesktop.Application.Open`), not through the command line, because any command-line argument starts headless mode. The one exception is `--gapplication-service` alone, which D-Bus activation uses to start the app.
 
 ## Flatpak
 
@@ -30,13 +30,14 @@ In the Flatpak:
 - The manifest builds the app and installs it into `/app` with `cmake --install`, so the Flatpak has the same files as a native install.
 - The resources folder is `/app/share/pinesy/resources`. `../cmake/install-resources.sh` fills it with the content that `../app/build.sh` puts in the macOS bundle: the ROM sets from `../roms`, with the same check, and MAME's `plugins`, `hash`, `bgfx`, `artwork` and `language` folders.
 - The data folder is `~/.var/app/com.stalepixels.Pinesy/data/pinesy`.
+- `gdb-pinesy` is `/app/bin/gdb-pinesy`, and `objcopy-pinesy` is `/app/bin/objcopy-pinesy`. The manifest builds `gdb-pinesy` from GDB's release tarball and `objcopy-pinesy` from the binutils release tarball. [../docs/gdb.md](../docs/gdb.md) says what they do.
 - The settings schema, the desktop entry, the MIME type, the D-Bus service file and the app icon are installed. Flatpak exports all but the schema to the desktop.
 - Copy Command Line gives `/app/bin/pinesy`, the path inside the Flatpak. Outside it, the command is `flatpak run com.stalepixels.Pinesy`.
 
 The permissions:
 
 - `--socket=wayland`, `--socket=fallback-x11`, `--share=ipc` and `--device=dri`: the windows, on Wayland or else X11.
-- `--socket=pulseaudio`: MAME's PulseAudio sound module, which MAME chooses by default. `--filesystem=xdg-run/pipewire-0`: its PipeWire module, with `-sound pipewire`.
+- `--socket=pulseaudio`: MAME's PulseAudio sound module, with `-sound pulse`. MAME's default sound module is PortAudio, which plays to ALSA's default device. `--filesystem=xdg-run/pipewire-0`: its PipeWire module, with `-sound pipewire`.
 - `--device=input`: joysticks and gamepads, which MAME reads from `/dev/input/event*`.
 - `--filesystem=home`: a `.pinesy` file names its media files by path, and the ROM folders in Preferences are paths. The file chooser portal gives the app only the file chosen, so MAME could not open the media named in a configuration that was opened later. Media outside the home folder is not reachable.
 - `--share=network`: the GDB remote stub listens on a TCP port. Without this permission, the Flatpak has its own network, and a GDB on the host cannot connect.
@@ -47,9 +48,11 @@ The permissions:
 | --- | --- |
 | File > New (⌘N) | New Configuration in the main menu (Ctrl+N) |
 | File > Open | Open… in the main menu (Ctrl+O), with the GTK file dialog |
+| File > Open Recent | Open Recent in the main menu, with Clear Menu. The list is GTK's recent files (`recently-used.xbel`), the entries Pinesy added when it opened or saved a configuration. |
+| A launch with no document shows the recent configurations | The same: a Recent Configurations window with Open and Create a New Machine…, or a new configuration when there is no recent configuration. GNOME does not restore windows at the next launch. |
 | Documents save themselves | Save (Ctrl+S) and Save As… (Ctrl+Shift+S). Closing a window with unsaved changes asks whether to save them. An unsaved configuration has "•" before its title. |
 | The machine picker sheet | A dialog. The search button or typing starts a search. A click selects a machine; a double click, Enter or Choose chooses it. |
-| Cancel in the picker closes the window | Cancel leaves the window open with a Choose Machine button, because a GNOME app quits when its last window closes. |
+| Cancel in the picker closes the window | The same. When it was the last window and no machine runs, the app quits. |
 | Machine > Run (⌘R) | The Run button (Ctrl+R) |
 | Machine > Run with Debugger (⌥⌘R) | Run with Debugger in the Run button's menu (Ctrl+Shift+R) |
 | Machine > Stop (⌘.) | The Stop button, shown while a machine runs (Ctrl+.) |
@@ -69,7 +72,7 @@ The machine runs in its own window. MAME draws each frame into a buffer, and the
 
 The window takes the size the core gives for the frame and the configuration's window size (`../app/README.md`, "The machine window"). The room on the screen is the monitor's whole area (`gdk_monitor_get_geometry`) below the header bar, because GTK 4 does not give the work area. The configuration window's Window size row chooses the size, and a Magnification row under it takes the number for Custom. With Full screen, the window calls `gtk_window_fullscreen` when the first frame has sized it. Keys go to the machine, so in full screen the header bar shows a Leave Full Screen button; the window then has the Fit to screen size for the current frame. GTK 4 cannot keep a window's aspect ratio, so a window resized to another shape shows the frame at its own shape, centred, with black bars.
 
-The configuration window has a Mouse switch row under the window size for a machine that takes a mouse (`../app/README.md`, "The mouse"). The view sends the mouse to MAME: its movement, from the view's motion events in logical units, every button press and release (left, right, middle, back and forward), and the wheel's notches. A touchpad's smooth scrolling is not sent. When MAME asks to hide the pointer, the view's cursor is `none`. GTK 4 has no call that holds the pointer in a window, so MAME's request to hold it does nothing here: the machine gets the mouse's movement while the pointer is over the view, and while a drag that started there goes on.
+The configuration window has a Mouse switch row under the window size for a machine that takes a mouse (`../app/README.md`, "The mouse"). The view sends the mouse to MAME: its movement, from the view's motion events in logical units, every button press and release (left, right, middle, back and forward), and the wheel's notches. A touchpad's smooth scrolling is not sent. When MAME asks to hide the pointer, the view's cursor is `none`. GTK 4 has no call that holds the pointer in a window, so MAME's request to hold it does nothing here. The machine gets the mouse's movement while the pointer is over the view, and while a drag that started there goes on.
 
 ## Debugger
 

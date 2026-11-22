@@ -1,6 +1,7 @@
 #include "document.h"
 
 #include "core.h"
+#include "recent.h"
 #include "runner.h"
 
 #include <KLocalizedString>
@@ -231,6 +232,7 @@ QString ConfigurationDocument::load(const QUrl &url)
 	Q_EMIT piPausedChanged();
 	Q_EMIT urlChanged();
 	refresh();
+	RecentConfigurations::instance()->note(url);
 	return {};
 }
 
@@ -247,6 +249,7 @@ QString ConfigurationDocument::save(const QUrl &url)
 		Q_EMIT urlChanged();
 	}
 	setModified(false);
+	RecentConfigurations::instance()->note(url);
 	return {};
 }
 

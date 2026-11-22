@@ -19,7 +19,8 @@ constexpr const char *running_tooltip = "A machine is running. Choose when it st
 class MachinePicker
 {
 public:
-	MachinePicker(Application &app, std::function<void(const core::Catalogue::Machine &)> on_choose);
+	MachinePicker(Application &app, std::function<void(const core::Catalogue::Machine &)> on_choose,
+			std::function<void()> on_cancel);
 	~MachinePicker() { m_runner_changed.disconnect(); }
 
 	AdwDialog *dialog() const { return m_dialog; }
@@ -27,6 +28,8 @@ public:
 private:
 	Application &m_app;
 	std::function<void(const core::Catalogue::Machine &)> m_on_choose;
+	std::function<void()> m_on_cancel;
+	bool m_chosen = false;
 	AdwDialog *m_dialog = nullptr;
 	GtkWidget *m_choose = nullptr;
 	GtkWidget *m_entry = nullptr;
@@ -59,10 +62,18 @@ GtkWidget *scrolled(GtkWidget *child)
 	return window;
 }
 
-MachinePicker::MachinePicker(Application &app, std::function<void(const core::Catalogue::Machine &)> on_choose)
-	: m_app(app), m_on_choose(std::move(on_choose))
+MachinePicker::MachinePicker(Application &app, std::function<void(const core::Catalogue::Machine &)> on_choose,
+		std::function<void()> on_cancel)
+	: m_app(app), m_on_choose(std::move(on_choose)), m_on_cancel(std::move(on_cancel))
 {
 	m_dialog = adw_dialog_new();
+	// Cancel and Escape both end in "closed"; so does Choose, which sets m_chosen
+	connect(m_dialog, "closed", [this] {
+		if (m_chosen)
+			return;
+		auto on_cancel = m_on_cancel;
+		Glib::signal_idle().connect_once([on_cancel] { on_cancel(); });
+	});
 	adw_dialog_set_title(m_dialog, "Choose a Machine");
 	adw_dialog_set_content_width(m_dialog, 720);
 	adw_dialog_set_content_height(m_dialog, 480);
@@ -241,6 +252,7 @@ void MachinePicker::choose(const core::Catalogue::Machine &machine)
 		return;
 	auto chosen = machine;
 	auto on_choose = m_on_choose;
+	m_chosen = true;
 	adw_dialog_close(m_dialog);
 	Glib::signal_idle().connect_once([on_choose, chosen] { on_choose(chosen); });
 }
@@ -270,9 +282,10 @@ void MachinePicker::on_machine_activated(GtkListBox *, GtkListBoxRow *row, gpoin
 } // namespace
 
 void present_machine_picker(GtkWidget *parent, Application &app,
-		std::function<void(const core::Catalogue::Machine &)> on_choose)
+		std::function<void(const core::Catalogue::Machine &)> on_choose,
+		std::function<void()> on_cancel)
 {
-	auto picker = new MachinePicker(app, std::move(on_choose));
+	auto picker = new MachinePicker(app, std::move(on_choose), std::move(on_cancel));
 	g_object_set_data_full(G_OBJECT(picker->dialog()), "pinesy-picker", picker,
 			[](gpointer data) { delete static_cast<MachinePicker *>(data); });
 	adw_dialog_present(picker->dialog(), parent);
