@@ -129,7 +129,7 @@ flatpak-builder --user --install --install-deps-from=flathub --force-clean --cca
 flatpak run com.stalepixels.pinesy.kde
 ```
 
-Put `<state-dir>` and `<build-dir>` outside the `pinesy` folder. Run `git submodule update --init` again after every `git pull`.
+Put `<state-dir>` and `<build-dir>` outside the `pinesy` folder. In your home folder, give `<state-dir>` a hidden folder in its path, such as `~/.cache/pinesy-flatpak`. flatpak-builder mounts each build stage with FUSE in the state folder. On a desktop, the file manager's volume monitor opens every new mount in the home folder that has no hidden folder in its path, and while it reads the mount, flatpak-builder cannot unmount it. The next stage then stops with "Failure spawning rofiles-fuse". Run `git submodule update --init` again after every `git pull`.
 
 Each package has `gdb-pinesy` and `objcopy-pinesy` in `/app/bin`. The manifest builds `gdb-pinesy` from GDB's release tarball, with GMP and MPFR built beside it, and `objcopy-pinesy` from the binutils release tarball. A package build needs no `bison` or `flex`.
 
