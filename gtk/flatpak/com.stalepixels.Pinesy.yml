@@ -12,6 +12,17 @@ sdk-extensions:
   - org.freedesktop.Sdk.Extension.llvm22
 command: pinesy
 
+# Build time only. glibc 2.43 and later (this SDK has 2.44) ask the kernel
+# for transparent huge pages in malloc on arm64. On a kernel without them,
+# such as Raspberry Pi OS's, that call fails and leaves errno set, and
+# CMake's directory listing (kwsys Directory::Load, before its fix
+# c444f492) reads that errno as a readdir error: a folder such as
+# /usr/lib/<arch>/pkgconfig then lists as empty now and again, and a
+# package check reports an installed package as missing.
+build-options:
+  env:
+    GLIBC_TUNABLES: glibc.malloc.hugetlb=0
+
 finish-args:
   - --socket=wayland
   - --socket=fallback-x11
