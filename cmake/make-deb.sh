@@ -84,10 +84,16 @@ else
 	private=(-l"$libdir")
 fi
 
-# dpkg-shlibdeps reads debian/control in the folder it runs in.
+# dpkg-shlibdeps reads debian/control in the folder it runs in. Two of
+# its warnings are expected here and are left out: the private libraries
+# have no versioned SONAME ("cannot extract name and version"), and
+# libc6 diverts the dynamic loader for the merged /usr ("diversions
+# involved"). Every other line it prints is shown.
 mkdir -p "$work/debian"
 printf 'Source: %s\n\nPackage: %s\nArchitecture: any\n' "$package" "$package" >"$work/debian/control"
-shlibs=$(cd "$work" && dpkg-shlibdeps -O "${private[@]}" "${binaries[@]}" 2>/dev/null | sed -n 's/^shlibs:Depends=//p')
+shlibs=$(cd "$work" && dpkg-shlibdeps -O "${private[@]}" "${binaries[@]}" \
+	2> >(grep -v -E 'cannot extract name and version from library name|diversions involved|^ diversion by libc6 ' >&2) |
+	sed -n 's/^shlibs:Depends=//p')
 [ -z "$shlibs" ] || depends=${depends:+$depends, }$shlibs
 
 cat >"$stage/DEBIAN/control" <<EOF
