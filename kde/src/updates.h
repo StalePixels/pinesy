@@ -1,6 +1,8 @@
-// Updates of a CI build. A Flatpak build asks the Flatpak portal; a
-// Debian package reads its track's apt index. The core decides when
-// the out-of-date notice shows, and what it says.
+// Updates of a CI build. A Flatpak build reads its ref in its track's
+// Flatpak repository at startup, and the Flatpak portal tells it of a
+// newer build while it runs and installs it; a Debian package reads its
+// track's apt index. The core decides when the out-of-date notice
+// shows, and what it says.
 
 #pragma once
 
@@ -8,6 +10,8 @@
 #include <QObject>
 #include <QString>
 #include <QVariantMap>
+
+#include <functional>
 
 // The variable in the environment of a new build that the Flatpak
 // portal starts after an update. That build takes the app's name on the
@@ -37,10 +41,13 @@ private:
 	QString m_kind;
 	QString m_monitor;   // the portal's UpdateMonitor object
 	bool m_updating = false;
+	QString m_noticed;   // the build the notice last showed
 	QNetworkAccessManager m_network;
 
 	void startFlatpak();
+	void checkFlatpakRef();
 	void startDeb();
+	void get(const QString &url, std::function<void(const QByteArray &)> done);
 	void notice(const QString &build, bool newerKnown);
 	void updateFlatpak();
 	void failed(const QString &error, const QString &message);

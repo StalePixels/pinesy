@@ -521,8 +521,8 @@ int pinesy_core_update_checks(const pinesy_core *core);
 // server. The app looks for updates, the build is not the settings'
 // ignoredBuild, and it is newer. With newer_known 0, build is a
 // version, newer when pinesy_core_compare_versions() says so. With
-// newer_known 1, the update tool has already found it newer: the
-// Flatpak portal, where build is the remote commit. Else 0.
+// newer_known 1, the update tool has already found it newer: a
+// Flatpak build, where build is the remote commit. Else 0.
 int pinesy_core_update_notice(const pinesy_core *core, const char *build, int newer_known);
 
 // The choices of the out-of-date notice.
@@ -557,6 +557,25 @@ char *pinesy_core_apt_packages_url(const pinesy_core *core);
 // The newest version of a package in the text of an apt Packages
 // index; NULL when the index does not list it.
 char *pinesy_core_apt_newest_version(const char *packages, const char *package);
+
+// The file in which a Flatpak app finds its own installation.
+#define PINESY_CORE_FLATPAK_INFO "/.flatpak-info"
+
+// The ref file of the running Flatpak app in the track's repository,
+// <server>/<track>/repo/refs/heads/app/<name>/<arch>/<branch>, from
+// flatpak_info, the text of PINESY_CORE_FLATPAK_INFO. The ref file's
+// text is the commit the repository holds for the app. NULL for a local
+// build, or when flatpak_info lacks the name, the arch or the branch.
+char *pinesy_core_flatpak_ref_url(const pinesy_core *core, const char *flatpak_info);
+
+// The commit in the text of a ref file, when it is not the commit that
+// runs (app-commit in flatpak_info). The repository holds only the
+// newest build of each app, so another commit is a newer build: give it
+// to pinesy_core_update_notice() with newer_known 1. The Flatpak
+// portal's UpdateAvailable signal names the same commit
+// (remote-commit). NULL when ref is not a commit, or is the commit that
+// runs.
+char *pinesy_core_flatpak_newer_commit(const char *flatpak_info, const char *ref);
 
 //------------------------------------------------------------
 //  Headless mode

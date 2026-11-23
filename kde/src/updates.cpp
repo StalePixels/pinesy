@@ -9,6 +9,7 @@
 #include <QDBusPendingReply>
 #include <QDBusUnixFileDescriptor>
 #include <QDir>
+#include <QFile>
 #include <QMessageBox>
 #include <QNetworkReply>
 #include <QPushButton>
@@ -55,7 +56,8 @@ void Updates::start()
 }
 
 //------------------------------------------------------------
-//  Flatpak: the portal's UpdateMonitor
+//  Flatpak: the ref in the track's repository at startup, and
+//  the portal's UpdateMonitor
 //------------------------------------------------------------
 
 void Updates::startFlatpak()
@@ -90,7 +92,29 @@ void Updates::startFlatpak()
 					SLOT(updateAvailable(QVariantMap)));
 			bus.connect(portalName, m_monitor, monitorInterface, QStringLiteral("Progress"), this,
 					SLOT(progress(QVariantMap)));
+			checkFlatpakRef();
 		});
+	});
+}
+
+// The portal looks for a newer build only after a while; the ref of
+// the app in the track's repository tells at once. It names the commit
+// as the portal's UpdateAvailable does.
+void Updates::checkFlatpakRef()
+{
+	QFile file(QStringLiteral(PINESY_CORE_FLATPAK_INFO));
+	if (!file.open(QIODevice::ReadOnly))
+		return;
+	const QByteArray info = file.readAll();
+	const QString url = Core::instance()->flatpakRefUrl(info);
+	if (url.isEmpty())
+		return;
+	get(url, [this, info](const QByteArray &ref) {
+		char *commit = pinesy_core_flatpak_newer_commit(info.constData(), ref.constData());
+		const QString build = QString::fromUtf8(commit ? commit : "");
+		pinesy_core_free(commit);
+		if (!m_updating)
+			notice(build, true);
 	});
 }
 
@@ -172,16 +196,27 @@ void Updates::startDeb()
 	const QString url = Core::instance()->aptPackagesUrl();
 	if (url.isEmpty())
 		return;
-	QNetworkReply *reply = m_network.get(QNetworkRequest(QUrl(url)));
-	connect(reply, &QNetworkReply::finished, this, [this, reply] {
-		reply->deleteLater();
-		if (reply->error() != QNetworkReply::NoError)
-			return;
-		const QByteArray packages = reply->readAll();
+	get(url, [this](const QByteArray &packages) {
 		char *newest = pinesy_core_apt_newest_version(packages.constData(), "pinesy-kde");
 		const QString version = QString::fromUtf8(newest ? newest : "");
 		pinesy_core_free(newest);
 		notice(version, false);
+	});
+}
+
+//------------------------------------------------------------
+//  Downloads
+//------------------------------------------------------------
+
+// Fetches url, and gives its text to done when the server answers.
+void Updates::get(const QString &url, std::function<void(const QByteArray &)> done)
+{
+	QNetworkReply *reply = m_network.get(QNetworkRequest(QUrl(url)));
+	connect(reply, &QNetworkReply::finished, this, [reply, done = std::move(done)] {
+		reply->deleteLater();
+		if (reply->error() != QNetworkReply::NoError)
+			return;
+		done(reply->readAll());
 	});
 }
 
@@ -192,8 +227,9 @@ void Updates::startDeb()
 void Updates::notice(const QString &build, bool newerKnown)
 {
 	Core *core = Core::instance();
-	if (!core->updateNotice(build, newerKnown))
+	if (!core->updateNotice(build, newerKnown) || build == m_noticed)
 		return;
+	m_noticed = build;
 	const QVariantMap texts = core->updateTexts(build, newerKnown);
 
 	auto *box = new QMessageBox(QMessageBox::Information, text(texts, "title"), text(texts, "title"));

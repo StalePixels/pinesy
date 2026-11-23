@@ -97,6 +97,43 @@ void balance(std::vector<std::string> &a, std::vector<std::string> &b)
 	shorter.insert(shorter.begin() + std::ptrdiff_t(from), padding.begin(), padding.end());
 }
 
+// A key's value in a group of a key file; empty when it has none.
+std::string key_file_value(std::string_view text, std::string_view group, std::string_view key)
+{
+	auto trim = [](std::string_view s) {
+		const auto first = s.find_first_not_of(" \t\r");
+		if (first == std::string_view::npos) return std::string_view();
+		return s.substr(first, s.find_last_not_of(" \t\r") - first + 1);
+	};
+	bool in_group = false;
+	std::size_t start = 0;
+	while (start < text.size())
+	{
+		std::size_t end = text.find('\n', start);
+		if (end == std::string_view::npos) end = text.size();
+		const std::string_view line = trim(text.substr(start, end - start));
+		start = end + 1;
+		if (line.starts_with('['))
+		{
+			in_group = line == "[" + std::string(group) + "]";
+			continue;
+		}
+		const std::size_t equals = line.find('=');
+		if (in_group && equals != std::string_view::npos && trim(line.substr(0, equals)) == key)
+			return std::string(trim(line.substr(equals + 1)));
+	}
+	return {};
+}
+
+// True for an OSTree commit checksum: 64 lowercase hexadecimal digits.
+bool is_commit(std::string_view text)
+{
+	if (text.size() != 64) return false;
+	for (char c : text)
+		if (!std::isdigit(static_cast<unsigned char>(c)) && (c < 'a' || c > 'f')) return false;
+	return true;
+}
+
 long long number_of(const std::string &part)
 {
 	return std::strtoll(part.c_str(), nullptr, 10);
@@ -274,6 +311,22 @@ std::string apt_newest_version(std::string_view packages, std::string_view packa
 	}
 	finish();
 	return newest;
+}
+
+std::string flatpak_ref_url(const Identity &identity, std::string_view flatpak_info)
+{
+	const std::string name = key_file_value(flatpak_info, "Application", "name");
+	const std::string arch = key_file_value(flatpak_info, "Instance", "arch");
+	const std::string branch = key_file_value(flatpak_info, "Instance", "branch");
+	if (!identity.ci_build() || name.empty() || arch.empty() || branch.empty()) return {};
+	return track_url(identity) + "repo/refs/heads/app/" + name + "/" + arch + "/" + branch;
+}
+
+std::string flatpak_newer_commit(std::string_view flatpak_info, std::string_view ref)
+{
+	while (!ref.empty() && std::isspace(static_cast<unsigned char>(ref.back()))) ref.remove_suffix(1);
+	if (!is_commit(ref) || ref == key_file_value(flatpak_info, "Instance", "app-commit")) return {};
+	return std::string(ref);
 }
 
 } // namespace pinesy::core::updates

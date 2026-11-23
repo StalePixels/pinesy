@@ -9,7 +9,9 @@
 
 #include <unistd.h>
 
+#include <fstream>
 #include <memory>
+#include <sstream>
 #include <vector>
 
 namespace pinesy::gtk {
@@ -62,7 +64,8 @@ void Updates::start()
 }
 
 //------------------------------------------------------------
-//  Flatpak: the portal's UpdateMonitor
+//  Flatpak: the ref in the track's repository at startup, and
+//  the portal's UpdateMonitor
 //------------------------------------------------------------
 
 void Updates::start_flatpak()
@@ -119,10 +122,27 @@ void Updates::start_flatpak()
 										progress(parameters);
 									},
 									portal_name, monitor_interface, "Progress", m_monitor);
+							check_flatpak_ref();
 						},
 						portal_name);
 			},
 			portal_name);
+}
+
+// The portal looks for a newer build only after a while; the ref of
+// the app in the track's repository tells at once. It names the commit
+// as the portal's UpdateAvailable does.
+void Updates::check_flatpak_ref()
+{
+	std::ifstream in(updates::flatpak_info_file);
+	std::stringstream info;
+	info << in.rdbuf();
+	const std::string url = updates::flatpak_ref_url(m_app.core().identity(), info.str());
+	if (url.empty()) return;
+	get(url, [this, info = info.str()](std::string_view ref) {
+		const std::string commit = updates::flatpak_newer_commit(info, ref);
+		if (!m_updating) notice(commit, true);
+	});
 }
 
 void Updates::update_flatpak()
@@ -215,8 +235,17 @@ void Updates::spawn_latest()
 
 void Updates::start_deb()
 {
-	const updates::Identity identity = m_app.core().identity();
-	const std::string url = updates::apt_packages_url(identity, updates::debian_architecture());
+	const std::string url = updates::apt_packages_url(m_app.core().identity(), updates::debian_architecture());
+	get(url, [this](std::string_view packages) { notice(updates::apt_newest_version(packages, "pinesy"), false); });
+}
+
+//------------------------------------------------------------
+//  Downloads
+//------------------------------------------------------------
+
+// Fetches url, and gives its text to done when the server answers 200.
+void Updates::get(const std::string &url, std::function<void(std::string_view)> done)
+{
 	SoupSession *session = soup_session_new();
 	SoupMessage *message = soup_message_new("GET", url.c_str());
 	if (!message)
@@ -226,10 +255,10 @@ void Updates::start_deb()
 	}
 	struct Request
 	{
-		Updates *self;
+		std::function<void(std::string_view)> done;
 		SoupMessage *message;
 	};
-	auto *request = new Request{ this, message };
+	auto *request = new Request{ std::move(done), message };
 	soup_session_send_and_read_async(session, message, G_PRIORITY_DEFAULT, nullptr,
 			[](GObject *source, GAsyncResult *result, gpointer data) {
 				std::unique_ptr<Request> request(static_cast<Request *>(data));
@@ -239,8 +268,7 @@ void Updates::start_deb()
 				{
 					gsize size = 0;
 					const char *text = static_cast<const char *>(g_bytes_get_data(bytes, &size));
-					const std::string newest = updates::apt_newest_version(std::string_view(text ? text : "", size), "pinesy");
-					request->self->notice(newest, false);
+					request->done(std::string_view(text ? text : "", size));
 				}
 				if (bytes) g_bytes_unref(bytes);
 				g_object_unref(request->message);
@@ -256,7 +284,8 @@ void Updates::start_deb()
 void Updates::notice(const std::string &build, bool newer_known)
 {
 	const updates::Identity identity = m_app.core().identity();
-	if (!updates::notice(identity, m_app.core().settings(), build, newer_known)) return;
+	if (!updates::notice(identity, m_app.core().settings(), build, newer_known) || build == m_noticed) return;
+	m_noticed = build;
 	const updates::Texts texts = updates::texts(identity, build, newer_known);
 
 	AdwDialog *dialog = adw_alert_dialog_new(texts.title.c_str(), texts.message.c_str());

@@ -557,4 +557,18 @@ char *pinesy_core_apt_newest_version(const char *packages, const char *package)
 	return version.empty() ? nullptr : give(version);
 }
 
+char *pinesy_core_flatpak_ref_url(const pinesy_core *core, const char *flatpak_info)
+{
+	if (!core || !flatpak_info) return nullptr;
+	const std::string url = updates::flatpak_ref_url(core->core.identity(), flatpak_info);
+	return url.empty() ? nullptr : give(url);
+}
+
+char *pinesy_core_flatpak_newer_commit(const char *flatpak_info, const char *ref)
+{
+	if (!flatpak_info || !ref) return nullptr;
+	const std::string commit = updates::flatpak_newer_commit(flatpak_info, ref);
+	return commit.empty() ? nullptr : give(commit);
+}
+
 } // extern "C"

@@ -652,8 +652,9 @@ bool restorable(const std::vector<std::string> &arguments);
 //  its version and how it was delivered, in the file
 //  build-identity.json in its resources folder. A local build
 //  has none, and never looks for updates. Each front end finds the
-//  newest build in its own way (Sparkle, the Flatpak portal,
-//  the apt repository); these rules decide what it shows.
+//  newest build in its own way (Sparkle, the Flatpak repository
+//  and portal, the apt repository); these rules decide what it
+//  shows.
 //------------------------------------------------------------
 
 namespace updates {
@@ -690,8 +691,8 @@ bool checks(const Identity &identity, const Settings &settings);
 // True when the app shows the out-of-date notice for a build found on
 // the server: it looks for updates (checks()), the build is not the
 // one the settings ignore, and the build is newer. newer_known: the
-// update tool already decided that the build is newer (the Flatpak
-// portal, where build is the remote commit); otherwise build is a
+// update tool already decided that the build is newer (a Flatpak
+// build, where build is the remote commit); otherwise build is a
 // version, newer when compare_versions() says so.
 bool notice(const Identity &identity, const Settings &settings, const std::string &build, bool newer_known);
 
@@ -737,6 +738,26 @@ std::string apt_packages_url(const Identity &identity, const std::string &archit
 // The newest Version of a package in an apt Packages index, by
 // compare_versions(). Empty when the index does not list the package.
 std::string apt_newest_version(std::string_view packages, std::string_view package);
+
+// The file in which a Flatpak app finds its own installation: a key
+// file with the app's name in [Application], and its arch, branch and
+// app-commit in [Instance].
+inline constexpr const char *flatpak_info_file = "/.flatpak-info";
+
+// The ref file of the running Flatpak app in the track's repository:
+// <track>/repo/refs/heads/app/<name>/<arch>/<branch>, from flatpak_info,
+// the text of flatpak_info_file. Its text is the commit that the
+// repository holds for the app. Empty for a local build, or when
+// flatpak_info lacks the name, the arch or the branch.
+std::string flatpak_ref_url(const Identity &identity, std::string_view flatpak_info);
+
+// The commit in the text of a ref file, when it is not the commit that
+// runs (app-commit in flatpak_info). The repository holds only the
+// newest build of each app, so another commit is a newer build. The
+// Flatpak portal's UpdateAvailable signal names the same commit
+// (remote-commit). Empty when the text is not a commit, or it is the
+// commit that runs.
+std::string flatpak_newer_commit(std::string_view flatpak_info, std::string_view ref);
 
 } // namespace updates
 

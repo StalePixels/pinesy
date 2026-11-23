@@ -85,16 +85,19 @@ public:
 
 	// Updates (the core's rules): true when this CI build looks for
 	// updates; true when the out-of-date notice shows for a build found
-	// on the server (a version, or with newerKnown the Flatpak portal's
-	// remote commit); the notice's texts (pinesy_core_update_texts());
+	// on the server (a version, or with newerKnown a Flatpak remote
+	// commit); the notice's texts (pinesy_core_update_texts());
 	// and a choice of the notice (PINESY_CORE_UPDATE_*), stored.
 	bool updateChecks() const;
 	bool updateNotice(const QString &build, bool newerKnown) const;
 	QVariantMap updateTexts(const QString &build, bool newerKnown) const;
 	// The build's kind ("flatpak", "deb", ...), empty for a local build,
-	// and the track's apt index for a "deb" build.
+	// the track's apt index for a "deb" build, and the app's ref file in
+	// the track's Flatpak repository for a "flatpak" build, from the text
+	// of PINESY_CORE_FLATPAK_INFO.
 	QString buildKind() const;
 	QString aptPackagesUrl() const;
+	QString flatpakRefUrl(const QByteArray &flatpakInfo) const;
 	void updateChoice(int choice, const QString &build);
 
 	// Turns a file URL from a dialog into a local path.

@@ -288,6 +288,11 @@ QString Core::aptPackagesUrl() const
 	return QString::fromUtf8(take(pinesy_core_apt_packages_url(m_core)));
 }
 
+QString Core::flatpakRefUrl(const QByteArray &flatpakInfo) const
+{
+	return QString::fromUtf8(take(pinesy_core_flatpak_ref_url(m_core, flatpakInfo.constData())));
+}
+
 void Core::updateChoice(int choice, const QString &build)
 {
 	const QJsonObject changed

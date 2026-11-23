@@ -893,10 +893,32 @@ void test_updates(pinesy_core *core)
 			&& take(pinesy_core_apt_newest_version(packages, "gone")) == "<NULL>",
 			"pinesy_core_apt_newest_version() gives the same answers");
 
+	const char *info = "[Application]\nname=com.stalepixels.Pinesy\nruntime=runtime/org.gnome.Platform/x86_64/49\n\n"
+			"[Instance]\ninstance-id=12\nbranch=nightly\narch=x86_64\n"
+			"app-commit=d3cf38c80f7f6e9a26c1f138ad74d2df2e600b69547dbee9770a1fc234965244\n";
+	const updates::Identity flatpak{ "nightly", "0.1.20261122.0300", "flatpak" };
+	check(updates::flatpak_ref_url(flatpak, info)
+					== "https://pinesy.zx.immo/nightly/repo/refs/heads/app/com.stalepixels.Pinesy/x86_64/nightly",
+			"the Flatpak ref file is the app's ref in the track's repository");
+	check(updates::flatpak_ref_url(updates::Identity{}, info).empty()
+					&& updates::flatpak_ref_url(flatpak, "[Application]\nname=com.stalepixels.Pinesy\n").empty(),
+			"a local build, or a Flatpak info without the arch and branch, has no ref file");
+	const std::string newer = "fa6eba4514886e0d8dec423bd5c594fbba45a13c3a638b9cdc0a072109b2b07a";
+	check(updates::flatpak_newer_commit(info, newer + "\n") == newer, "another commit in the ref file is a newer build");
+	check(updates::flatpak_newer_commit(info, "d3cf38c80f7f6e9a26c1f138ad74d2df2e600b69547dbee9770a1fc234965244\n").empty(),
+			"the commit that runs is no newer build");
+	check(updates::flatpak_newer_commit(info, "<html>404 Not Found</html>").empty()
+					&& updates::flatpak_newer_commit(info, "").empty(),
+			"a ref file that holds no commit gives no build");
+	check(take(pinesy_core_flatpak_newer_commit(info, newer.c_str())) == newer
+					&& take(pinesy_core_flatpak_newer_commit(info, "nope")) == "<NULL>",
+			"pinesy_core_flatpak_newer_commit() gives the same answers");
+
 	// the test core is a local build: no identity, no checks, no URLs
 	check(take(pinesy_core_build_identity(core)) == "{}", "a local build has no identity");
-	check(take(pinesy_core_appcast_url(core)) == "<NULL>" && take(pinesy_core_apt_packages_url(core)) == "<NULL>",
-			"a local build has no appcast and no apt index");
+	check(take(pinesy_core_appcast_url(core)) == "<NULL>" && take(pinesy_core_apt_packages_url(core)) == "<NULL>"
+					&& take(pinesy_core_flatpak_ref_url(core, info)) == "<NULL>",
+			"a local build has no appcast, no apt index and no Flatpak ref file");
 	check(pinesy_core_update_checks(core) == 0 && pinesy_core_update_notice(core, "99", 0) == 0,
 			"a local build never looks for updates");
 	const json::Value after = parse(pinesy_core_update_choice(core, PINESY_CORE_UPDATE_IGNORE_BUILD, "0.1.11"));
@@ -929,6 +951,9 @@ void test_updates(pinesy_core *core)
 	check(take(pinesy_core_apt_packages_url(ci_core)).starts_with("https://pinesy.zx.immo/nightly/dists/sid/main/binary-")
 			&& take(pinesy_core_appcast_url(ci_core)) == "https://pinesy.zx.immo/nightly/macos/appcast.xml",
 			"a CI build's URLs are on its own track");
+	check(take(pinesy_core_flatpak_ref_url(ci_core, info))
+					== "https://pinesy.zx.immo/nightly/repo/refs/heads/app/com.stalepixels.Pinesy/x86_64/nightly",
+			"pinesy_core_flatpak_ref_url() gives the ref file on the build's track");
 	pinesy_core_destroy(ci_core);
 	write_identity(R"({"track": "nightly", "version": "0.1.20261122.1900"})");
 	check(updates::read_identity(resources.string()) == updates::Identity{}, "an identity without a kind is no identity");
